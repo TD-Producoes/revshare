@@ -24,6 +24,9 @@ model User {
   projects                  Project[]
   coupons                   Coupon[]
   contracts                 Contract[]
+  creatorTransfers          Transfer[] @relation("CreatorTransfers")
+  marketerTransfers         Transfer[] @relation("MarketerTransfers")
+  creatorPayments           CreatorPayment[]
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 }
@@ -99,14 +102,21 @@ model Purchase {
   customerEmail         String?
   commissionAmount      Int
   transferId            String?
+  transferRecordId      String?
+  creatorPaymentId      String?
+  commissionStatus      CommissionStatus @default(PENDING_CREATOR_PAYMENT)
   status                PayoutStatus @default(PENDING)
   createdAt             DateTime     @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   coupon  Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  transferRecord Transfer? @relation(fields: [transferRecordId], references: [id], onDelete: SetNull)
+  creatorPayment CreatorPayment? @relation(fields: [creatorPaymentId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
   @@index([couponId])
+  @@index([transferRecordId])
+  @@index([creatorPaymentId])
 }
 
 enum CouponStatus {
@@ -129,4 +139,56 @@ enum PayoutStatus {
   PENDING
   PAID
   FAILED
+}
+
+enum CommissionStatus {
+  PENDING_CREATOR_PAYMENT
+  READY_FOR_PAYOUT
+  PAID
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model CreatorPayment {
+  id                     String        @id @default(cuid())
+  creatorId              String
+  amountTotal            Int
+  marketerTotal          Int
+  platformFeeTotal       Int
+  status                 PaymentStatus @default(PENDING)
+  stripeCheckoutSessionId String?
+  stripePaymentIntentId  String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  creator   User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@index([creatorId])
+  @@index([stripeCheckoutSessionId])
+}
+
+model Transfer {
+  id               String       @id @default(cuid())
+  creatorId        String
+  marketerId       String
+  amount           Int
+  currency         String
+  status           PayoutStatus @default(PENDING)
+  stripeTransferId String?
+  failureReason    String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  creator  User      @relation("CreatorTransfers", fields: [creatorId], references: [id], onDelete: Cascade)
+  marketer User      @relation("MarketerTransfers", fields: [marketerId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@index([creatorId])
+  @@index([marketerId])
+  @@index([stripeTransferId])
 }

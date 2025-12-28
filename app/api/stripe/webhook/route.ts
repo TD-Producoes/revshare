@@ -6,68 +6,6 @@ import { platformStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
-async function processPendingTransfers() {
-  const stripe = platformStripe();
-  const pendingPurchases = await prisma.purchase.findMany({
-    where: {
-      status: { in: ["PENDING", "FAILED"] },
-      transferId: null,
-      commissionAmount: { gt: 0 },
-    },
-    include: {
-      coupon: {
-        include: { marketer: true },
-      },
-    },
-  });
-
-  let processed = 0;
-  let paid = 0;
-  let failed = 0;
-  let skipped = 0;
-
-  for (const purchase of pendingPurchases) {
-    processed += 1;
-    const marketerAccountId =
-      purchase.coupon?.marketer?.stripeConnectedAccountId ?? null;
-    if (!marketerAccountId) {
-      skipped += 1;
-      continue;
-    }
-
-    try {
-      const transfer = await stripe.transfers.create({
-        amount: purchase.commissionAmount,
-        currency: purchase.currency,
-        destination: marketerAccountId,
-        metadata: {
-          projectId: purchase.projectId,
-          couponId: purchase.couponId ?? "",
-          purchaseId: purchase.id,
-        },
-      });
-
-      await prisma.purchase.update({
-        where: { id: purchase.id },
-        data: {
-          transferId: transfer.id,
-          status: "PAID",
-        },
-      });
-      paid += 1;
-    } catch (error) {
-      console.error("Error retrying commission transfer:", error);
-      await prisma.purchase.update({
-        where: { id: purchase.id },
-        data: { status: "FAILED" },
-      });
-      failed += 1;
-    }
-  }
-
-  return { processed, paid, failed, skipped };
-}
-
 function promotionCodeIdFromDiscount(discount?: Stripe.Discount | null) {
   if (!discount || !discount.promotion_code) {
     return null;
@@ -223,11 +161,30 @@ export async function POST(request: Request) {
     );
   }
 
-  if (event.type === "balance.available") {
-    const result = await processPendingTransfers();
-    return NextResponse.json({ received: true, retried: result });
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const creatorPaymentId = session.metadata?.creatorPaymentId ?? null;
+    if (creatorPaymentId) {
+      await prisma.creatorPayment.update({
+        where: { id: creatorPaymentId },
+        data: {
+          status: "PAID",
+          stripeCheckoutSessionId: session.id,
+          stripePaymentIntentId:
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : null,
+        },
+      });
+      await prisma.purchase.updateMany({
+        where: { creatorPaymentId },
+        data: { commissionStatus: "READY_FOR_PAYOUT" },
+      });
+      return NextResponse.json({ received: true, creatorPaymentId });
+    }
   }
 
+  const details = parseEventDetails(event);
   const accountId = event.account ?? null;
   let projectMatch = accountId
     ? await prisma.project.findFirst({
@@ -237,6 +194,16 @@ export async function POST(request: Request) {
         },
       })
     : null;
+
+  if (!projectMatch && details?.promotionCodeId) {
+    const couponMatch = await prisma.coupon.findUnique({
+      where: { stripePromotionCodeId: details.promotionCodeId },
+      select: { projectId: true },
+    });
+    if (couponMatch?.projectId) {
+      projectMatch = { id: couponMatch.projectId };
+    }
+  }
 
   if (!projectMatch) {
     const projectId = extractProjectId(event);
@@ -269,7 +236,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
-  const details = parseEventDetails(event);
   if (!details) {
     return NextResponse.json({ received: true });
   }
@@ -315,43 +281,11 @@ export async function POST(request: Request) {
     ? Math.round(details.amount * commissionPercent)
     : 0;
 
-  let transferId: string | null = null;
-  let status: "PENDING" | "PAID" | "FAILED" = coupon ? "PENDING" : "PAID";
-
-  if (coupon && commissionAmount <= 0) {
-    status = "PAID";
-  }
-
-  if (coupon && commissionAmount > 0) {
-    console.log(
-      `Processing commission transfer of ${commissionAmount} ${details.currency} to marketer ${coupon.marketer.id}`,
-    );
-    const marketerAccountId = coupon.marketer.stripeConnectedAccountId;
-    if (!marketerAccountId) {
-      status = "FAILED";
-    } else {
-      try {
-        const stripe = platformStripe();
-
-        const transfer = await stripe.transfers.create({
-          amount: commissionAmount,
-          currency: details.currency,
-          destination: marketerAccountId,
-          metadata: {
-            projectId: projectMatch.id,
-            couponId: coupon.id,
-            eventId: event.id,
-          },
-        });
-
-        transferId = transfer.id;
-        status = "PAID";
-      } catch (error) {
-        console.error("Error processing commission transfer:", error);
-        status = "FAILED";
-      }
-    }
-  }
+  const transferId: string | null = null;
+  const status: "PENDING" | "PAID" | "FAILED" =
+    coupon && commissionAmount > 0 ? "PENDING" : "PAID";
+  const commissionStatus: "PENDING_CREATOR_PAYMENT" | "PAID" =
+    coupon && commissionAmount > 0 ? "PENDING_CREATOR_PAYMENT" : "PAID";
 
   console.log(`Creating purchase record for event ${event.id}`);
   await prisma.purchase.create({
@@ -367,6 +301,7 @@ export async function POST(request: Request) {
       customerEmail: details.customerEmail,
       commissionAmount,
       transferId,
+      commissionStatus,
       status,
     },
   });

@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 export type CreatorPayoutTotals = {
   totalCommissions: number;
   paidCommissions: number;
   pendingCommissions: number;
+  failedCommissions: number;
   platformFee: number;
 };
 
@@ -17,6 +18,9 @@ export type CreatorPayout = {
   totalEarnings: number;
   paidEarnings: number;
   pendingEarnings: number;
+  failedEarnings: number;
+  readyEarnings: number;
+  failureReason?: string | null;
 };
 
 export type CreatorDashboardTotals = {
@@ -50,6 +54,66 @@ export type CreatorDashboard = {
   projects: CreatorDashboardProject[];
 };
 
+export type CreatorPaymentLine = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  marketerId: string | null;
+  marketerName: string;
+  customerEmail: string | null;
+  amount: number;
+  marketerCommission: number;
+  platformFee: number;
+  merchantNet: number;
+  createdAt: string | Date;
+};
+
+export type CreatorPaymentPreview = {
+  paymentId: string | null;
+  purchases: CreatorPaymentLine[];
+  perMarketer: Array<{
+    marketerId: string | null;
+    marketerName: string;
+    marketerTotal: number;
+    platformTotal: number;
+  }>;
+  totals: {
+    marketerTotal: number;
+    platformTotal: number;
+    grandTotal: number;
+  };
+};
+
+export type CreatorPaymentHistory = {
+  id: string;
+  amountTotal: number;
+  marketerTotal: number;
+  platformFeeTotal: number;
+  status: string;
+  createdAt: string | Date;
+  purchaseCount: number;
+  stripeCheckoutSessionId: string | null;
+};
+
+export type CreatorPurchase = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  customerEmail: string | null;
+  amount: number;
+  commissionAmount: number;
+  platformFee: number;
+  commissionStatus: string;
+  status: string;
+  createdAt: string | Date;
+  couponCode: string | null;
+  marketer: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+};
+
 export function useCreatorPayouts(userId?: string | null) {
   return useQuery<{ totals: CreatorPayoutTotals; payouts: CreatorPayout[] }>({
     queryKey: ["creator-payouts", userId ?? "none"],
@@ -69,6 +133,90 @@ export function useCreatorPayouts(userId?: string | null) {
   });
 }
 
+export function useCreatorPaymentPreview(userId?: string | null, enabled = true) {
+  return useQuery<CreatorPaymentPreview>({
+    queryKey: ["creator-payment-preview", userId ?? "none"],
+    enabled: Boolean(userId) && enabled,
+    queryFn: async () => {
+      const response = await fetch(`/api/creator/payouts/preview?userId=${userId}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to load payout preview.");
+      }
+      const payload = await response.json();
+      return payload?.data as CreatorPaymentPreview;
+    },
+  });
+}
+
+export function useCreatorPaymentCheckout() {
+  return useMutation({
+    mutationFn: async (payload: { userId: string }) => {
+      const response = await fetch("/api/creator/payouts/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to create checkout.");
+      }
+      return data?.data as { id: string; url: string | null };
+    },
+  });
+}
+
+export function useCreatorPayments(userId?: string | null) {
+  return useQuery<CreatorPaymentHistory[]>({
+    queryKey: ["creator-payments", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(`/api/creator/payouts/payments?userId=${userId}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch payments.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export function useCreatorPurchaseDetails(userId?: string | null) {
+  return useQuery<CreatorPurchase[]>({
+    queryKey: ["creator-payout-purchases", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/creator/payouts/purchases?userId=${userId}`,
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch purchases.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export function useProcessMarketerTransfers() {
+  return useMutation({
+    mutationFn: async (payload: { creatorId: string }) => {
+      const response = await fetch("/api/platform/payouts/marketers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to process transfers.");
+      }
+      return data?.data ?? null;
+    },
+  });
+}
+
 export function useCreatorDashboard(userId?: string | null) {
   return useQuery<CreatorDashboard>({
     queryKey: ["creator-dashboard", userId ?? "none"],
@@ -81,6 +229,23 @@ export function useCreatorDashboard(userId?: string | null) {
       }
       const payload = await response.json();
       return payload?.data as CreatorDashboard;
+    },
+  });
+}
+
+export function usePayCreatorPayouts() {
+  return useMutation({
+    mutationFn: async (payload: { userId: string }) => {
+      const response = await fetch("/api/creator/payouts/pay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to send payouts.");
+      }
+      return data?.data ?? null;
     },
   });
 }

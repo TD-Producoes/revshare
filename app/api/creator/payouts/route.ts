@@ -33,12 +33,13 @@ export async function GET(request: Request) {
           totalCommissions: 0,
           paidCommissions: 0,
           pendingCommissions: 0,
+          failedCommissions: 0,
           platformFee: 0,
         },
-        payouts: [],
-      },
-    });
-  }
+      payouts: [],
+    },
+  });
+}
 
   const purchases = await prisma.purchase.findMany({
     where: { projectId: { in: projectIds } },
@@ -53,9 +54,21 @@ export async function GET(request: Request) {
     },
   });
 
+  const transfers = await prisma.transfer.findMany({
+    where: { creatorId: userId },
+    select: {
+      marketerId: true,
+      failureReason: true,
+      status: true,
+      updatedAt: true,
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
   let totalCommissions = 0;
   let paidCommissions = 0;
   let pendingCommissions = 0;
+  let failedCommissions = 0;
 
   const marketerMap = new Map<
     string,
@@ -67,6 +80,8 @@ export async function GET(request: Request) {
       totalEarnings: number;
       paidEarnings: number;
       pendingEarnings: number;
+      failedEarnings: number;
+      readyEarnings: number;
     }
   >();
 
@@ -86,33 +101,54 @@ export async function GET(request: Request) {
         totalEarnings: 0,
         paidEarnings: 0,
         pendingEarnings: 0,
+        failedEarnings: 0,
+        readyEarnings: 0,
       };
 
     existing.projectIds.add(purchase.projectId);
     existing.totalEarnings += purchase.commissionAmount;
     totalCommissions += purchase.commissionAmount;
 
-    if (purchase.status === "PAID") {
+    if (purchase.commissionStatus === "PAID") {
       existing.paidEarnings += purchase.commissionAmount;
       paidCommissions += purchase.commissionAmount;
-    } else if (purchase.status === "PENDING") {
+    } else if (purchase.commissionStatus === "PENDING_CREATOR_PAYMENT") {
       existing.pendingEarnings += purchase.commissionAmount;
       pendingCommissions += purchase.commissionAmount;
+    } else if (purchase.commissionStatus === "READY_FOR_PAYOUT") {
+      existing.pendingEarnings += purchase.commissionAmount;
+      pendingCommissions += purchase.commissionAmount;
+      existing.readyEarnings += purchase.commissionAmount;
+      if (purchase.status === "FAILED") {
+        existing.failedEarnings += purchase.commissionAmount;
+        failedCommissions += purchase.commissionAmount;
+      }
     }
 
     marketerMap.set(marketerId, existing);
   }
 
   const payouts = Array.from(marketerMap.values())
-    .map((entry) => ({
-      marketerId: entry.marketerId,
-      marketerName: entry.marketerName,
-      marketerEmail: entry.marketerEmail,
-      projectCount: entry.projectIds.size,
+    .map((entry) => {
+      const latestFailure = transfers.find(
+        (transfer) =>
+          transfer.marketerId === entry.marketerId &&
+          transfer.status === "FAILED",
+      );
+
+      return {
+        marketerId: entry.marketerId,
+        marketerName: entry.marketerName,
+        marketerEmail: entry.marketerEmail,
+        projectCount: entry.projectIds.size,
       totalEarnings: entry.totalEarnings,
       paidEarnings: entry.paidEarnings,
       pendingEarnings: entry.pendingEarnings,
-    }))
+      failedEarnings: entry.failedEarnings,
+      readyEarnings: entry.readyEarnings,
+      failureReason: latestFailure?.failureReason ?? null,
+    };
+    })
     .sort((a, b) => b.totalEarnings - a.totalEarnings);
 
   const platformFee = Math.floor(totalCommissions * PLATFORM_FEE_PERCENT);
@@ -123,6 +159,7 @@ export async function GET(request: Request) {
         totalCommissions,
         paidCommissions,
         pendingCommissions,
+        failedCommissions,
         platformFee,
       },
       payouts,
