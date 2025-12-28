@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useProjects, useOffers, useEvents, useUsers } from "@/lib/data/store";
+import { useProjects, useEvents } from "@/lib/data/store";
 import {
   getProjectMetrics,
-  getProjectMarketerMetrics,
   getRevenueTimeline,
   formatCurrency,
-  formatPercent,
   formatNumber,
 } from "@/lib/data/metrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,17 +26,84 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Project } from "@/lib/data/types";
-import { useProject, useProjectStats } from "@/lib/hooks/projects";
+import { useProject, useProjectPurchases, useProjectStats } from "@/lib/hooks/projects";
+import { useProjectCoupons } from "@/lib/hooks/coupons";
 
 interface ProjectDetailProps {
   projectId: string;
 }
 
+function buildAffiliateRows(
+  projectCoupons: Array<{
+    code: string;
+    marketer: { id: string; name: string };
+  }>,
+  projectPurchases: Array<{
+    amount: number;
+    commissionAmount: number;
+    coupon: { marketer: { id: string } } | null;
+  }>,
+) {
+  const couponMap = new Map<
+    string,
+    { marketerId: string; marketerName: string; codes: string[] }
+  >();
+
+  projectCoupons.forEach((coupon) => {
+    const marketerId = coupon.marketer.id;
+    const existing = couponMap.get(marketerId) ?? {
+      marketerId,
+      marketerName: coupon.marketer.name,
+      codes: [],
+    };
+    existing.codes.push(coupon.code);
+    couponMap.set(marketerId, existing);
+  });
+
+  const purchaseMap = new Map<
+    string,
+    { purchases: number; revenue: number; commission: number }
+  >();
+  projectPurchases.forEach((purchase) => {
+    const marketerId = purchase.coupon?.marketer?.id;
+    if (!marketerId) return;
+    const existing = purchaseMap.get(marketerId) ?? {
+      purchases: 0,
+      revenue: 0,
+      commission: 0,
+    };
+    existing.purchases += 1;
+    existing.revenue += purchase.amount;
+    existing.commission += purchase.commissionAmount;
+    purchaseMap.set(marketerId, existing);
+  });
+
+  const marketerIds = new Set<string>([
+    ...couponMap.keys(),
+    ...purchaseMap.keys(),
+  ]);
+
+  return Array.from(marketerIds).map((marketerId) => {
+    const couponInfo = couponMap.get(marketerId);
+    const purchaseInfo = purchaseMap.get(marketerId);
+    const codes = couponInfo?.codes ?? [];
+    const codeLabel =
+      codes.length > 1 ? `${codes[0]} (+${codes.length - 1})` : codes[0] ?? "-";
+
+    return {
+      marketerId,
+      marketerName: couponInfo?.marketerName ?? "Unknown",
+      referralCode: codeLabel,
+      purchases: purchaseInfo?.purchases ?? 0,
+      revenue: purchaseInfo?.revenue ?? 0,
+      commission: purchaseInfo?.commission ?? 0,
+    };
+  });
+}
+
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const projects = useProjects();
-  const offers = useOffers();
   const events = useEvents();
-  const users = useUsers();
   const [connectError, setConnectError] = useState("");
 
   const { data: apiProject, isLoading } = useProject(projectId);
@@ -47,6 +112,16 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     isLoading: isStatsLoading,
     error: projectStatsError,
   } = useProjectStats(projectId);
+  const {
+    data: projectPurchases = [],
+    isLoading: isPurchasesLoading,
+    error: purchasesError,
+  } = useProjectPurchases(projectId);
+  const {
+    data: projectCoupons = [],
+    isLoading: isCouponsLoading,
+    error: couponsError,
+  } = useProjectCoupons(projectId);
   const isStripeConnected = Boolean(apiProject?.creatorStripeAccountId);
 
   const project = projects.find((p) => p.id === projectId);
@@ -99,11 +174,6 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   }
 
   const metrics = getProjectMetrics(events, resolvedProject);
-  const marketerMetrics = getProjectMarketerMetrics(
-    events,
-    resolvedProject,
-    offers
-  );
   const revenueData = getRevenueTimeline(
     events,
     resolvedProject.id,
@@ -111,18 +181,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     30
   );
 
-  // Get marketer details
-  const marketersWithMetrics = marketerMetrics.map((mm) => {
-    const marketer = users.find((u) => u.id === mm.marketerId);
-    const offer = offers.find(
-      (o) => o.projectId === resolvedProject.id && o.marketerId === mm.marketerId
-    );
-    return {
-      marketer,
-      offer,
-      metrics: mm.metrics,
-    };
-  });
+  const affiliateRows = buildAffiliateRows(projectCoupons, projectPurchases);
 
   // Calculate commission owed per marketer
   const getCommissionOwed = (earnings: number) => {
@@ -318,7 +377,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           <CardTitle className="text-base">Affiliate Marketers</CardTitle>
         </CardHeader>
         <CardContent>
-          {marketersWithMetrics.length === 0 ? (
+          {isPurchasesLoading || isCouponsLoading ? (
+            <p className="text-muted-foreground text-center py-8">
+              Loading affiliate marketers...
+            </p>
+          ) : affiliateRows.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
               No marketers are promoting this project yet.
             </p>
@@ -337,39 +400,48 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {marketersWithMetrics.map(({ marketer, offer, metrics }) => (
-                  <TableRow key={marketer?.id || offer?.id}>
+                {affiliateRows.map((row) => (
+                  <TableRow key={row.marketerId}>
                     <TableCell className="font-medium">
-                      {marketer?.name || "Unknown"}
+                      {row.marketerName}
                     </TableCell>
                     <TableCell>
                       <code className="bg-muted px-2 py-1 rounded text-xs">
-                        {offer?.referralCode}
+                        {row.referralCode}
                       </code>
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatNumber(metrics.clicks)}
+                      -
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatNumber(metrics.signups)}
+                      -
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatNumber(metrics.paidCustomers)}
+                      {formatNumber(row.purchases)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatPercent(metrics.conversionRate)}
+                      -
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(metrics.mrr)}
+                      -
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(getCommissionOwed(metrics.earnings))}
+                      {formatCurrency(getCommissionOwed(row.commission))}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
+          {purchasesError || couponsError ? (
+            <p className="text-sm text-destructive mt-4">
+              {purchasesError instanceof Error
+                ? purchasesError.message
+                : couponsError instanceof Error
+                  ? couponsError.message
+                  : "Unable to load affiliate marketers."}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
     </div>

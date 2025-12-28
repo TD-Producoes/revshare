@@ -1,11 +1,6 @@
 "use client";
 
-import { useCurrentUser, useProjects, useOffers, useEvents, useUsers } from "@/lib/data/store";
-import {
-  getCreatorMetrics,
-  getProjectMarketerMetrics,
-  formatCurrency,
-} from "@/lib/data/metrics";
+import { formatCurrency } from "@/lib/data/metrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,64 +13,40 @@ import {
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
 import { DollarSign, Clock, CheckCircle, Percent } from "lucide-react";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
+import { useCreatorPayouts } from "@/lib/hooks/creator";
 
 export default function PayoutsPage() {
-  const currentUser = useCurrentUser();
-  const projects = useProjects();
-  const offers = useOffers();
-  const events = useEvents();
-  const users = useUsers();
+  const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
+  const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
+  const { data, isLoading: isPayoutsLoading } = useCreatorPayouts(
+    currentUser?.id,
+  );
 
-  if (!currentUser || currentUser.role !== "creator") {
-    return null;
+  if (isAuthLoading || isUserLoading || isPayoutsLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    );
   }
 
-  const metrics = getCreatorMetrics(events, projects, currentUser.id);
-  const creatorProjects = projects.filter((p) => p.userId === currentUser.id);
+  if (!currentUser || currentUser.role !== "creator") {
+    return (
+      <div className="text-muted-foreground">
+        This section is only available to creators.
+      </div>
+    );
+  }
 
-  // Calculate payouts per marketer
-  const marketerPayouts: Array<{
-    marketerId: string;
-    marketerName: string;
-    totalEarnings: number;
-    projectCount: number;
-  }> = [];
-
-  const marketerMap = new Map<
-    string,
-    { totalEarnings: number; projectCount: number }
-  >();
-
-  creatorProjects.forEach((project) => {
-    const projectMarketerMetrics = getProjectMarketerMetrics(events, project, offers);
-    projectMarketerMetrics.forEach(({ marketerId, metrics: m }) => {
-      const existing = marketerMap.get(marketerId) || {
-        totalEarnings: 0,
-        projectCount: 0,
-      };
-      marketerMap.set(marketerId, {
-        totalEarnings: existing.totalEarnings + m.earnings,
-        projectCount: existing.projectCount + 1,
-      });
-    });
-  });
-
-  marketerMap.forEach((data, marketerId) => {
-    const marketer = users.find((u) => u.id === marketerId);
-    marketerPayouts.push({
-      marketerId,
-      marketerName: marketer?.name || "Unknown",
-      totalEarnings: data.totalEarnings,
-      projectCount: data.projectCount,
-    });
-  });
-
-  // Sort by earnings descending
-  marketerPayouts.sort((a, b) => b.totalEarnings - a.totalEarnings);
-
-  // Simulate paid vs pending (70% paid, 30% pending)
-  const paidCommissions = Math.floor(metrics.affiliateShareOwed * 0.7);
-  const pendingCommissions = metrics.affiliateShareOwed - paidCommissions;
+  const payouts = data?.payouts ?? [];
+  const totals = data?.totals ?? {
+    totalCommissions: 0,
+    paidCommissions: 0,
+    pendingCommissions: 0,
+    platformFee: 0,
+  };
 
   return (
     <div className="space-y-6">
@@ -90,25 +61,25 @@ export default function PayoutsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Commissions"
-          value={formatCurrency(metrics.affiliateShareOwed)}
+          value={formatCurrency(totals.totalCommissions)}
           description="All time"
           icon={DollarSign}
         />
         <StatCard
           title="Paid Out"
-          value={formatCurrency(paidCommissions)}
+          value={formatCurrency(totals.paidCommissions)}
           description="Successfully paid"
           icon={CheckCircle}
         />
         <StatCard
           title="Pending"
-          value={formatCurrency(pendingCommissions)}
+          value={formatCurrency(totals.pendingCommissions)}
           description="Awaiting payout"
           icon={Clock}
         />
         <StatCard
           title="Platform Fee"
-          value={formatCurrency(metrics.platformFee)}
+          value={formatCurrency(totals.platformFee)}
           description="5% of commissions"
           icon={Percent}
         />
@@ -120,7 +91,7 @@ export default function PayoutsPage() {
           <CardTitle className="text-base">Affiliate Payouts</CardTitle>
         </CardHeader>
         <CardContent>
-          {marketerPayouts.length === 0 ? (
+          {payouts.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
               No affiliate earnings to pay out yet.
             </p>
@@ -137,9 +108,9 @@ export default function PayoutsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {marketerPayouts.map((payout) => {
-                  const paid = Math.floor(payout.totalEarnings * 0.7);
-                  const pending = payout.totalEarnings - paid;
+                {payouts.map((payout) => {
+                  const paid = payout.paidEarnings;
+                  const pending = payout.pendingEarnings;
 
                   return (
                     <TableRow key={payout.marketerId}>

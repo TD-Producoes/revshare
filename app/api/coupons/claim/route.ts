@@ -34,7 +34,6 @@ export async function POST(request: Request) {
       select: {
         id: true,
         name: true,
-        marketerCommissionPercent: true,
         creatorStripeAccountId: true,
       },
     }),
@@ -54,6 +53,23 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Creator Stripe account not set" },
       { status: 400 },
+    );
+  }
+
+  const contract = await prisma.contract.findUnique({
+    where: {
+      projectId_userId: {
+        projectId: project.id,
+        userId: marketer.id,
+      },
+    },
+    select: { commissionPercent: true },
+  });
+
+  if (!contract) {
+    return NextResponse.json(
+      { error: "Contract not found for marketer" },
+      { status: 404 },
     );
   }
 
@@ -98,7 +114,7 @@ export async function POST(request: Request) {
       stripeCouponId: stripeCoupon.id,
       stripePromotionCodeId: promotionCode.id,
       percentOff,
-      commissionPercent: project.marketerCommissionPercent.toString(),
+      commissionPercent: contract.commissionPercent.toString(),
     },
     select: {
       id: true,

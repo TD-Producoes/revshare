@@ -32,6 +32,27 @@ export type ProjectStats = {
   };
 };
 
+export type ProjectPurchase = {
+  id: string;
+  projectId: string;
+  amount: number;
+  commissionAmount: number;
+  currency: string;
+  customerEmail: string | null;
+  status: string;
+  createdAt: string | Date;
+  coupon: {
+    id: string;
+    code: string;
+    percentOff: number;
+    marketer: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  } | null;
+};
+
 export function useProjects(userId?: string | null) {
   return useQuery<ApiProject[]>({
     queryKey: ["projects", userId ?? "all"],
@@ -71,6 +92,21 @@ export function useProjectStats(id: string) {
         throw new Error(payload?.error ?? "Failed to fetch project stats.");
       }
       return payload?.data as ProjectStats;
+    },
+  });
+}
+
+export function useProjectPurchases(id: string) {
+  return useQuery<ProjectPurchase[]>({
+    queryKey: ["project-purchases", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${id}/purchases`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch purchases.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
     },
   });
 }

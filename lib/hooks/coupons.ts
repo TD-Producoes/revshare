@@ -12,6 +12,21 @@ export type Coupon = {
   claimedAt: string | Date;
 };
 
+export type ProjectCoupon = {
+  id: string;
+  code: string;
+  percentOff: number;
+  commissionPercent: number;
+  status: string;
+  claimedAt: string | Date;
+  marketer: {
+    id: string;
+    name: string;
+    email: string;
+    stripeConnectedAccountId?: string | null;
+  };
+};
+
 export function useCouponsForMarketer(userId?: string | null) {
   return useQuery<Coupon[]>({
     queryKey: ["coupons", "marketer", userId ?? "none"],
@@ -53,6 +68,22 @@ export function useClaimCoupon() {
       await queryClient.invalidateQueries({
         queryKey: ["coupons", "marketer", variables.marketerId],
       });
+    },
+  });
+}
+
+export function useProjectCoupons(projectId?: string | null) {
+  return useQuery<ProjectCoupon[]>({
+    queryKey: ["project-coupons", projectId ?? "none"],
+    enabled: Boolean(projectId),
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${projectId}/coupons`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch coupons.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
     },
   });
 }

@@ -1,11 +1,6 @@
 "use client";
 
-import { useProjects, useOffers, useEvents } from "@/lib/data/store";
-import {
-  getMarketerProjectMetrics,
-  getMarketerTotalMetrics,
-  formatCurrency,
-} from "@/lib/data/metrics";
+import { formatCurrency } from "@/lib/data/metrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,15 +15,26 @@ import { StatCard } from "@/components/shared/stat-card";
 import { DollarSign, Clock, CheckCircle, TrendingUp } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
+import { useContractsForMarketer } from "@/lib/hooks/contracts";
+import { useMarketerPurchases, useMarketerStats } from "@/lib/hooks/marketer";
 
 export default function EarningsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
-  const projects = useProjects();
-  const offers = useOffers();
-  const events = useEvents();
+  const { data: purchases = [], isLoading: isPurchasesLoading } =
+    useMarketerPurchases(currentUser?.id);
+  const { data: stats, isLoading: isStatsLoading } =
+    useMarketerStats(currentUser?.id);
+  const { data: contracts = [], isLoading: isContractsLoading } =
+    useContractsForMarketer(currentUser?.id);
 
-  if (isAuthLoading || isUserLoading) {
+  if (
+    isAuthLoading ||
+    isUserLoading ||
+    isPurchasesLoading ||
+    isStatsLoading ||
+    isContractsLoading
+  ) {
     return (
       <div className="flex h-40 items-center justify-center text-muted-foreground">
         Loading...
@@ -44,38 +50,67 @@ export default function EarningsPage() {
     );
   }
 
-  const metrics = getMarketerTotalMetrics(
-    events,
-    projects,
-    offers,
-    currentUser.id
+  const totalEarnings = stats?.totalEarnings ?? 0;
+  const pendingEarnings = stats?.pendingEarnings ?? 0;
+  const receivedEarnings = Math.max(totalEarnings - pendingEarnings, 0);
+  const totalRevenue = stats?.totalRevenue ?? 0;
+
+  const contractByProject = new Map(
+    contracts.map((contract) => [contract.projectId, contract]),
   );
 
-  const approvedOffers = offers.filter(
-    (o) => o.marketerId === currentUser.id && o.status === "approved"
+  const projectEarnings = purchases.reduce(
+    (acc, purchase) => {
+      const existing = acc.get(purchase.projectId) ?? {
+        projectId: purchase.projectId,
+        projectName: purchase.projectName,
+        purchaseCount: 0,
+        totalRevenue: 0,
+        totalEarnings: 0,
+        paidEarnings: 0,
+        pendingEarnings: 0,
+        commissionPercent: null as number | null,
+      };
+
+      existing.purchaseCount += 1;
+      existing.totalRevenue += purchase.amount;
+      existing.totalEarnings += purchase.commissionAmount;
+      if (purchase.status === "paid") {
+        existing.paidEarnings += purchase.commissionAmount;
+      } else if (purchase.status === "pending") {
+        existing.pendingEarnings += purchase.commissionAmount;
+      }
+
+      const contract = contractByProject.get(purchase.projectId);
+      if (contract && existing.commissionPercent === null) {
+        const percent =
+          contract.commissionPercent > 1
+            ? Math.round(contract.commissionPercent)
+            : Math.round(contract.commissionPercent * 100);
+        existing.commissionPercent = percent;
+      }
+
+      acc.set(purchase.projectId, existing);
+      return acc;
+    },
+    new Map<
+      string,
+      {
+        projectId: string;
+        projectName: string;
+        purchaseCount: number;
+        totalRevenue: number;
+        totalEarnings: number;
+        paidEarnings: number;
+        pendingEarnings: number;
+        commissionPercent: number | null;
+      }
+    >(),
   );
 
-  // Calculate earnings per project
-  const projectEarnings = approvedOffers.map((offer) => {
-    const project = projects.find((p) => p.id === offer.projectId);
-    if (!project) return null;
-
-    const projectMetrics = getMarketerProjectMetrics(
-      events,
-      project,
-      currentUser.id
-    );
-
-    return {
-      project,
-      offer,
-      metrics: projectMetrics,
-    };
-  }).filter(Boolean);
-
-  // Simulate paid vs pending (70% paid, 30% pending)
-  const paidEarnings = Math.floor(metrics.totalEarnings * 0.7);
-  const pendingEarnings = metrics.totalEarnings - paidEarnings;
+  const projectEarningsList = Array.from(projectEarnings.values()).sort(
+    (a, b) => b.totalEarnings - a.totalEarnings,
+  );
 
   return (
     <div className="space-y-6">
@@ -90,14 +125,14 @@ export default function EarningsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Earnings"
-          value={formatCurrency(metrics.totalEarnings)}
+          value={formatCurrency(totalEarnings)}
           description="All time"
           icon={DollarSign}
         />
         <StatCard
           title="Received"
-          value={formatCurrency(paidEarnings)}
-          description="Successfully paid"
+          value={formatCurrency(receivedEarnings)}
+          description="Paid out"
           icon={CheckCircle}
         />
         <StatCard
@@ -107,9 +142,9 @@ export default function EarningsPage() {
           icon={Clock}
         />
         <StatCard
-          title="Upcoming"
-          value={formatCurrency(metrics.upcomingEarnings)}
-          description="Estimated this month"
+          title="Revenue"
+          value={formatCurrency(totalRevenue)}
+          description="Coupon-attributed"
           icon={TrendingUp}
         />
       </div>
@@ -120,7 +155,7 @@ export default function EarningsPage() {
           <CardTitle className="text-base">Earnings by Project</CardTitle>
         </CardHeader>
         <CardContent>
-          {projectEarnings.length === 0 ? (
+          {projectEarningsList.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
               No earnings yet. Start promoting projects to earn commissions.
             </p>
@@ -129,48 +164,47 @@ export default function EarningsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Project</TableHead>
-                  <TableHead className="text-right">Rev Share</TableHead>
-                  <TableHead className="text-right">Customers</TableHead>
-                  <TableHead className="text-right">MRR Attributed</TableHead>
+                  <TableHead className="text-right">Commission</TableHead>
+                  <TableHead className="text-right">Purchases</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Total Earned</TableHead>
                   <TableHead className="text-right">Received</TableHead>
                   <TableHead className="text-right">Pending</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projectEarnings.map((item) => {
-                  if (!item) return null;
-                  const { project, metrics: m } = item;
-                  const paid = Math.floor(m.earnings * 0.7);
-                  const pending = m.earnings - paid;
-
+                {projectEarningsList.map((item) => {
                   return (
-                    <TableRow key={project.id}>
+                    <TableRow key={item.projectId}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{project.name}</p>
-                          <Badge variant="secondary" className="text-xs mt-1">
-                            {project.category}
-                          </Badge>
+                          <p className="font-medium">{item.projectName}</p>
+                          {item.commissionPercent !== null ? (
+                            <Badge variant="secondary" className="text-xs mt-1">
+                              {item.commissionPercent}% commission
+                            </Badge>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {project.revSharePercent}%
+                        {item.commissionPercent !== null
+                          ? `${item.commissionPercent}%`
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {m.paidCustomers}
+                        {item.purchaseCount}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(m.mrr)}
+                        {formatCurrency(item.totalRevenue)}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatCurrency(m.earnings)}
+                        {formatCurrency(item.totalEarnings)}
                       </TableCell>
                       <TableCell className="text-right text-green-600">
-                        {formatCurrency(paid)}
+                        {formatCurrency(item.paidEarnings)}
                       </TableCell>
                       <TableCell className="text-right text-yellow-600">
-                        {formatCurrency(pending)}
+                        {formatCurrency(item.pendingEarnings)}
                       </TableCell>
                     </TableRow>
                   );

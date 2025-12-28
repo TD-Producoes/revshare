@@ -1,51 +1,66 @@
 "use client";
 
-import { useCurrentUser, useProjects, useOffers, useEvents } from "@/lib/data/store";
-import {
-  getCreatorMetrics,
-  getProjectMetrics,
-  getRevenueTimeline,
-  formatCurrency,
-} from "@/lib/data/metrics";
+import { formatCurrency } from "@/lib/data/metrics";
 import { StatCard } from "@/components/shared/stat-card";
 import { RevenueChart } from "@/components/shared/revenue-chart";
 import { ProjectsTable } from "./projects-table";
 import { DollarSign, TrendingUp, Users, CreditCard } from "lucide-react";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
+import { useCreatorDashboard } from "@/lib/hooks/creator";
 
 export function CreatorDashboard() {
-  const currentUser = useCurrentUser();
-  const projects = useProjects();
-  const offers = useOffers();
-  const events = useEvents();
+  const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
+  const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
+  const { data, isLoading: isDashboardLoading } = useCreatorDashboard(
+    currentUser?.id,
+  );
 
-  if (!currentUser || currentUser.role !== "creator") {
-    return null;
+  if (isAuthLoading || isUserLoading || isDashboardLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    );
   }
 
-  const metrics = getCreatorMetrics(events, projects, currentUser.id);
-  const creatorProjects = projects.filter((p) => p.userId === currentUser.id);
-  const revenueData = getRevenueTimeline(events, undefined, undefined, 30);
-
-  // Filter revenue data for creator's projects only
-  const creatorProjectIds = creatorProjects.map((p) => p.id);
-  const filteredEvents = events.filter((e) =>
-    creatorProjectIds.includes(e.projectId)
-  );
-  const creatorRevenueData = getRevenueTimeline(filteredEvents, undefined, undefined, 30);
-
-  // Get project metrics for table
-  const projectsWithMetrics = creatorProjects.map((project) => {
-    const projectMetrics = getProjectMetrics(events, project);
-    const projectOffers = offers.filter(
-      (o) => o.projectId === project.id && o.status === "approved"
+  if (!currentUser || currentUser.role !== "creator") {
+    return (
+      <div className="text-muted-foreground">
+        This section is only available to creators.
+      </div>
     );
+  }
 
-    return {
-      ...project,
-      metrics: projectMetrics,
-      marketerCount: projectOffers.length,
-    };
-  });
+  const totals = data?.totals ?? {
+    totalRevenue: 0,
+    mrr: 0,
+    affiliateRevenue: 0,
+    affiliateShareOwed: 0,
+    platformFee: 0,
+  };
+  const creatorRevenueData = data?.chart ?? [];
+
+  const projectsWithMetrics =
+    data?.projects?.map((project) => {
+      const rawCommission = project.marketerCommissionPercent;
+      const commissionPercent =
+        typeof rawCommission === "string" || typeof rawCommission === "number"
+          ? Number(rawCommission) > 1
+            ? Math.round(Number(rawCommission))
+            : Math.round(Number(rawCommission) * 100)
+          : null;
+
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        userId: project.userId,
+        revSharePercent: commissionPercent ?? undefined,
+        metrics: project.metrics,
+        marketerCount: project.marketerCount,
+      };
+    }) ?? [];
 
   return (
     <div className="space-y-6">
@@ -60,30 +75,30 @@ export function CreatorDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Revenue"
-          value={formatCurrency(metrics.totalRevenue)}
+          value={formatCurrency(totals.totalRevenue)}
           description="All time"
           icon={DollarSign}
           trend={{ value: 12.5, label: "from last month" }}
         />
         <StatCard
           title="Monthly Recurring Revenue"
-          value={formatCurrency(metrics.mrr)}
+          value={formatCurrency(totals.mrr)}
           description="Current MRR"
           icon={TrendingUp}
           trend={{ value: 8.2, label: "from last month" }}
         />
         <StatCard
           title="Affiliate Revenue"
-          value={formatCurrency(metrics.affiliateRevenue)}
+          value={formatCurrency(totals.affiliateRevenue)}
           description={`${Math.round(
-            (metrics.affiliateRevenue / (metrics.totalRevenue || 1)) * 100
+            (totals.affiliateRevenue / (totals.totalRevenue || 1)) * 100
           )}% of total`}
           icon={Users}
         />
         <StatCard
           title="Commissions Owed"
-          value={formatCurrency(metrics.affiliateShareOwed)}
-          description={`Platform fee: ${formatCurrency(metrics.platformFee)}`}
+          value={formatCurrency(totals.affiliateShareOwed)}
+          description={`Platform fee: ${formatCurrency(totals.platformFee)}`}
           icon={CreditCard}
         />
       </div>
