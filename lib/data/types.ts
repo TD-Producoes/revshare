@@ -15,7 +15,7 @@ export type PricingModel = "subscription" | "one-time";
 
 export interface Project {
   id: string;
-  creatorId: string;
+  userId: string;
   name: string;
   description: string;
   category: string;

@@ -68,7 +68,7 @@ export const users: User[] = [
 export const projects: Project[] = [
   {
     id: "proj-1",
-    creatorId: "creator-1",
+    userId: "creator-1",
     name: "FormFlow Pro",
     description:
       "Drag-and-drop form builder with advanced logic, integrations, and analytics. Build beautiful forms in minutes.",
@@ -85,7 +85,7 @@ export const projects: Project[] = [
   },
   {
     id: "proj-2",
-    creatorId: "creator-1",
+    userId: "creator-1",
     name: "DataSync",
     description:
       "Real-time data synchronization tool for teams. Sync spreadsheets, databases, and APIs seamlessly.",
@@ -102,7 +102,7 @@ export const projects: Project[] = [
   },
   {
     id: "proj-3",
-    creatorId: "creator-2",
+    userId: "creator-2",
     name: "CodeReview AI",
     description:
       "AI-powered code review assistant. Get instant feedback on code quality, security, and best practices.",
@@ -119,7 +119,7 @@ export const projects: Project[] = [
   },
   {
     id: "proj-4",
-    creatorId: "creator-2",
+    userId: "creator-2",
     name: "APIWizard",
     description:
       "Generate beautiful API documentation automatically from your OpenAPI specs with custom themes.",
@@ -136,7 +136,7 @@ export const projects: Project[] = [
   },
   {
     id: "proj-5",
-    creatorId: "creator-1",
+    userId: "creator-1",
     name: "ScheduleMaster",
     description:
       "Smart scheduling assistant with calendar sync, team availability, and automatic timezone handling.",

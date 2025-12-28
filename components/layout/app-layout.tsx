@@ -2,41 +2,51 @@
 
 import { Header } from "./header";
 import { Sidebar } from "./sidebar";
-import { useCurrentUser } from "@/lib/data/store";
 import { useSidebarStore } from "@/lib/data/sidebar-store";
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const currentUser = useCurrentUser();
   const { isCollapsed } = useSidebarStore();
   const router = useRouter();
   const pathname = usePathname();
+  const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
+  const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
 
   useEffect(() => {
     if (currentUser) {
       const isOnCreatorRoute = pathname.startsWith("/creator");
       const isOnMarketerRoute = pathname.startsWith("/marketer");
 
-      if (currentUser.role === "creator" && isOnMarketerRoute) {
-        router.push("/creator");
-      } else if (currentUser.role === "marketer" && isOnCreatorRoute) {
-        router.push("/marketer");
-      } else if (pathname === "/") {
-        router.push(`/${currentUser.role}`);
-      }
+      // if (currentUser.role === "creator" && isOnMarketerRoute) {
+      //   router.push("/creator");
+      // } else if (currentUser.role === "marketer" && isOnCreatorRoute) {
+      //   router.push("/marketer");
+      // } else if (pathname === "/") {
+      //   router.push(`/${currentUser.role}`);
+      // }
     }
   }, [currentUser, pathname, router]);
+
+  if (isAuthLoading || isUserLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p>Loading...</p>
+        <p>Unable to load your account.</p>
       </div>
     );
   }

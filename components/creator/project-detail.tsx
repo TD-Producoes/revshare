@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useProjects, useOffers, useEvents, useUsers } from "@/lib/data/store";
 import {
   getProjectMetrics,
@@ -26,6 +27,8 @@ import { DollarSign, Users, TrendingUp, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { Project } from "@/lib/data/types";
+import { useProject, useProjectStats } from "@/lib/hooks/projects";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -36,10 +39,55 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const offers = useOffers();
   const events = useEvents();
   const users = useUsers();
+  const [connectError, setConnectError] = useState("");
+
+  const { data: apiProject, isLoading } = useProject(projectId);
+  const {
+    data: projectStats,
+    isLoading: isStatsLoading,
+    error: projectStatsError,
+  } = useProjectStats(projectId);
+  const isStripeConnected = Boolean(apiProject?.creatorStripeAccountId);
 
   const project = projects.find((p) => p.id === projectId);
+  const resolvedProject: Project | null =
+    project ??
+    (apiProject
+      ? {
+          id: apiProject.id,
+          userId: apiProject.userId,
+          name: apiProject.name,
+          description: apiProject.description ?? "",
+          category: "Other",
+          pricingModel: "subscription",
+          price: 0,
+          publicMetrics: {
+            mrr: 0,
+            activeSubscribers: 0,
+          },
+          revSharePercent:
+            typeof apiProject.marketerCommissionPercent === "string" ||
+            typeof apiProject.marketerCommissionPercent === "number"
+              ? Number(apiProject.marketerCommissionPercent) > 1
+                ? Math.round(Number(apiProject.marketerCommissionPercent))
+                : Math.round(Number(apiProject.marketerCommissionPercent) * 100)
+              : 0,
+          cookieWindowDays: 0,
+          createdAt: apiProject.createdAt
+            ? new Date(apiProject.createdAt)
+            : new Date(),
+        }
+      : null);
 
-  if (!project) {
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Loading project...</p>
+      </div>
+    );
+  }
+
+  if (!resolvedProject) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">Project not found</p>
@@ -50,15 +98,24 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     );
   }
 
-  const metrics = getProjectMetrics(events, project);
-  const marketerMetrics = getProjectMarketerMetrics(events, project, offers);
-  const revenueData = getRevenueTimeline(events, project.id, undefined, 30);
+  const metrics = getProjectMetrics(events, resolvedProject);
+  const marketerMetrics = getProjectMarketerMetrics(
+    events,
+    resolvedProject,
+    offers
+  );
+  const revenueData = getRevenueTimeline(
+    events,
+    resolvedProject.id,
+    undefined,
+    30
+  );
 
   // Get marketer details
   const marketersWithMetrics = marketerMetrics.map((mm) => {
     const marketer = users.find((u) => u.id === mm.marketerId);
     const offer = offers.find(
-      (o) => o.projectId === project.id && o.marketerId === mm.marketerId
+      (o) => o.projectId === resolvedProject.id && o.marketerId === mm.marketerId
     );
     return {
       marketer,
@@ -72,6 +129,29 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     return earnings; // Already calculated with rev share
   };
 
+  const handleConnectStripe = async () => {
+    setConnectError("");
+    try {
+      const response = await fetch(
+        `/api/connect/oauth/authorize?projectId=${projectId}`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Unable to start Stripe connect.");
+      }
+      const payload = await response.json();
+      const url = payload?.data?.url;
+      if (!url) {
+        throw new Error("Stripe redirect URL missing.");
+      }
+      window.location.href = url;
+    } catch (error) {
+      setConnectError(
+        error instanceof Error ? error.message : "Unable to start Stripe connect."
+      );
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -83,10 +163,27 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold">{project.name}</h1>
-            <Badge variant="secondary">{project.category}</Badge>
+            <h1 className="text-2xl font-bold">{resolvedProject.name}</h1>
+            <Badge variant="secondary">{resolvedProject.category}</Badge>
           </div>
-          <p className="text-muted-foreground max-w-2xl">{project.description}</p>
+          <p className="text-muted-foreground max-w-2xl">
+            {resolvedProject.description}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2 self-end">
+          {isStripeConnected ? (
+            <Badge className="self-end" variant="secondary">Stripe connected</Badge>
+          ):(
+            <Button
+              onClick={handleConnectStripe}
+              disabled={isStripeConnected}
+            >
+              Connect Stripe
+            </Button>
+          )}
+          {connectError && (
+            <p className="text-sm text-destructive">{connectError}</p>
+          )}
         </div>
       </div>
 
@@ -99,22 +196,26 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Pricing Model</p>
-              <p className="font-medium capitalize">{project.pricingModel}</p>
+              <p className="font-medium capitalize">
+                {resolvedProject.pricingModel}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Price</p>
               <p className="font-medium">
-                {formatCurrency(project.price)}
-                {project.pricingModel === "subscription" && "/mo"}
+                {formatCurrency(resolvedProject.price)}
+                {resolvedProject.pricingModel === "subscription" && "/mo"}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Revenue Share</p>
-              <p className="font-medium">{project.revSharePercent}%</p>
+              <p className="font-medium">{resolvedProject.revSharePercent}%</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Cookie Window</p>
-              <p className="font-medium">{project.cookieWindowDays} days</p>
+              <p className="font-medium">
+                {resolvedProject.cookieWindowDays} days
+              </p>
             </div>
           </div>
         </CardContent>
@@ -146,6 +247,63 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           icon={CalendarDays}
         />
       </div>
+
+      {/* Stripe + Platform Stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Live Stripe & Platform Stats</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isStatsLoading ? (
+            <p className="text-muted-foreground">Loading live stats...</p>
+          ) : projectStats ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-md border p-4">
+                <p className="text-sm text-muted-foreground">Stripe Revenue</p>
+                <p className="text-xl font-semibold">
+                  {formatCurrency(projectStats.stripe.totalRevenue)}
+                </p>
+                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  <p>Charges: {formatNumber(projectStats.stripe.charges)}</p>
+                  <p>
+                    New Customers: {formatNumber(projectStats.stripe.newCustomers)}
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-md border p-4">
+                <p className="text-sm text-muted-foreground">Platform Revenue</p>
+                <p className="text-xl font-semibold">
+                  {formatCurrency(projectStats.platform.totalTrackedRevenue)}
+                </p>
+                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  <p>
+                    Commission: {formatCurrency(projectStats.platform.totalCommission)}
+                  </p>
+                  <p>Purchases: {formatNumber(projectStats.platform.purchases)}</p>
+                </div>
+              </div>
+              <div className="rounded-md border p-4">
+                <p className="text-sm text-muted-foreground">Coupon Revenue</p>
+                <p className="text-xl font-semibold">
+                  {formatCurrency(projectStats.coupons.revenue)}
+                </p>
+                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  <p>
+                    Commission: {formatCurrency(projectStats.coupons.commission)}
+                  </p>
+                  <p>Purchases: {formatNumber(projectStats.coupons.purchases)}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              {projectStatsError instanceof Error
+                ? projectStatsError.message
+                : "Connect Stripe to view live stats."}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Revenue Chart */}
       <RevenueChart

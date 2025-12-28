@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAppStore } from "@/lib/data/store";
-import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,8 +38,8 @@ const categories = [
 
 export function CreateProjectForm() {
   const [open, setOpen] = useState(false);
-  const addProject = useAppStore((state) => state.addProject);
-  const router = useRouter();
+  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -51,36 +51,60 @@ export function CreateProjectForm() {
     cookieWindowDays: "30",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const createProject = useMutation({
+    mutationFn: async () => {
+      const supabase = createClient();
+      const { data, error: authError } = await supabase.auth.getUser();
+      if (authError || !data.user) {
+        throw new Error("You must be logged in to create a project.");
+      }
+
+      const description = formData.description.trim();
+      const marketerCommissionPercent = Number(formData.revSharePercent);
+      const payload = {
+        userId: data.user.id,
+        name: formData.name.trim(),
+        ...(description ? { description } : {}),
+        ...(Number.isFinite(marketerCommissionPercent)
+          ? { marketerCommissionPercent }
+          : {}),
+      };
+
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Unable to create project.");
+      }
+
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setOpen(false);
+      setFormData({
+        name: "",
+        description: "",
+        category: "",
+        pricingModel: "subscription",
+        price: "",
+        revSharePercent: "20",
+        cookieWindowDays: "30",
+      });
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : "Unable to create project.");
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    addProject({
-      name: formData.name,
-      description: formData.description,
-      category: formData.category,
-      pricingModel: formData.pricingModel,
-      price: Math.round(parseFloat(formData.price) * 100), // Convert to cents
-      publicMetrics: {
-        mrr: 0,
-        activeSubscribers: 0,
-      },
-      revSharePercent: parseInt(formData.revSharePercent),
-      cookieWindowDays: parseInt(formData.cookieWindowDays),
-      creatorId: "", // Will be set by the store
-    });
-
-    setOpen(false);
-    setFormData({
-      name: "",
-      description: "",
-      category: "",
-      pricingModel: "subscription",
-      price: "",
-      revSharePercent: "20",
-      cookieWindowDays: "30",
-    });
-
-    router.refresh();
+    setError("");
+    await createProject.mutateAsync();
   };
 
   return (
@@ -227,6 +251,7 @@ export function CreateProjectForm() {
               />
             </div>
           </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button
@@ -236,7 +261,9 @@ export function CreateProjectForm() {
             >
               Cancel
             </Button>
-            <Button type="submit">Create Project</Button>
+            <Button type="submit" disabled={createProject.isPending}>
+              {createProject.isPending ? "Creating..." : "Create Project"}
+            </Button>
           </div>
         </form>
       </DialogContent>

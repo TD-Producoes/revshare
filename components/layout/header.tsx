@@ -1,6 +1,10 @@
 "use client";
 
-import { useAppStore, useCurrentUser, useUsers } from "@/lib/data/store";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,12 +20,15 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, Zap, Sun, Moon } from "lucide-react";
 
 export function Header() {
-  const currentUser = useCurrentUser();
-  const users = useUsers();
-  const setCurrentUser = useAppStore((state) => state.setCurrentUser);
+  const router = useRouter();
+  const { data: authUserId } = useAuthUserId();
+  const { data: user } = useUser(authUserId);
   const { theme, setTheme } = useTheme();
+  const [logoutError, setLogoutError] = useState("");
 
-  if (!currentUser) return null;
+  const displayName = useMemo(() => user?.name ?? "User", [user?.name]);
+
+  if (!authUserId || !user) return null;
 
   const getInitials = (name: string) => {
     return name
@@ -31,11 +38,20 @@ export function Header() {
       .toUpperCase();
   };
 
-  const creators = users.filter((u) => u.role === "creator");
-  const marketers = users.filter((u) => u.role === "marketer");
-
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const handleLogout = async () => {
+    setLogoutError("");
+    const supabase = createClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setLogoutError(error.message);
+      return;
+    }
+    router.push("/login");
+    router.refresh();
   };
 
   return (
@@ -61,10 +77,10 @@ export function Header() {
           </Button>
 
           <Badge
-            variant={currentUser.role === "creator" ? "default" : "secondary"}
+            variant={user.role === "creator" ? "default" : "secondary"}
             className="capitalize text-xs h-5"
           >
-            {currentUser.role}
+            {user.role}
           </Badge>
 
           <DropdownMenu>
@@ -72,55 +88,31 @@ export function Header() {
               <Button variant="ghost" size="sm" className="h-8 gap-2 px-2">
                 <Avatar className="h-6 w-6">
                   <AvatarFallback className="text-[10px]">
-                    {getInitials(currentUser.name)}
+                    {getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden sm:inline text-sm">{currentUser.name}</span>
+                <span className="hidden sm:inline text-sm">{displayName}</span>
                 <ChevronDown className="h-3.5 w-3.5 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel className="text-xs py-1">Switch User</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] text-muted-foreground font-normal py-1">
-                Creators
+              <DropdownMenuLabel className="text-xs py-1">
+                Signed in as
               </DropdownMenuLabel>
-              {creators.map((user) => (
-                <DropdownMenuItem
-                  key={user.id}
-                  onClick={() => setCurrentUser(user.id)}
-                  className={`text-sm py-1.5 ${currentUser.id === user.id ? "bg-accent" : ""}`}
-                >
-                  <Avatar className="h-5 w-5 mr-2">
-                    <AvatarFallback className="text-[9px]">
-                      {getInitials(user.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {user.name}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem className="text-xs text-muted-foreground">
+                {user.email}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] text-muted-foreground font-normal py-1">
-                Marketers
-              </DropdownMenuLabel>
-              {marketers.map((user) => (
-                <DropdownMenuItem
-                  key={user.id}
-                  onClick={() => setCurrentUser(user.id)}
-                  className={`text-sm py-1.5 ${currentUser.id === user.id ? "bg-accent" : ""}`}
-                >
-                  <Avatar className="h-5 w-5 mr-2">
-                    <AvatarFallback className="text-[9px]">
-                      {getInitials(user.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {user.name}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem onClick={handleLogout}>
+                Logout
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+      {logoutError && (
+        <div className="px-4 pb-2 text-xs text-destructive">{logoutError}</div>
+      )}
     </header>
   );
 }

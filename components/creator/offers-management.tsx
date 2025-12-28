@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCurrentUser,
-  useProjects,
-  useOffers,
-  useUsers,
-  useAppStore,
-} from "@/lib/data/store";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,51 +14,51 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Check, X, Clock, CheckCircle, XCircle } from "lucide-react";
-import { OfferStatus } from "@/lib/data/types";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import {
+  Contract,
+  ContractStatus,
+  useContractsForCreator,
+  useUpdateContractStatus,
+} from "@/lib/hooks/contracts";
 
 export function OffersManagement() {
-  const currentUser = useCurrentUser();
-  const projects = useProjects();
-  const offers = useOffers();
-  const users = useUsers();
-  const updateOfferStatus = useAppStore((state) => state.updateOfferStatus);
+  const { data: creatorId } = useAuthUserId();
+  const { data: contracts = [] } = useContractsForCreator(creatorId);
+  const updateStatus = useUpdateContractStatus();
 
-  if (!currentUser || currentUser.role !== "creator") {
-    return null;
-  }
-
-  const creatorProjects = projects.filter((p) => p.creatorId === currentUser.id);
-  const creatorProjectIds = creatorProjects.map((p) => p.id);
-
-  const allOffers = offers.filter((o) =>
-    creatorProjectIds.includes(o.projectId)
+  const pendingContracts = useMemo(
+    () => contracts.filter((contract) => contract.status === "pending"),
+    [contracts],
+  );
+  const approvedContracts = useMemo(
+    () => contracts.filter((contract) => contract.status === "approved"),
+    [contracts],
+  );
+  const rejectedContracts = useMemo(
+    () => contracts.filter((contract) => contract.status === "rejected"),
+    [contracts],
   );
 
-  const pendingOffers = allOffers.filter((o) => o.status === "pending");
-  const approvedOffers = allOffers.filter((o) => o.status === "approved");
-  const rejectedOffers = allOffers.filter((o) => o.status === "rejected");
-
-  const getProjectName = (projectId: string) => {
-    return projects.find((p) => p.id === projectId)?.name || "Unknown Project";
+  const handleApprove = (contractId: string) => {
+    if (!creatorId) return;
+    updateStatus.mutate({
+      contractId,
+      creatorId,
+      status: "approved",
+    });
   };
 
-  const getMarketerName = (marketerId: string) => {
-    return users.find((u) => u.id === marketerId)?.name || "Unknown Marketer";
+  const handleReject = (contractId: string) => {
+    if (!creatorId) return;
+    updateStatus.mutate({
+      contractId,
+      creatorId,
+      status: "rejected",
+    });
   };
 
-  const getMarketerEmail = (marketerId: string) => {
-    return users.find((u) => u.id === marketerId)?.email || "";
-  };
-
-  const handleApprove = (offerId: string) => {
-    updateOfferStatus(offerId, "approved");
-  };
-
-  const handleReject = (offerId: string) => {
-    updateOfferStatus(offerId, "rejected");
-  };
-
-  const getStatusBadge = (status: OfferStatus) => {
+  const getStatusBadge = (status: ContractStatus) => {
     switch (status) {
       case "pending":
         return (
@@ -90,11 +84,11 @@ export function OffersManagement() {
     }
   };
 
-  const OffersTable = ({
-    offersList,
+  const ContractsTable = ({
+    contractsList,
     showActions = false,
   }: {
-    offersList: typeof allOffers;
+    contractsList: Contract[];
     showActions?: boolean;
   }) => (
     <Table>
@@ -103,34 +97,38 @@ export function OffersManagement() {
           <TableHead>Marketer</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Project</TableHead>
+          <TableHead className="text-right">Commission</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Applied</TableHead>
           {showActions && <TableHead className="text-right">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {offersList.length === 0 ? (
+        {contractsList.length === 0 ? (
           <TableRow>
             <TableCell
-              colSpan={showActions ? 6 : 5}
+              colSpan={showActions ? 7 : 6}
               className="text-center py-8 text-muted-foreground"
             >
-              No offers found
+              No contracts found
             </TableCell>
           </TableRow>
         ) : (
-          offersList.map((offer) => (
-            <TableRow key={offer.id}>
+          contractsList.map((contract) => (
+            <TableRow key={contract.id}>
               <TableCell className="font-medium">
-                {getMarketerName(offer.marketerId)}
+                {contract.userName}
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {getMarketerEmail(offer.marketerId)}
+                {contract.userEmail}
               </TableCell>
-              <TableCell>{getProjectName(offer.projectId)}</TableCell>
-              <TableCell>{getStatusBadge(offer.status)}</TableCell>
+              <TableCell>{contract.projectName}</TableCell>
+              <TableCell className="text-right">
+                {contract.commissionPercent}%
+              </TableCell>
+              <TableCell>{getStatusBadge(contract.status)}</TableCell>
               <TableCell className="text-muted-foreground">
-                {new Date(offer.createdAt).toLocaleDateString()}
+                {new Date(contract.createdAt).toLocaleDateString()}
               </TableCell>
               {showActions && (
                 <TableCell className="text-right">
@@ -139,7 +137,7 @@ export function OffersManagement() {
                       size="sm"
                       variant="outline"
                       className="h-8 gap-1"
-                      onClick={() => handleApprove(offer.id)}
+                      onClick={() => handleApprove(contract.id)}
                     >
                       <Check className="h-3 w-3" />
                       Approve
@@ -148,7 +146,7 @@ export function OffersManagement() {
                       size="sm"
                       variant="outline"
                       className="h-8 gap-1 text-destructive hover:text-destructive"
-                      onClick={() => handleReject(offer.id)}
+                      onClick={() => handleReject(contract.id)}
                     >
                       <X className="h-3 w-3" />
                       Reject
@@ -166,21 +164,21 @@ export function OffersManagement() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Offer Management</h1>
+        <h1 className="text-2xl font-bold">Contract Management</h1>
         <p className="text-muted-foreground">
           Review and manage affiliate applications for your projects.
         </p>
       </div>
 
       {/* Pending offers alert */}
-      {pendingOffers.length > 0 && (
+      {pendingContracts.length > 0 && (
         <Card className="border-yellow-500/50 bg-yellow-500/5">
           <CardContent className="py-4">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-yellow-600" />
               <span className="font-medium">
-                {pendingOffers.length} pending application
-                {pendingOffers.length !== 1 ? "s" : ""} require your review
+                {pendingContracts.length} pending application
+                {pendingContracts.length !== 1 ? "s" : ""} require your review
               </span>
             </div>
           </CardContent>
@@ -191,19 +189,19 @@ export function OffersManagement() {
         <TabsList>
           <TabsTrigger value="pending" className="gap-2">
             Pending
-            {pendingOffers.length > 0 && (
+            {pendingContracts.length > 0 && (
               <Badge variant="secondary" className="h-5 px-1.5">
-                {pendingOffers.length}
+                {pendingContracts.length}
               </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="approved">
-            Approved ({approvedOffers.length})
+            Approved ({approvedContracts.length})
           </TabsTrigger>
           <TabsTrigger value="rejected">
-            Rejected ({rejectedOffers.length})
+            Rejected ({rejectedContracts.length})
           </TabsTrigger>
-          <TabsTrigger value="all">All ({allOffers.length})</TabsTrigger>
+          <TabsTrigger value="all">All ({contracts.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending">
@@ -212,7 +210,7 @@ export function OffersManagement() {
               <CardTitle className="text-base">Pending Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <OffersTable offersList={pendingOffers} showActions={true} />
+              <ContractsTable contractsList={pendingContracts} showActions={true} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -223,7 +221,7 @@ export function OffersManagement() {
               <CardTitle className="text-base">Approved Affiliates</CardTitle>
             </CardHeader>
             <CardContent>
-              <OffersTable offersList={approvedOffers} />
+              <ContractsTable contractsList={approvedContracts} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -234,7 +232,7 @@ export function OffersManagement() {
               <CardTitle className="text-base">Rejected Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <OffersTable offersList={rejectedOffers} />
+              <ContractsTable contractsList={rejectedContracts} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -245,7 +243,7 @@ export function OffersManagement() {
               <CardTitle className="text-base">All Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <OffersTable offersList={allOffers} />
+              <ContractsTable contractsList={contracts} />
             </CardContent>
           </Card>
         </TabsContent>

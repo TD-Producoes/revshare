@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCurrentUser } from "@/lib/data/store";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
 import { useSidebarStore } from "@/lib/data/sidebar-store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -83,18 +84,19 @@ function NavLink({
 }
 
 export function Sidebar() {
-  const currentUser = useCurrentUser();
+  const { data: authUserId } = useAuthUserId();
+  const { data: user } = useUser(authUserId);
   const pathname = usePathname();
   const { isCollapsed, toggle } = useSidebarStore();
 
-  if (!currentUser) return null;
+  if (!user) return null;
 
   const navItems =
-    currentUser.role === "creator" ? creatorNavItems : marketerNavItems;
+    user.role === "creator" ? creatorNavItems : marketerNavItems;
 
   const settingsItem: NavItem = {
     title: "Settings",
-    href: `/${currentUser.role}/settings`,
+    href: `/${user.role}/settings`,
     icon: Settings,
   };
 

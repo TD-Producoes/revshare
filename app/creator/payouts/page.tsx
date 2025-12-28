@@ -31,7 +31,7 @@ export default function PayoutsPage() {
   }
 
   const metrics = getCreatorMetrics(events, projects, currentUser.id);
-  const creatorProjects = projects.filter((p) => p.creatorId === currentUser.id);
+  const creatorProjects = projects.filter((p) => p.userId === currentUser.id);
 
   // Calculate payouts per marketer
   const marketerPayouts: Array<{

@@ -1,0 +1,132 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                        String   @id
+  role                      UserRole
+  name                      String
+  email                     String   @unique
+  stripeConnectedAccountId  String?  @unique
+  onboardingStatus          String?
+  onboardingData            Json?
+  onboardingCompletedAt     DateTime?
+  projects                  Project[]
+  coupons                   Coupon[]
+  contracts                 Contract[]
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
+model Project {
+  id                    String   @id @default(cuid())
+  userId                String
+  name                  String
+  description           String?
+  creatorStripeAccountId String?
+  onboardingStatus       String?
+  onboardingData         Json?
+  onboardingCompletedAt  DateTime?
+  platformCommissionPercent Decimal @default(0.05) @db.Decimal(5, 2)
+  marketerCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
+  coupons               Coupon[]
+  purchases             Purchase[]
+  contracts             Contract[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Contract {
+  id               String         @id @default(cuid())
+  projectId        String
+  userId           String
+  commissionPercent Decimal        @db.Decimal(5, 2)
+  status           ContractStatus @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model Coupon {
+  id                     String       @id @default(cuid())
+  projectId              String
+  marketerId             String
+  code                   String       @unique
+  stripeCouponId         String       @unique
+  stripePromotionCodeId  String       @unique
+  percentOff             Int
+  commissionPercent      Decimal      @db.Decimal(5, 2)
+  status                 CouponStatus @default(ACTIVE)
+  claimedAt              DateTime     @default(now())
+  project                Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  marketer               User         @relation(fields: [marketerId], references: [id], onDelete: Cascade)
+  purchases              Purchase[]
+
+  @@index([projectId])
+  @@index([marketerId])
+}
+
+model Purchase {
+  id                    String       @id @default(cuid())
+  projectId             String
+  couponId              String?
+  stripeEventId         String       @unique
+  stripeChargeId        String?
+  stripeInvoiceId       String?
+  stripePaymentIntentId String?
+  amount                Int
+  currency              String
+  customerEmail         String?
+  commissionAmount      Int
+  transferId            String?
+  status                PayoutStatus @default(PENDING)
+  createdAt             DateTime     @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  coupon  Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([couponId])
+}
+
+enum CouponStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum ContractStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UserRole {
+  creator
+  marketer
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  FAILED
+}

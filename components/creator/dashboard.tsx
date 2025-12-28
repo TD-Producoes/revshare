@@ -23,7 +23,7 @@ export function CreatorDashboard() {
   }
 
   const metrics = getCreatorMetrics(events, projects, currentUser.id);
-  const creatorProjects = projects.filter((p) => p.creatorId === currentUser.id);
+  const creatorProjects = projects.filter((p) => p.userId === currentUser.id);
   const revenueData = getRevenueTimeline(events, undefined, undefined, 30);
 
   // Filter revenue data for creator's projects only

@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useCurrentUser,
-  useProjects,
-  useOffers,
-  useEvents,
-} from "@/lib/data/store";
+import { useProjects, useOffers, useEvents } from "@/lib/data/store";
 import {
   getMarketerProjectMetrics,
   getMarketerTotalMetrics,
@@ -23,15 +18,30 @@ import {
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
 import { DollarSign, Clock, CheckCircle, TrendingUp } from "lucide-react";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
 
 export default function EarningsPage() {
-  const currentUser = useCurrentUser();
+  const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
+  const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
   const projects = useProjects();
   const offers = useOffers();
   const events = useEvents();
 
+  if (isAuthLoading || isUserLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
+
   if (!currentUser || currentUser.role !== "marketer") {
-    return null;
+    return (
+      <div className="text-muted-foreground">
+        This section is only available to marketers.
+      </div>
+    );
   }
 
   const metrics = getMarketerTotalMetrics(

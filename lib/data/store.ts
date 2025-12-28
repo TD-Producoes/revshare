@@ -77,7 +77,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newProject: Project = {
       ...projectData,
       id: `proj-${generateId()}`,
-      creatorId: currentUser.id,
+      userId: currentUser.id,
       createdAt: new Date(),
     };
 
@@ -114,7 +114,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newOffer: Offer = {
       id: `offer-${generateId()}`,
       projectId,
-      creatorId: project.creatorId,
+      creatorId: project.userId,
       marketerId,
       status: "pending",
       referralCode,

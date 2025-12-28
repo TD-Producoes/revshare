@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useCurrentUser,
-  useProjects,
-  useOffers,
-  useUsers,
-  useAppStore,
-} from "@/lib/data/store";
-import { formatCurrency } from "@/lib/data/metrics";
+import { useUsers } from "@/lib/data/store";
 import {
   Card,
   CardContent,
@@ -28,49 +21,134 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Percent, Timer, Check, Clock } from "lucide-react";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
+import { useProjects } from "@/lib/hooks/projects";
+import {
+  useContractsForMarketer,
+  useCreateContract,
+} from "@/lib/hooks/contracts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 export function BrowseProjects() {
-  const currentUser = useCurrentUser();
-  const projects = useProjects();
-  const offers = useOffers();
+  const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
+  const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
+  const { data: projects = [], isLoading: isProjectsLoading } = useProjects();
+  const { data: contracts = [], isLoading: isContractsLoading } =
+    useContractsForMarketer(currentUser?.id);
   const users = useUsers();
-  const createOffer = useAppStore((state) => state.createOffer);
+  const createContract = useCreateContract();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [commissionInput, setCommissionInput] = useState<string>("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  if (isAuthLoading || isUserLoading || isProjectsLoading || isContractsLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
 
   if (!currentUser || currentUser.role !== "marketer") {
-    return null;
+    return (
+      <div className="text-muted-foreground">
+        This section is only available to marketers.
+      </div>
+    );
   }
 
   // Get unique categories
-  const categories = [...new Set(projects.map((p) => p.category))];
+  const categories = ["Uncategorized"];
 
-  // Get my offers for quick lookup
-  const myOffers = offers.filter((o) => o.marketerId === currentUser.id);
-  const myOfferProjectIds = myOffers.map((o) => o.projectId);
+  const selectedProject =
+    projects.find((project) => project.id === selectedProjectId) ?? null;
+
+  const getRevSharePercent = (value?: string | number | null) => {
+    if (value === null || value === undefined) return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return null;
+    return numeric > 1 ? Math.round(numeric) : Math.round(numeric * 100);
+  };
 
   // Filter projects
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
       project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchTerm.toLowerCase());
+      (project.description ?? "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
-      categoryFilter === "all" || project.category === categoryFilter;
+      categoryFilter === "all" || categoryFilter === "Uncategorized";
     return matchesSearch && matchesCategory;
   });
 
-  const getCreator = (creatorId: string) => {
-    return users.find((u) => u.id === creatorId);
+  const getCreator = (userId: string) => {
+    return users.find((u) => u.id === userId);
   };
 
-  const getOfferStatus = (projectId: string) => {
-    const offer = myOffers.find((o) => o.projectId === projectId);
-    return offer?.status || null;
+  const getContractStatus = (projectId: string) => {
+    const existingContract = contracts.find(
+      (contract) => contract.projectId === projectId,
+    );
+    if (existingContract) {
+      return existingContract.status;
+    }
+    if (appliedProjectIds.has(projectId)) {
+      return "pending";
+    }
+    return null;
   };
 
-  const handleApply = (projectId: string) => {
-    createOffer(projectId, currentUser.id);
+  const handleOpenApply = (projectId: string) => {
+    const project = projects.find((item) => item.id === projectId);
+    if (!project) return;
+    const defaultCommission = getRevSharePercent(
+      project.marketerCommissionPercent,
+    );
+    setSelectedProjectId(projectId);
+    setCommissionInput(defaultCommission !== null ? String(defaultCommission) : "");
+    setFormError(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmitContract = async () => {
+    setFormError(null);
+    if (!selectedProject || !currentUser) return;
+
+    const commissionPercent = Number(commissionInput);
+    if (!Number.isFinite(commissionPercent) || commissionPercent < 0) {
+      setFormError("Enter a valid commission percent.");
+      return;
+    }
+
+    try {
+      await createContract.mutateAsync({
+        projectId: selectedProject.id,
+        userId: currentUser.id,
+        commissionPercent,
+      });
+      setAppliedProjectIds((prev) => new Set(prev).add(selectedProject.id));
+      setCommissionInput("");
+      setIsDialogOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to submit request.";
+      setFormError(message);
+    }
   };
 
   return (
@@ -116,22 +194,24 @@ export function BrowseProjects() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredProjects.map((project) => {
-            const creator = getCreator(project.creatorId);
-            const offerStatus = getOfferStatus(project.id);
+            const creator = getCreator(project.userId);
+            const offerStatus = getContractStatus(project.id);
+            const revSharePercent =
+              getRevSharePercent(project.marketerCommissionPercent);
 
             return (
               <Card key={project.id} className="flex flex-col">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <Badge variant="secondary">{project.category}</Badge>
+                    <Badge variant="secondary">Uncategorized</Badge>
                     <Badge variant="outline" className="gap-1">
                       <Percent className="h-3 w-3" />
-                      {project.revSharePercent}% rev share
+                      {revSharePercent !== null ? `${revSharePercent}%` : "-"} rev share
                     </Badge>
                   </div>
                   <CardTitle className="mt-2">{project.name}</CardTitle>
                   <CardDescription className="line-clamp-2">
-                    {project.description}
+                    {project.description || "No description yet."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1">
@@ -144,36 +224,23 @@ export function BrowseProjects() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Price</span>
-                      <span className="font-medium">
-                        {formatCurrency(project.price)}
-                        {project.pricingModel === "subscription" && (
-                          <span className="text-muted-foreground">/mo</span>
-                        )}
-                      </span>
+                      <span className="font-medium">-</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Pricing Model</span>
-                      <span className="font-medium capitalize">
-                        {project.pricingModel}
-                      </span>
+                      <span className="font-medium capitalize">-</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <Timer className="h-3 w-3" />
                         Cookie Window
                       </span>
-                      <span className="font-medium">
-                        {project.cookieWindowDays} days
-                      </span>
+                      <span className="font-medium">-</span>
                     </div>
-                    {project.pricingModel === "subscription" && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Public MRR</span>
-                        <span className="font-medium">
-                          {formatCurrency(project.publicMetrics.mrr)}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Public MRR</span>
+                      <span className="font-medium">-</span>
+                    </div>
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -206,7 +273,7 @@ export function BrowseProjects() {
                   ) : (
                     <Button
                       className="w-full"
-                      onClick={() => handleApply(project.id)}
+                      onClick={() => handleOpenApply(project.id)}
                     >
                       Apply to Promote
                     </Button>
@@ -217,6 +284,57 @@ export function BrowseProjects() {
           })}
         </div>
       )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Apply to Promote</DialogTitle>
+            <DialogDescription>
+              Request to promote{" "}
+              <span className="font-medium">
+                {selectedProject?.name ?? "this project"}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="commission">Commission (%)</Label>
+              <Input
+                id="commission"
+                type="number"
+                min={0}
+                step="0.5"
+                value={commissionInput}
+                onChange={(event) => setCommissionInput(event.target.value)}
+                placeholder="20"
+              />
+              <p className="text-xs text-muted-foreground">
+                You can negotiate a custom commission for this project.
+              </p>
+            </div>
+            {formError ? (
+              <p className="text-sm text-destructive">{formError}</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitContract}
+              disabled={createContract.isPending || !selectedProject}
+            >
+              {createContract.isPending ? "Submitting..." : "Submit Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

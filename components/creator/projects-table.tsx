@@ -15,10 +15,12 @@ import { Project, ProjectMetrics } from "@/lib/data/types";
 import { formatCurrency, formatNumber } from "@/lib/data/metrics";
 import { ExternalLink } from "lucide-react";
 
-interface ProjectWithMetrics extends Project {
-  metrics: ProjectMetrics;
-  marketerCount: number;
-}
+type ProjectWithMetrics = Partial<Project> & {
+  id: string;
+  name: string;
+  metrics?: ProjectMetrics | null;
+  marketerCount?: number | null;
+};
 
 interface ProjectsTableProps {
   projects: ProjectWithMetrics[];
@@ -49,53 +51,69 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
               </TableCell>
             </TableRow>
           ) : (
-            projects.map((project) => (
-              <TableRow key={project.id}>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/creator/projects/${project.id}`}
-                    className="hover:underline"
-                  >
-                    {project.name}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{project.category}</Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatCurrency(project.price)}
-                  {project.pricingModel === "subscription" && (
-                    <span className="text-muted-foreground text-xs">/mo</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  {project.revSharePercent}%
-                </TableCell>
-                <TableCell className="text-right">
-                  {project.pricingModel === "subscription"
-                    ? formatCurrency(project.metrics.mrr)
-                    : "-"}
-                </TableCell>
-                <TableCell className="text-right">
-                  {project.pricingModel === "subscription"
-                    ? formatNumber(project.metrics.activeSubscribers)
-                    : "-"}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatCurrency(project.metrics.affiliateRevenue)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {project.marketerCount}
-                </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/creator/projects/${project.id}`}>
-                      <ExternalLink className="h-4 w-4" />
+            projects.map((project) => {
+              const hasPrice =
+                typeof project.price === "number" &&
+                Number.isFinite(project.price);
+              const hasRevShare =
+                typeof project.revSharePercent === "number" &&
+                Number.isFinite(project.revSharePercent);
+              const hasMetrics = Boolean(project.metrics);
+              const isSubscription = project.pricingModel === "subscription";
+              const hasMarketers = typeof project.marketerCount === "number";
+
+              return (
+                <TableRow key={project.id}>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/creator/projects/${project.id}`}
+                      className="hover:underline"
+                    >
+                      {project.name}
                     </Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {project.category ?? "-"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {hasPrice ? formatCurrency(project.price!) : "-"}
+                    {hasPrice && isSubscription && (
+                      <span className="text-muted-foreground text-xs">/mo</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {hasRevShare ? `${project.revSharePercent}%` : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isSubscription && hasMetrics
+                      ? formatCurrency(project.metrics!.mrr)
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isSubscription && hasMetrics
+                      ? formatNumber(project.metrics!.activeSubscribers)
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {hasMetrics
+                      ? formatCurrency(project.metrics!.affiliateRevenue)
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {hasMarketers ? project.marketerCount : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" asChild>
+                      <Link href={`/creator/projects/${project.id}`}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>

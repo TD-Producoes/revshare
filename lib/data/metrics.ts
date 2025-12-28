@@ -184,9 +184,9 @@ export function getProjectMetrics(
 export function getCreatorMetrics(
   events: AnalyticsEvent[],
   projects: Project[],
-  creatorId: string
+  userId: string
 ): CreatorMetrics {
-  const creatorProjects = projects.filter((p) => p.creatorId === creatorId);
+  const creatorProjects = projects.filter((p) => p.userId === userId);
 
   let totalRevenue = 0;
   let totalMrr = 0;
