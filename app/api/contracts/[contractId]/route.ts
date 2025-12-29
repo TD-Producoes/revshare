@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { ContractStatus } from "@prisma/client";
 
 const statusInput = z.object({
   creatorId: z.string().min(1),
@@ -10,13 +11,13 @@ const statusInput = z.object({
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ contractId: string }> },
+  { params }: { params: Promise<{ contractId: string }> }
 ) {
   const parsed = statusInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -42,7 +43,7 @@ export async function PATCH(
 
   const updated = await prisma.contract.update({
     where: { id: contractId },
-    data: { status: status.toUpperCase() },
+    data: { status: status.toUpperCase() as ContractStatus },
     select: {
       id: true,
       status: true,

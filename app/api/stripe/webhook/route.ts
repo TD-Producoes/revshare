@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
-import { platformStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
-function promotionCodeIdFromDiscount(discount?: Stripe.Discount | null) {
+// Helper to extract promotion code ID from any discount type
+// All discount types have the same structure for promotion_code
+function promotionCodeIdFromDiscount(
+  discount?: Stripe.Discount | Stripe.Checkout.Session.Discount | null
+) {
   if (!discount || !discount.promotion_code) {
     return null;
   }
@@ -16,7 +19,13 @@ function promotionCodeIdFromDiscount(discount?: Stripe.Discount | null) {
   return discount.promotion_code.id;
 }
 
-function promotionCodeIdFromAny(discounts: Stripe.Discount[] | null | undefined) {
+function promotionCodeIdFromAny(
+  discounts:
+    | Stripe.Discount[]
+    | Stripe.Checkout.Session.Discount[]
+    | null
+    | undefined
+) {
   if (!discounts || discounts.length === 0) {
     return null;
   }
@@ -26,48 +35,72 @@ function promotionCodeIdFromAny(discounts: Stripe.Discount[] | null | undefined)
 function parseEventDetails(event: Stripe.Event) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const sessionDiscounts = (session as { discounts?: Stripe.Discount[] })
-      .discounts;
+    // session.discounts is already Stripe.Checkout.Session.Discount[] | null
+    const sessionDiscounts = session.discounts;
     return {
       amount: session.amount_total ?? session.amount_subtotal ?? 0,
       currency: session.currency ?? "usd",
       customerEmail: session.customer_details?.email ?? session.customer_email,
       stripeChargeId: null,
-      stripeInvoiceId: typeof session.invoice === "string" ? session.invoice : null,
+      stripeInvoiceId:
+        typeof session.invoice === "string" ? session.invoice : null,
       stripePaymentIntentId:
-        typeof session.payment_intent === "string" ? session.payment_intent : null,
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : null,
       promotionCodeId: promotionCodeIdFromAny(sessionDiscounts ?? undefined),
     };
   }
 
   if (event.type === "invoice.payment_succeeded") {
     const invoice = event.data.object as Stripe.Invoice;
-    const invoiceDiscounts = (invoice as { discounts?: Stripe.Discount[] })
-      .discounts;
+    // Invoice discounts are Stripe.Discount[] | null
+    const invoiceDiscounts = invoice.discounts as Stripe.Discount[] | null;
+    // Invoice charge and payment_intent may be in different locations
+    const invoiceWithExtras = invoice as Stripe.Invoice & {
+      charge?: string | Stripe.Charge | null;
+      payment_intent?: string | Stripe.PaymentIntent | null;
+    };
     return {
       amount: invoice.amount_paid,
       currency: invoice.currency ?? "usd",
       customerEmail: invoice.customer_email ?? undefined,
-      stripeChargeId: typeof invoice.charge === "string" ? invoice.charge : null,
+      stripeChargeId:
+        typeof invoiceWithExtras.charge === "string"
+          ? invoiceWithExtras.charge
+          : null,
       stripeInvoiceId: invoice.id,
       stripePaymentIntentId:
-        typeof invoice.payment_intent === "string" ? invoice.payment_intent : null,
+        typeof invoiceWithExtras.payment_intent === "string"
+          ? invoiceWithExtras.payment_intent
+          : null,
       promotionCodeId: promotionCodeIdFromAny(invoiceDiscounts ?? undefined),
     };
   }
 
   if (event.type === "charge.succeeded") {
     const charge = event.data.object as Stripe.Charge;
-    const chargeDiscounts = (charge as { discounts?: Stripe.Discount[] }).discounts;
+    // Charge may not have discounts directly, check if it exists
+    const chargeWithExtras = charge as Stripe.Charge & {
+      discounts?: Stripe.Discount[] | null;
+      invoice?: string | Stripe.Invoice | null;
+      payment_intent?: string | Stripe.PaymentIntent | null;
+    };
+    const chargeDiscounts = chargeWithExtras.discounts;
     return {
       amount: charge.amount,
       currency: charge.currency ?? "usd",
       customerEmail:
         charge.billing_details?.email ?? charge.receipt_email ?? undefined,
       stripeChargeId: charge.id,
-      stripeInvoiceId: typeof charge.invoice === "string" ? charge.invoice : null,
+      stripeInvoiceId:
+        typeof chargeWithExtras.invoice === "string"
+          ? chargeWithExtras.invoice
+          : null,
       stripePaymentIntentId:
-        typeof charge.payment_intent === "string" ? charge.payment_intent : null,
+        typeof chargeWithExtras.payment_intent === "string"
+          ? chargeWithExtras.payment_intent
+          : null,
       promotionCodeId: promotionCodeIdFromAny(chargeDiscounts ?? undefined),
     };
   }
@@ -122,7 +155,10 @@ export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
   if (!signature) {
     console.log("Missing stripe-signature header");
-    return NextResponse.json({ error: "Missing stripe-signature" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing stripe-signature" },
+      { status: 400 }
+    );
   }
 
   const payload = await request.text();
@@ -136,13 +172,13 @@ export async function POST(request: Request) {
   if (!webhookSecrets || webhookSecrets.length === 0) {
     return NextResponse.json(
       { error: "Webhook secret missing" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 
   const verifier = new Stripe(
     process.env.PLATFORM_STRIPE_SECRET_KEY ?? "sk_test_placeholder",
-    {},
+    {}
   );
 
   let event: Stripe.Event | null = null;
@@ -157,7 +193,7 @@ export async function POST(request: Request) {
   if (!event) {
     return NextResponse.json(
       { error: "Webhook signature verification failed" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -223,7 +259,7 @@ export async function POST(request: Request) {
         error:
           "Project not found for webhook event. Ensure the event has account or metadata.projectId.",
       },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -241,9 +277,7 @@ export async function POST(request: Request) {
   }
 
   const orConditions = [
-    details.stripeChargeId
-      ? { stripeChargeId: details.stripeChargeId }
-      : null,
+    details.stripeChargeId ? { stripeChargeId: details.stripeChargeId } : null,
     details.stripeInvoiceId
       ? { stripeInvoiceId: details.stripeInvoiceId }
       : null,
@@ -257,7 +291,10 @@ export async function POST(request: Request) {
   }>;
 
   if (orConditions.length > 0) {
-    console.log("Checking for duplicate purchase with conditions:", orConditions);
+    console.log(
+      "Checking for duplicate purchase with conditions:",
+      orConditions
+    );
     const duplicate = await prisma.purchase.findFirst({
       where: {
         projectId: projectMatch.id,
