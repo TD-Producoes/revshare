@@ -1,0 +1,104 @@
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  build:
+    runs-on: self-hosted
+    environment: prd
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CR_PAT }}
+
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
+      #   with:
+      #     platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/.buildx-cache
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Extract Docker metadata for main app (tags, labels)
+        id: meta-app
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch,pattern=main
+            type=ref,event=tag
+          labels: |
+            latest
+      - name: Build and push main application Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: ${{ steps.meta-app.outputs.tags }}
+          labels: ${{ steps.meta-app.outputs.labels }}
+          # Pass secrets for build-time operations (Prisma generation, etc.)
+          secrets: |
+            DATABASE_URL=${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@db:5432/prisma?schema=public' }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY || 'DUMMY_STRIPE_KEY' }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+
+      # Update GitOps repository with the new image tag on tag pushes
+      - name: Checkout Infrastructure repository (TD-Producoes/revshare-infra)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/checkout@v4
+        with:
+          repository: TD-Producoes/revshare-infra
+          token: ${{ secrets.GITOPS_PAT }}
+          path: infra
+
+      - name: Update kustomize newTag and push to revshare-infra repo
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          cd infra
+          FILE="k8s/overlays/production/kustomization.yaml"
+          echo "Updating ${FILE} to tag ${TAG}"
+          awk -v newtag="$TAG" '
+            $0 ~ /^ *- +name: +ghcr\.io\/revshare-app\/revshare-app[[:space:]]*$/ { in_image=1; print; next }
+            in_image && $0 ~ /^[[:space:]]*newTag:/ { sub(/newTag:.*/, "newTag: " newtag); in_image=0; print; next }
+            { print }
+          ' "$FILE" > "$FILE.tmp"
+          mv "$FILE.tmp" "$FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$FILE"
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: bump revshare-app image to ${TAG}"
+          git push
