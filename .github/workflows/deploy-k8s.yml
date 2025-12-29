@@ -51,6 +51,15 @@ jobs:
             type=ref,event=tag
           labels: |
             latest
+      - name: Prepare buildx cache
+        run: |
+          mkdir -p /tmp/.buildx-cache
+          # Move new cache to old cache location if it exists
+          if [ -d /tmp/.buildx-cache-new ]; then
+            rm -rf /tmp/.buildx-cache
+            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          fi
+
       - name: Build and push main application Docker image
         uses: docker/build-push-action@v6
         with:
