@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { InputJsonValue } from "@prisma/client/runtime/client";
 
 const completeInput = z.object({
   accountId: z.string().min(1),
@@ -26,17 +27,14 @@ export async function GET(request: Request) {
       ? "complete"
       : "pending";
 
-  // Serialize to plain JSON to ensure compatibility with Prisma's Json type
-  const onboardingData = JSON.parse(
-    JSON.stringify({
-      id: account.id,
-      details_submitted: account.details_submitted,
-      charges_enabled: account.charges_enabled,
-      payouts_enabled: account.payouts_enabled,
-      capabilities: account.capabilities,
-      requirements: account.requirements,
-    })
-  );
+  const onboardingData = {
+    id: account.id,
+    details_submitted: account.details_submitted,
+    charges_enabled: account.charges_enabled,
+    payouts_enabled: account.payouts_enabled,
+    capabilities: account.capabilities,
+    requirements: account.requirements,
+  } as InputJsonValue;
 
   const completedAt = onboardingStatus === "complete" ? new Date() : null;
 
