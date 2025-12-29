@@ -437,13 +437,14 @@ export default function Home() {
                 </div>
                 <div className="divide-y divide-border/40">
                   {topProjects.map((project, i) => (
-                    <div
+                    <Link
+                      href={`/projects/${project.name.toLowerCase().replace(/\s+/g, '-')}`}
                       key={project.name}
-                      className="group flex items-center justify-between p-5 hover:bg-muted/30 transition-colors"
+                      className="group flex items-center justify-between p-5 hover:bg-muted/30 transition-colors block"
                     >
                       <div className="flex items-center gap-4">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-sm font-bold text-muted-foreground shadow-sm">
-                          0{i + 1}
+                          {i < 9 ? `0${i + 1}` : i + 1}
                         </div>
                         <Avatar className="h-10 w-10 rounded-lg">
                           <AvatarImage src={project.image} alt={project.name} />
@@ -465,7 +466,7 @@ export default function Home() {
                         <p className="font-medium text-foreground">{formatCurrency(project.revenue)}</p>
                         <p className="text-xs text-emerald-600 dark:text-emerald-400">{project.growth}</p>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
                 <div className="p-4 bg-muted/10 border-t border-border/40">
