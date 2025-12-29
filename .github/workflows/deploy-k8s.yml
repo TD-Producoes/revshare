@@ -94,7 +94,7 @@ jobs:
           FILE="k8s/overlays/production/kustomization.yaml"
           echo "Updating ${FILE} to tag ${TAG}"
           awk -v newtag="$TAG" '
-            $0 ~ /^ *- +name: +ghcr\.io\/revshare-app\/revshare-app[[:space:]]*$/ { in_image=1; print; next }
+            $0 ~ /^ *- +name: +ghcr\.io\/td-producoes\/revshare[[:space:]]*$/ { in_image=1; print; next }
             in_image && $0 ~ /^[[:space:]]*newTag:/ { sub(/newTag:.*/, "newTag: " newtag); in_image=0; print; next }
             { print }
           ' "$FILE" > "$FILE.tmp"
