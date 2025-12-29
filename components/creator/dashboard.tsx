@@ -54,7 +54,7 @@ export function CreatorDashboard() {
       return {
         id: project.id,
         name: project.name,
-        description: project.description,
+        description: project.description ?? undefined,
         userId: project.userId,
         revSharePercent: commissionPercent ?? undefined,
         metrics: project.metrics,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
@@ -33,7 +34,7 @@ export async function GET(
 
   const from = searchParams.get("from");
   const to = searchParams.get("to");
-  const createdRange: { gte?: number; lte?: number } = {};
+  const createdRange: Stripe.RangeQueryParam = {};
 
   const parseUnix = (value: string | null) => {
     if (!value) return null;
@@ -44,8 +45,8 @@ export async function GET(
 
   const fromUnix = parseUnix(from);
   const toUnix = parseUnix(to);
-  if (fromUnix) createdRange.gte = fromUnix;
-  if (toUnix) createdRange.lte = toUnix;
+  if (fromUnix !== null) createdRange.gte = fromUnix;
+  if (toUnix !== null) createdRange.lte = toUnix;
 
   const [charges, customers, purchaseTotals, couponTotals] = await Promise.all([
     stripe.charges.list(
@@ -74,9 +75,9 @@ export async function GET(
     }),
   ]);
 
-  const totalRevenue = charges.data.reduce((sum, charge) => {
+  const totalRevenue = charges.data.reduce((sum: number, charge: Stripe.Charge) => {
     if (charge.paid && !charge.refunded) {
-      return sum + charge.amount;
+      return sum + (charge.amount ?? 0);
     }
     return sum;
   }, 0);
