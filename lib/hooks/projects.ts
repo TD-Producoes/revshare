@@ -63,7 +63,9 @@ export function useProjects(userId?: string | null) {
       }
       const payload = await response.json();
       const projects = Array.isArray(payload?.data) ? payload.data : [];
-      return userId ? projects.filter((project: ApiProject) => project.userId === userId) : projects;
+      return userId
+        ? projects.filter((project: ApiProject) => project.userId === userId)
+        : projects;
     },
   });
 }
