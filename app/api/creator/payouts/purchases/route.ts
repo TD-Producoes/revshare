@@ -40,7 +40,8 @@ export async function GET(request: Request) {
     amount: purchase.amount,
     commissionAmount: purchase.commissionAmount,
     platformFee: Math.round(
-      purchase.amount * (Number(purchase.project.platformCommissionPercent) || 0),
+      purchase.commissionAmount *
+        (Number(purchase.project.platformCommissionPercent) || 0),
     ),
     commissionStatus: purchase.commissionStatus.toLowerCase(),
     status: purchase.status.toLowerCase(),

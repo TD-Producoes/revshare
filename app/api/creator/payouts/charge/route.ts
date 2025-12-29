@@ -4,12 +4,15 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 
-const checkoutInput = z.object({
+const chargeInput = z.object({
   userId: z.string().min(1),
 });
 
-function defaultUrl(path: string) {
-  return `http://localhost:3000${path}`;
+function calculateProcessingFee(amountOwed: number) {
+  const stripePercentage = 0.029;
+  const fixedFee = 30;
+  const fee = (amountOwed + fixedFee) / (1 - stripePercentage) - amountOwed;
+  return Math.max(0, Math.round(fee));
 }
 
 async function buildReceiptPurchases(creatorId: string, paymentId?: string | null) {
@@ -19,10 +22,7 @@ async function buildReceiptPurchases(creatorId: string, paymentId?: string | nul
       include: {
         purchases: {
           include: {
-            project: { select: { name: true, platformCommissionPercent: true } },
-            coupon: {
-              select: { marketerId: true, marketer: { select: { name: true } } },
-            },
+            project: { select: { platformCommissionPercent: true } },
           },
         },
       },
@@ -41,10 +41,7 @@ async function buildReceiptPurchases(creatorId: string, paymentId?: string | nul
       project: { userId: creatorId },
     },
     include: {
-      project: { select: { name: true, platformCommissionPercent: true } },
-      coupon: {
-        select: { marketerId: true, marketer: { select: { name: true } } },
-      },
+      project: { select: { platformCommissionPercent: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -53,7 +50,7 @@ async function buildReceiptPurchases(creatorId: string, paymentId?: string | nul
 }
 
 export async function POST(request: Request) {
-  const parsed = checkoutInput.safeParse(await request.json());
+  const parsed = chargeInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
@@ -64,10 +61,27 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   const creator = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, role: true },
+    select: { id: true, role: true, stripeCustomerId: true },
   });
   if (!creator || creator.role !== "creator") {
     return NextResponse.json({ error: "Creator not found" }, { status: 404 });
+  }
+  if (!creator.stripeCustomerId) {
+    return NextResponse.json(
+      { error: "No Stripe customer found for this creator." },
+      { status: 400 },
+    );
+  }
+
+  const defaultMethod = await prisma.paymentMethod.findFirst({
+    where: { userId: creator.id, isDefault: true },
+    select: { stripePaymentMethodId: true },
+  });
+  if (!defaultMethod) {
+    return NextResponse.json(
+      { error: "No default payment method found." },
+      { status: 400 },
+    );
   }
 
   const existingPayment = await prisma.creatorPayment.findFirst({
@@ -122,53 +136,48 @@ export async function POST(request: Request) {
   }
 
   const stripe = platformStripe();
-  const successUrl =
-    process.env.CREATOR_PAYOUT_SUCCESS_URL ??
-    defaultUrl("/creator/payouts?payment=success");
-  const cancelUrl =
-    process.env.CREATOR_PAYOUT_CANCEL_URL ??
-    defaultUrl("/creator/payouts?payment=cancel");
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: "Affiliate commission payout",
-            description: `Marketers: ${totals.marketerTotal / 100}, Platform: ${totals.platformTotal / 100}, Processing: ${processingFee / 100}`,
-          },
-          unit_amount: totalWithFee,
-        },
-        quantity: 1,
+  try {
+    const intent = await stripe.paymentIntents.create({
+      amount: totalWithFee,
+      currency: "usd",
+      customer: creator.stripeCustomerId,
+      payment_method: defaultMethod.stripePaymentMethodId,
+      off_session: true,
+      confirm: true,
+      metadata: {
+        creatorPaymentId: creatorPayment.id,
+        creatorId: creator.id,
       },
-    ],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: {
-      creatorPaymentId: creatorPayment.id,
-      creatorId: creator.id,
-    },
-  });
+    });
 
-  await prisma.creatorPayment.update({
-    where: { id: creatorPayment.id },
-    data: { stripeCheckoutSessionId: session.id },
-  });
+    await prisma.creatorPayment.update({
+      where: { id: creatorPayment.id },
+      data: {
+        status: intent.status === "succeeded" ? "PAID" : "PENDING",
+        stripePaymentIntentId: intent.id,
+      },
+    });
 
-  return NextResponse.json({
-    data: {
-      id: session.id,
-      url: session.url,
-      creatorPaymentId: creatorPayment.id,
-    },
-  });
-}
-function calculateProcessingFee(amountOwed: number) {
-  const stripePercentage = 0.029;
-  const fixedFee = 30;
-  const fee =
-    (amountOwed + fixedFee) / (1 - stripePercentage) - amountOwed;
-  return Math.max(0, Math.round(fee));
+    if (intent.status === "succeeded") {
+      await prisma.purchase.updateMany({
+        where: { creatorPaymentId: creatorPayment.id },
+        data: { commissionStatus: "READY_FOR_PAYOUT" },
+      });
+    }
+
+    return NextResponse.json({
+      data: {
+        id: intent.id,
+        status: intent.status,
+      },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to charge payment method.";
+    await prisma.creatorPayment.update({
+      where: { id: creatorPayment.id },
+      data: { status: "FAILED" },
+    });
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

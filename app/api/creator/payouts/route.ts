@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 
-const PLATFORM_FEE_PERCENT = 0.05;
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
@@ -22,9 +20,15 @@ export async function GET(request: Request) {
 
   const projects = await prisma.project.findMany({
     where: { userId },
-    select: { id: true },
+    select: { id: true, platformCommissionPercent: true },
   });
   const projectIds = projects.map((project) => project.id);
+  const projectPercents = projects
+    .map((project) => Number(project.platformCommissionPercent))
+    .filter((value) => !Number.isNaN(value));
+  const uniquePercents = Array.from(new Set(projectPercents));
+  const platformCommissionPercent =
+    uniquePercents.length === 1 ? uniquePercents[0] : null;
 
   if (projectIds.length === 0) {
     return NextResponse.json({
@@ -35,16 +39,18 @@ export async function GET(request: Request) {
           pendingCommissions: 0,
           failedCommissions: 0,
           platformFee: 0,
+          platformCommissionPercent,
         },
-      payouts: [],
-    },
-  });
-}
+        payouts: [],
+      },
+    });
+  }
 
   const purchases = await prisma.purchase.findMany({
     where: { projectId: { in: projectIds } },
     orderBy: { createdAt: "desc" },
     include: {
+      project: { select: { platformCommissionPercent: true } },
       coupon: {
         select: {
           marketerId: true,
@@ -69,6 +75,7 @@ export async function GET(request: Request) {
   let paidCommissions = 0;
   let pendingCommissions = 0;
   let failedCommissions = 0;
+  let platformFee = 0;
 
   const marketerMap = new Map<
     string,
@@ -108,6 +115,8 @@ export async function GET(request: Request) {
     existing.projectIds.add(purchase.projectId);
     existing.totalEarnings += purchase.commissionAmount;
     totalCommissions += purchase.commissionAmount;
+    const platformPercent = Number(purchase.project.platformCommissionPercent) || 0;
+    platformFee += Math.round(purchase.commissionAmount * platformPercent);
 
     if (purchase.commissionStatus === "PAID") {
       existing.paidEarnings += purchase.commissionAmount;
@@ -151,8 +160,6 @@ export async function GET(request: Request) {
     })
     .sort((a, b) => b.totalEarnings - a.totalEarnings);
 
-  const platformFee = Math.floor(totalCommissions * PLATFORM_FEE_PERCENT);
-
   return NextResponse.json({
     data: {
       totals: {
@@ -161,6 +168,7 @@ export async function GET(request: Request) {
         pendingCommissions,
         failedCommissions,
         platformFee,
+        platformCommissionPercent,
       },
       payouts,
     },

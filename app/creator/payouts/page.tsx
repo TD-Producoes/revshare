@@ -2,6 +2,7 @@
 
 import { formatCurrency } from "@/lib/data/metrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -12,17 +13,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Clock, CheckCircle, Percent } from "lucide-react";
+import { DollarSign, Clock, CheckCircle, Percent, Info } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import {
   useCreatorPayouts,
+  useCreatorPaymentCharge,
   useCreatorPaymentCheckout,
   useCreatorPaymentPreview,
   useCreatorPayments,
   useCreatorPurchaseDetails,
   useProcessMarketerTransfers,
 } from "@/lib/hooks/creator";
+import { usePaymentMethods } from "@/lib/hooks/payment-methods";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -41,6 +44,30 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+
+type HeaderInfoProps = {
+  label: string;
+  help: string;
+};
+
+function HeaderWithInfo({ label, help }: HeaderInfoProps) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span>{label}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="outline" className="h-4 px-1 text-[10px] leading-none">
+            i
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="center">
+          <p className="text-xs">{help}</p>
+        </TooltipContent>
+      </Tooltip>
+    </span>
+  );
+}
 
 export default function PayoutsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
@@ -50,6 +77,7 @@ export default function PayoutsPage() {
   );
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [chargeError, setChargeError] = useState<string | null>(null);
   const {
     data: preview,
     isLoading: isPreviewLoading,
@@ -59,10 +87,12 @@ export default function PayoutsPage() {
     useCreatorPayments(currentUser?.id);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useCreatorPurchaseDetails(currentUser?.id);
+  const { data: paymentMethods = [] } = usePaymentMethods(currentUser?.id);
   const commissionPurchases = purchases.filter(
     (purchase) => purchase.commissionAmount > 0,
   );
   const checkout = useCreatorPaymentCheckout();
+  const charge = useCreatorPaymentCharge();
   const processTransfers = useProcessMarketerTransfers();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -105,17 +135,49 @@ export default function PayoutsPage() {
     pendingCommissions: 0,
     failedCommissions: 0,
     platformFee: 0,
+    platformCommissionPercent: null,
   };
   const outstandingCommissions =
     totals.pendingCommissions + totals.failedCommissions;
   const hasPending = outstandingCommissions > 0;
   const readyTotal = payouts.reduce((sum, payout) => sum + payout.readyEarnings, 0);
   const hasReady = readyTotal > 0;
+  const defaultPaymentMethod = paymentMethods.find((method) => method.isDefault);
 
   const handlePayAll = async () => {
     if (!currentUser) return;
     setCheckoutError(null);
+    setChargeError(null);
     setIsReceiptOpen(true);
+  };
+
+  const handleChargePaymentMethod = async () => {
+    if (!currentUser) return;
+    setChargeError(null);
+    try {
+      const result = await charge.mutateAsync({ userId: currentUser.id });
+      if (result.status !== "succeeded") {
+        throw new Error("Payment requires additional verification.");
+      }
+      toast.success("Payment received. Platform will process payouts next.");
+      setIsReceiptOpen(false);
+      await queryClient.invalidateQueries({
+        queryKey: ["creator-payment-preview", currentUser.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["creator-payments", currentUser.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["creator-payouts", currentUser.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["creator-payout-purchases", currentUser.id],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to charge payment method.";
+      setChargeError(message);
+    }
   };
 
   const handleCreateCheckout = async () => {
@@ -200,8 +262,12 @@ export default function PayoutsPage() {
         />
         <StatCard
           title="Platform Fee"
-          value={formatCurrency(totals.platformFee)}
-          description="5% of commissions"
+          value={
+            totals.platformCommissionPercent == null
+              ? "Varies"
+              : `${Math.round(totals.platformCommissionPercent * 100)}%`
+          }
+          description="Of marketer commission"
           icon={Percent}
         />
       </div>
@@ -222,11 +288,36 @@ export default function PayoutsPage() {
                 <TableRow>
                   <TableHead>Marketer</TableHead>
                   <TableHead className="text-right">Projects</TableHead>
-                  <TableHead className="text-right">Total Earned</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead className="text-right">To Pay</TableHead>
-                  <TableHead className="text-right">Ready</TableHead>
-                  <TableHead className="text-right">Failed</TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithInfo
+                      label="Total Earned"
+                      help="All commissions generated by this marketer."
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithInfo
+                      label="Paid"
+                      help="Commissions already paid out to the marketer."
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithInfo
+                      label="To Pay"
+                      help="Total owed (ready + awaiting creator payment)."
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithInfo
+                      label="Ready"
+                      help="Creator has paid; platform can transfer now."
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithInfo
+                      label="Failed"
+                      help="Transfer attempts that failed."
+                    />
+                  </TableHead>
                   <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -317,6 +408,10 @@ export default function PayoutsPage() {
               const marketerPurchases = commissionPurchases.filter(
                 (purchase) => purchase.marketer?.id === payout.marketerId,
               );
+              const awaitingCreator = Math.max(
+                0,
+                payout.pendingEarnings - payout.readyEarnings,
+              );
 
               if (marketerPurchases.length === 0) {
                 return null;
@@ -329,7 +424,7 @@ export default function PayoutsPage() {
                       <p className="font-medium">{payout.marketerName}</p>
                       <p className="text-xs text-muted-foreground">
                         Ready: {formatCurrency(payout.readyEarnings)} · Awaiting
-                        Creator: {formatCurrency(payout.pendingEarnings)}
+                        Creator: {formatCurrency(awaitingCreator)}
                       </p>
                     </div>
                     <Badge variant="outline" className="capitalize">
@@ -342,9 +437,24 @@ export default function PayoutsPage() {
                         <TableRow>
                           <TableHead>Project</TableHead>
                           <TableHead>Coupon</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead className="text-right">Commission</TableHead>
-                          <TableHead className="text-right">Platform</TableHead>
+                          <TableHead className="text-right">
+                            <HeaderWithInfo
+                              label="Amount"
+                              help="Customer payment total."
+                            />
+                          </TableHead>
+                          <TableHead className="text-right">
+                            <HeaderWithInfo
+                              label="Commission"
+                              help="Amount owed to the marketer."
+                            />
+                          </TableHead>
+                          <TableHead className="text-right">
+                            <HeaderWithInfo
+                              label="Platform"
+                              help="Platform fee based on the commission."
+                            />
+                          </TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Date</TableHead>
                         </TableRow>
@@ -380,7 +490,7 @@ export default function PayoutsPage() {
                                 "pending_creator_payment" ? (
                                 <Badge variant="secondary">Awaiting Creator</Badge>
                               ) : (
-                                <Badge className="bg-green-600">Paid</Badge>
+                                <Badge className="bg-green-600 text-white">Paid</Badge>
                               )}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
@@ -481,6 +591,22 @@ export default function PayoutsPage() {
             </p>
           ) : preview && preview.purchases.length > 0 ? (
             <div className="space-y-4">
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Reduce processing fees</AlertTitle>
+                <AlertDescription>
+                  Add a payment method and enable auto-charge so platform
+                  payments can be collected automatically without the processing
+                  fee.{" "}
+                  <Link
+                    href="/creator/settings"
+                    className="underline underline-offset-4 text-foreground"
+                  >
+                    Update payment methods
+                  </Link>
+                  .
+                </AlertDescription>
+              </Alert>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -545,9 +671,13 @@ export default function PayoutsPage() {
                     <span>Platform commissions</span>
                     <span>{formatCurrency(preview.totals.platformTotal)}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>Processing fee</span>
+                    <span>{formatCurrency(preview.totals.processingFee)}</span>
+                  </div>
                   <div className="flex justify-between font-medium">
                     <span>Total due</span>
-                    <span>{formatCurrency(preview.totals.grandTotal)}</span>
+                    <span>{formatCurrency(preview.totals.totalWithFee)}</span>
                   </div>
                 </div>
               </div>
@@ -557,6 +687,9 @@ export default function PayoutsPage() {
               No outstanding commissions to pay.
             </p>
           )}
+          {chargeError ? (
+            <p className="text-sm text-destructive">{chargeError}</p>
+          ) : null}
           {checkoutError ? (
             <p className="text-sm text-destructive">{checkoutError}</p>
           ) : null}
@@ -564,9 +697,22 @@ export default function PayoutsPage() {
             <Button variant="outline" onClick={() => setIsReceiptOpen(false)}>
               Close
             </Button>
+            {defaultPaymentMethod ? (
+              <Button
+                variant="secondary"
+                onClick={handleChargePaymentMethod}
+                disabled={charge.isPending || checkout.isPending}
+              >
+                {charge.isPending ? "Charging..." : "Pay with saved method"}
+              </Button>
+            ) : null}
             <Button
               onClick={handleCreateCheckout}
-              disabled={checkout.isPending || !preview?.totals.grandTotal}
+              disabled={
+                checkout.isPending ||
+                charge.isPending ||
+                !preview?.totals.grandTotal
+              }
             >
               {checkout.isPending ? "Creating checkout..." : "Proceed to pay"}
             </Button>

@@ -16,6 +16,8 @@ export async function GET(
       name: true,
       email: true,
       stripeConnectedAccountId: true,
+      stripeCustomerId: true,
+      autoChargeEnabled: true,
       onboardingStatus: true,
       onboardingData: true,
     },

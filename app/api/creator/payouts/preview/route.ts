@@ -16,6 +16,14 @@ type ReceiptLine = {
   createdAt: Date;
 };
 
+function calculateProcessingFee(amountOwed: number) {
+  const stripePercentage = 0.029;
+  const fixedFee = 30;
+  const fee =
+    (amountOwed + fixedFee) / (1 - stripePercentage) - amountOwed;
+  return Math.max(0, Math.round(fee));
+}
+
 function buildReceiptLines(
   purchases: Array<{
     id: string;
@@ -30,8 +38,8 @@ function buildReceiptLines(
 ) {
   const lines: ReceiptLine[] = purchases.map((purchase) => {
     const platformPercent = Number(purchase.project.platformCommissionPercent) || 0;
-    const platformFee = Math.round(purchase.amount * platformPercent);
     const marketerCommission = purchase.commissionAmount;
+    const platformFee = Math.round(marketerCommission * platformPercent);
     const merchantNet = purchase.amount - marketerCommission - platformFee;
     const marketerName = purchase.coupon?.marketer?.name ?? "Direct";
 
@@ -60,6 +68,9 @@ function buildReceiptLines(
     { marketerTotal: 0, platformTotal: 0, grandTotal: 0 },
   );
 
+  const processingFee = calculateProcessingFee(totals.grandTotal);
+  const totalWithFee = totals.grandTotal + processingFee;
+
   const perMarketer = new Map<
     string,
     {
@@ -85,7 +96,11 @@ function buildReceiptLines(
 
   return {
     lines,
-    totals,
+    totals: {
+      ...totals,
+      processingFee,
+      totalWithFee,
+    },
     perMarketer: Array.from(perMarketer.values()),
   };
 }

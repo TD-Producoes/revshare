@@ -18,12 +18,15 @@ model User {
   name                      String
   email                     String   @unique
   stripeConnectedAccountId  String?  @unique
+  stripeCustomerId          String?  @unique
+  autoChargeEnabled         Boolean  @default(false)
   onboardingStatus          String?
   onboardingData            Json?
   onboardingCompletedAt     DateTime?
   projects                  Project[]
   coupons                   Coupon[]
   contracts                 Contract[]
+  paymentMethods            PaymentMethod[]
   creatorTransfers          Transfer[] @relation("CreatorTransfers")
   marketerTransfers         Transfer[] @relation("MarketerTransfers")
   creatorPayments           CreatorPayment[]
@@ -40,7 +43,7 @@ model Project {
   onboardingStatus       String?
   onboardingData         Json?
   onboardingCompletedAt  DateTime?
-  platformCommissionPercent Decimal @default(0.05) @db.Decimal(5, 2)
+  platformCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
   marketerCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
   coupons               Coupon[]
   purchases             Purchase[]
@@ -191,4 +194,23 @@ model Transfer {
   @@index([creatorId])
   @@index([marketerId])
   @@index([stripeTransferId])
+}
+
+model PaymentMethod {
+  id                     String   @id @default(cuid())
+  userId                 String
+  stripePaymentMethodId  String   @unique
+  type                   String
+  brand                  String?
+  last4                  String?
+  expMonth               Int?
+  expYear                Int?
+  bankName               String?
+  isDefault              Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

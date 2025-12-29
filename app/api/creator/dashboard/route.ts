@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 
-const PLATFORM_FEE_PERCENT = 0.05;
-
 type DayTotals = {
   revenue: number;
   affiliateRevenue: number;
@@ -61,6 +59,7 @@ export async function GET(request: Request) {
   let totalRevenue = 0;
   let affiliateRevenue = 0;
   let affiliateShareOwed = 0;
+  let platformFee = 0;
 
   const projectMetrics = new Map<
     string,
@@ -72,12 +71,22 @@ export async function GET(request: Request) {
     }
   >();
 
+  const platformPercentByProject = new Map(
+    projects.map((project) => [
+      project.id,
+      Number(project.platformCommissionPercent) || 0,
+    ]),
+  );
+
   for (const purchase of purchases) {
     totalRevenue += purchase.amount;
     affiliateShareOwed += purchase.commissionAmount;
     if (purchase.couponId) {
       affiliateRevenue += purchase.amount;
     }
+    const platformPercent =
+      platformPercentByProject.get(purchase.projectId) ?? 0;
+    platformFee += Math.round(purchase.commissionAmount * platformPercent);
 
     const existing =
       projectMetrics.get(purchase.projectId) ?? {
@@ -98,8 +107,6 @@ export async function GET(request: Request) {
 
     projectMetrics.set(purchase.projectId, existing);
   }
-
-  const platformFee = Math.floor(affiliateShareOwed * PLATFORM_FEE_PERCENT);
 
   const today = new Date();
   const start = new Date();

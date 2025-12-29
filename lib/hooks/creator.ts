@@ -8,6 +8,7 @@ export type CreatorPayoutTotals = {
   pendingCommissions: number;
   failedCommissions: number;
   platformFee: number;
+  platformCommissionPercent?: number | null;
 };
 
 export type CreatorPayout = {
@@ -81,6 +82,8 @@ export type CreatorPaymentPreview = {
     marketerTotal: number;
     platformTotal: number;
     grandTotal: number;
+    processingFee: number;
+    totalWithFee: number;
   };
 };
 
@@ -162,6 +165,23 @@ export function useCreatorPaymentCheckout() {
         throw new Error(data?.error ?? "Failed to create checkout.");
       }
       return data?.data as { id: string; url: string | null };
+    },
+  });
+}
+
+export function useCreatorPaymentCharge() {
+  return useMutation({
+    mutationFn: async (payload: { userId: string }) => {
+      const response = await fetch("/api/creator/payouts/charge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to charge payment method.");
+      }
+      return data?.data as { id: string; status: string };
     },
   });
 }

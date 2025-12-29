@@ -8,6 +8,8 @@ export type ApiUser = {
   name: string;
   email: string;
   stripeConnectedAccountId?: string | null;
+  stripeCustomerId?: string | null;
+  autoChargeEnabled?: boolean | null;
   onboardingStatus?: string | null;
   onboardingData?: {
     capabilities?: Record<string, string | null>;
