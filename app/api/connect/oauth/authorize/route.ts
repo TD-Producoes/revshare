@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const DEFAULT_REDIRECT_URI = "http://localhost:3000/api/connect/oauth/callback";
+const DEFAULT_REDIRECT_URI = `${process.env.BASE_URL}/api/connect/oauth/callback`;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (!projectId) {
     return NextResponse.json(
       { error: "projectId is required" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -18,16 +18,16 @@ export async function GET(request: Request) {
   if (!clientId) {
     return NextResponse.json(
       { error: "STRIPE_CONNECT_CLIENT_ID is required" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 
   const redirectUri =
     process.env.STRIPE_CONNECT_REDIRECT_URI ?? DEFAULT_REDIRECT_URI;
 
-  const state = Buffer.from(
-    JSON.stringify({ role, projectId }),
-  ).toString("base64");
+  const state = Buffer.from(JSON.stringify({ role, projectId })).toString(
+    "base64"
+  );
   const url = new URL("https://connect.stripe.com/oauth/authorize");
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", clientId);

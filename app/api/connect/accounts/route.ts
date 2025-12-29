@@ -17,7 +17,7 @@ const connectInput = z.object({
 });
 
 function defaultUrl(path: string) {
-  return `http://localhost:3000${path}`;
+  return `${process.env.BASE_URL}${path}`;
 }
 
 function appendQuery(url: string, params: Record<string, string>) {

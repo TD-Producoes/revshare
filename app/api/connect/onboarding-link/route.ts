@@ -10,7 +10,7 @@ const onboardingInput = z.object({
 });
 
 function defaultUrl(path: string) {
-  return `http://localhost:3000${path}`;
+  return `${process.env.BASE_URL}${path}`;
 }
 
 export async function GET(request: Request) {
@@ -22,10 +22,7 @@ export async function GET(request: Request) {
   });
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid request" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   const stripe = platformStripe();

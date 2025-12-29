@@ -17,7 +17,7 @@ const checkoutInput = z.object({
 });
 
 function defaultUrl(path: string) {
-  return `http://localhost:3000${path}`;
+  return `${process.env.BASE_URL}${path}`;
 }
 
 export async function POST(

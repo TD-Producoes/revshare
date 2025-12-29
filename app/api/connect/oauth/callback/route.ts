@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 
-const DEFAULT_RETURN_URL = "http://localhost:3000/creator/projects";
+const DEFAULT_RETURN_URL = `${process.env.BASE_URL}/creator/projects`;
 
 function decodeState(value: string | null) {
   if (!value) return { role: "creator", projectId: null };

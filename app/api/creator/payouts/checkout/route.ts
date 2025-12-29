@@ -9,19 +9,27 @@ const checkoutInput = z.object({
 });
 
 function defaultUrl(path: string) {
-  return `http://localhost:3000${path}`;
+  return `${process.env.BASE_URL}${path}`;
 }
 
-async function buildReceiptPurchases(creatorId: string, paymentId?: string | null) {
+async function buildReceiptPurchases(
+  creatorId: string,
+  paymentId?: string | null
+) {
   if (paymentId) {
     const payment = await prisma.creatorPayment.findUnique({
       where: { id: paymentId },
       include: {
         purchases: {
           include: {
-            project: { select: { name: true, platformCommissionPercent: true } },
+            project: {
+              select: { name: true, platformCommissionPercent: true },
+            },
             coupon: {
-              select: { marketerId: true, marketer: { select: { name: true } } },
+              select: {
+                marketerId: true,
+                marketer: { select: { name: true } },
+              },
             },
           },
         },
@@ -57,7 +65,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -77,13 +85,13 @@ export async function POST(request: Request) {
 
   const { purchases, payment } = await buildReceiptPurchases(
     creator.id,
-    existingPayment?.id ?? null,
+    existingPayment?.id ?? null
   );
 
   if (purchases.length === 0) {
     return NextResponse.json(
       { error: "No outstanding commissions to pay." },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -91,13 +99,15 @@ export async function POST(request: Request) {
     (acc, purchase) => {
       const platformPercent =
         Number(purchase.project.platformCommissionPercent) || 0;
-      const platformFee = Math.round(purchase.commissionAmount * platformPercent);
+      const platformFee = Math.round(
+        purchase.commissionAmount * platformPercent
+      );
       acc.marketerTotal += purchase.commissionAmount;
       acc.platformTotal += platformFee;
       acc.grandTotal += purchase.commissionAmount + platformFee;
       return acc;
     },
-    { marketerTotal: 0, platformTotal: 0, grandTotal: 0 },
+    { marketerTotal: 0, platformTotal: 0, grandTotal: 0 }
   );
   const processingFee = calculateProcessingFee(totals.grandTotal);
   const totalWithFee = totals.grandTotal + processingFee;
@@ -137,7 +147,9 @@ export async function POST(request: Request) {
           currency: "usd",
           product_data: {
             name: "Affiliate commission payout",
-            description: `Marketers: ${totals.marketerTotal / 100}, Platform: ${totals.platformTotal / 100}, Processing: ${processingFee / 100}`,
+            description: `Marketers: ${totals.marketerTotal / 100}, Platform: ${
+              totals.platformTotal / 100
+            }, Processing: ${processingFee / 100}`,
           },
           unit_amount: totalWithFee,
         },
@@ -168,7 +180,6 @@ export async function POST(request: Request) {
 function calculateProcessingFee(amountOwed: number) {
   const stripePercentage = 0.029;
   const fixedFee = 30;
-  const fee =
-    (amountOwed + fixedFee) / (1 - stripePercentage) - amountOwed;
+  const fee = (amountOwed + fixedFee) / (1 - stripePercentage) - amountOwed;
   return Math.max(0, Math.round(fee));
 }
