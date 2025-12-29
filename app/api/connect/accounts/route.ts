@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -43,18 +43,21 @@ export async function POST(request: Request) {
     payload.name?.trim() || payload.email.split("@")[0] || "New account";
   const role = payload.role ?? "creator";
 
+  const accountType: "express" | "standard" = payload.type ?? "express";
+  const countryCode: string = payload.country ?? "US";
+
   const account = await stripe.accounts.create({
-    type: payload.type ?? "express",
-    country: payload.country ?? "US",
+    type: accountType,
+    country: countryCode,
     email: payload.email,
-    business_type: payload.businessType,
+    ...(payload.businessType && { business_type: payload.businessType }),
     capabilities: {
       card_payments: { requested: true },
       transfers: { requested: true },
     },
     metadata: {
       role,
-      name: payload.name,
+      ...(payload.name && { name: displayName }),
     },
   });
 

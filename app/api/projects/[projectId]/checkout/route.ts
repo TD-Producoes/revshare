@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
@@ -21,13 +22,13 @@ function defaultUrl(path: string) {
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const parsed = checkoutInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -49,7 +50,7 @@ export async function POST(
   if (!project.creatorStripeAccountId) {
     return NextResponse.json(
       { error: "Creator Stripe account not set" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -67,12 +68,12 @@ export async function POST(
           active: true,
           limit: 1,
         },
-        { stripeAccount },
+        { stripeAccount }
       );
       if (list.data.length === 0) {
         return NextResponse.json(
           { error: "Promotion code not found" },
-          { status: 404 },
+          { status: 404 }
         );
       }
       promotionCodeId = list.data[0].id;
@@ -88,7 +89,9 @@ export async function POST(
     process.env.CHECKOUT_CANCEL_URL ??
     defaultUrl("/?checkout=cancel");
 
-  const price = await stripe.prices.retrieve(payload.priceId, { stripeAccount });
+  const price = await stripe.prices.retrieve(payload.priceId, {
+    stripeAccount,
+  });
   const mode = price.type === "recurring" ? "subscription" : "payment";
   const platformCommissionPercent = Number(project.platformCommissionPercent);
   const marketerCommissionPercent = Number(project.marketerCommissionPercent);
@@ -100,14 +103,20 @@ export async function POST(
   let discountedAmount = baseAmount;
 
   if (promotionCodeId) {
-    const promo = await stripe.promotionCodes.retrieve(promotionCodeId, {
-      stripeAccount,
-    });
+    const promoResponse = await stripe.promotionCodes.retrieve(
+      promotionCodeId,
+      { expand: ["coupon"] },
+      { stripeAccount }
+    );
+
+    const promo = promoResponse as unknown as Stripe.PromotionCode & {
+      coupon: string | Stripe.Coupon | null;
+    };
     const coupon =
       typeof promo.coupon === "string" ? null : promo.coupon ?? null;
     if (coupon?.percent_off) {
       discountedAmount = Math.round(
-        baseAmount * (1 - coupon.percent_off / 100),
+        baseAmount * (1 - coupon.percent_off / 100)
       );
     } else if (coupon?.amount_off) {
       discountedAmount = Math.max(0, baseAmount - coupon.amount_off * quantity);
@@ -132,8 +141,8 @@ export async function POST(
       ...(payload.customerId
         ? { customer: payload.customerId }
         : payload.customerEmail
-          ? { customer_email: payload.customerEmail }
-          : {}),
+        ? { customer_email: payload.customerEmail }
+        : {}),
       ...(payload.allowPromotionCodes ? { allow_promotion_codes: true } : {}),
       ...(promotionCodeId
         ? { discounts: [{ promotion_code: promotionCodeId }] }
@@ -160,7 +169,7 @@ export async function POST(
           }),
       client_reference_id: projectId,
     },
-    { stripeAccount },
+    { stripeAccount }
   );
 
   return NextResponse.json({

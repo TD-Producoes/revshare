@@ -37,7 +37,11 @@ export async function GET(request: Request) {
     code,
   });
 
-  const accountId = tokenResponse.stripe_user_id;
+  const accountId = tokenResponse.stripe_user_id!;
+  if (!accountId) {
+    return NextResponse.json({ error: "Missing accountId" }, { status: 400 });
+  }
+
   const account = await stripe.accounts.retrieve(accountId);
   const decodedState = decodeState(state);
   const projectId = decodedState.projectId;
@@ -45,7 +49,7 @@ export async function GET(request: Request) {
   if (!projectId) {
     return NextResponse.json(
       { error: "Missing projectId in state" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -70,7 +74,7 @@ export async function GET(request: Request) {
     data: {
       creatorStripeAccountId: account.id,
       onboardingStatus,
-      onboardingData,
+      onboardingData: JSON.parse(JSON.stringify(onboardingData)),
       onboardingCompletedAt: completedAt,
     },
   });

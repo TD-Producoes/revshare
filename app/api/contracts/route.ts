@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   if (!creatorId && !userId) {
     return NextResponse.json(
       { error: "creatorId or userId is required" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -31,7 +31,10 @@ export async function GET(request: Request) {
       select: { id: true, role: true },
     });
     if (!marketer || marketer.role !== "marketer") {
-      return NextResponse.json({ error: "Marketer not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Marketer not found" },
+        { status: 404 }
+      );
     }
 
     const contracts = await prisma.contract.findMany({
@@ -59,10 +62,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ data });
   }
 
+  if (!creatorId) {
+    return NextResponse.json(
+      { error: "creatorId is required" },
+      { status: 400 }
+    );
+  }
+
   const creator = await prisma.user.findUnique({
     where: { id: creatorId },
     select: { id: true, role: true },
   });
+
   if (!creator || creator.role !== "creator") {
     return NextResponse.json({ error: "Creator not found" }, { status: 404 });
   }
@@ -107,7 +118,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -144,7 +155,7 @@ export async function POST(request: Request) {
   if (existing) {
     return NextResponse.json(
       { error: "Contract already exists" },
-      { status: 409 },
+      { status: 409 }
     );
   }
 
@@ -173,6 +184,6 @@ export async function POST(request: Request) {
         createdAt: contract.createdAt,
       },
     },
-    { status: 201 },
+    { status: 201 }
   );
 }

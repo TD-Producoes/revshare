@@ -15,10 +15,7 @@ export async function GET(request: Request) {
   });
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Missing accountId" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Missing accountId" }, { status: 400 });
   }
 
   const stripe = platformStripe();
@@ -29,14 +26,17 @@ export async function GET(request: Request) {
       ? "complete"
       : "pending";
 
-  const onboardingData = {
-    id: account.id,
-    details_submitted: account.details_submitted,
-    charges_enabled: account.charges_enabled,
-    payouts_enabled: account.payouts_enabled,
-    capabilities: account.capabilities,
-    requirements: account.requirements,
-  };
+  // Serialize to plain JSON to ensure compatibility with Prisma's Json type
+  const onboardingData = JSON.parse(
+    JSON.stringify({
+      id: account.id,
+      details_submitted: account.details_submitted,
+      charges_enabled: account.charges_enabled,
+      payouts_enabled: account.payouts_enabled,
+      capabilities: account.capabilities,
+      requirements: account.requirements,
+    })
+  );
 
   const completedAt = onboardingStatus === "complete" ? new Date() : null;
 
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
   if (updated.count === 0) {
     return NextResponse.json(
       { error: "Account not found in database" },
-      { status: 404 },
+      { status: 404 }
     );
   }
 

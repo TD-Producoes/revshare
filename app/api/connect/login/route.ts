@@ -14,10 +14,7 @@ export async function GET(request: Request) {
   });
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Missing accountId" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Missing accountId" }, { status: 400 });
   }
 
   const stripe = platformStripe();
@@ -26,7 +23,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     data: {
       url: link.url,
-      expiresAt: link.expires_at,
+      // expiresAt: link.expires_at,
     },
   });
 }
