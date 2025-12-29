@@ -71,11 +71,8 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           tags: ${{ steps.meta-app.outputs.tags }}
           labels: ${{ steps.meta-app.outputs.labels }}
-          # Pass secrets for build-time operations (Prisma generation, etc.)
-          secrets: |
-            DATABASE_URL=${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@db:5432/prisma?schema=public' }}
-            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY || 'DUMMY_STRIPE_KEY' }}
           build-args: |
+            DATABASE_URL=${{ vars.DATABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
 
