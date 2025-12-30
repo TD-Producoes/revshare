@@ -110,7 +110,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
   };
 
   const handleGeneratePromo = async () => {
-    if (!currentUser || !selectedTemplateId) return;
+    if (!currentUser || !selectedTemplateId || !resolvedProjectId) return;
     setPromoError(null);
     try {
       await claimCoupon.mutateAsync({
