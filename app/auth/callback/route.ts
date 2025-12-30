@@ -7,7 +7,12 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const roleParam = searchParams.get("role");
-  let response = NextResponse.redirect(origin);
+  let redirectUrl = origin;
+  const cookiesToApply: Array<{
+    name: string;
+    value: string;
+    options?: Record<string, unknown>;
+  }> = [];
 
   if (code) {
     const supabase = createServerClient(
@@ -22,10 +27,7 @@ export async function GET(request: NextRequest) {
             cookiesToSet.forEach(({ name, value, options }) =>
               request.cookies.set(name, value)
             );
-            response = NextResponse.redirect(origin);
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            );
+            cookiesToApply.push(...cookiesToSet);
           },
         },
       }
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
         email.split("@")[0] ??
         "New user";
 
-      await prisma.user.upsert({
+      const updatedUser = await prisma.user.upsert({
         where: { id: data.user.id },
         update: {
           email,
@@ -70,9 +72,20 @@ export async function GET(request: NextRequest) {
           name,
           role,
         },
+        select: { role: true },
       });
+
+      redirectUrl =
+        updatedUser.role === "marketer"
+          ? `${origin}/marketer`
+          : `${origin}/creator`;
     }
   }
+
+  const response = NextResponse.redirect(redirectUrl);
+  cookiesToApply.forEach(({ name, value, options }) =>
+    response.cookies.set(name, value, options)
+  );
 
   return response;
 }
