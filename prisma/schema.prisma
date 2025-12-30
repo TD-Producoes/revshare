@@ -27,6 +27,7 @@ model User {
   coupons                   Coupon[]
   contracts                 Contract[]
   paymentMethods            PaymentMethod[]
+  metricsSnapshots          MetricsSnapshot[]
   creatorTransfers          Transfer[] @relation("CreatorTransfers")
   marketerTransfers         Transfer[] @relation("MarketerTransfers")
   creatorPayments           CreatorPayment[]
@@ -45,6 +46,7 @@ model Project {
   onboardingCompletedAt  DateTime?
   platformCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
   marketerCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
+  couponTemplates       CouponTemplate[]
   coupons               Coupon[]
   purchases             Purchase[]
   contracts             Contract[]
@@ -76,20 +78,48 @@ model Contract {
 model Coupon {
   id                     String       @id @default(cuid())
   projectId              String
+  templateId             String
   marketerId             String
   code                   String       @unique
-  stripeCouponId         String       @unique
+  stripeCouponId         String
   stripePromotionCodeId  String       @unique
   percentOff             Int
   commissionPercent      Decimal      @db.Decimal(5, 2)
   status                 CouponStatus @default(ACTIVE)
   claimedAt              DateTime     @default(now())
   project                Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template               CouponTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   marketer               User         @relation(fields: [marketerId], references: [id], onDelete: Cascade)
   purchases              Purchase[]
 
   @@index([projectId])
+  @@index([templateId])
   @@index([marketerId])
+  @@index([stripeCouponId])
+  @@unique([templateId, marketerId])
+}
+
+model CouponTemplate {
+  id                     String       @id @default(cuid())
+  projectId              String
+  name                   String
+  description            String?
+  percentOff             Int
+  startAt                DateTime?
+  endAt                  DateTime?
+  maxRedemptions         Int?
+  productIds             Json?
+  allowedMarketerIds     Json?
+  stripeCouponId         String       @unique
+  status                 CouponStatus @default(ACTIVE)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  coupons Coupon[]
+
+  @@index([projectId])
+  @@index([status])
 }
 
 model Purchase {
@@ -213,4 +243,27 @@ model PaymentMethod {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model MetricsSnapshot {
+  id                 String   @id @default(cuid())
+  creatorId          String
+  date               DateTime
+  totalRevenue       Int
+  affiliateRevenue   Int
+  affiliateShareOwed Int
+  platformFee        Int
+  mrr                Int
+  purchasesCount     Int
+  affiliatePurchasesCount Int
+  directPurchasesCount    Int
+  uniqueCustomers    Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorId, date])
+  @@index([creatorId])
+  @@index([date])
 }

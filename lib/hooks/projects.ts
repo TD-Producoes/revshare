@@ -70,10 +70,14 @@ export function useProjects(userId?: string | null) {
   });
 }
 
-export function useProject(id: string) {
+export function useProject(id?: string | null) {
   return useQuery<ApiProject | null>({
-    queryKey: ["projects", id],
+    queryKey: ["projects", id ?? "none"],
+    enabled: Boolean(id),
     queryFn: async () => {
+      if (!id) {
+        return null;
+      }
       const response = await fetch(`/api/projects/${id}`);
       if (!response.ok) {
         return null;

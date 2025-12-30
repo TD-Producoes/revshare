@@ -7,8 +7,8 @@ import { platformStripe } from "@/lib/stripe";
 
 const claimInput = z.object({
   projectId: z.string().min(1),
+  templateId: z.string().min(1),
   marketerId: z.string().min(1),
-  percentOff: z.number().int().min(1).max(100).optional(),
   code: z.string().min(3).optional(),
 });
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const payload = parsed.data;
 
-  const [project, marketer] = await Promise.all([
+  const [project, marketer, template] = await Promise.all([
     prisma.project.findUnique({
       where: { id: payload.projectId },
       select: {
@@ -40,6 +40,20 @@ export async function POST(request: Request) {
     prisma.user.findUnique({
       where: { id: payload.marketerId },
       select: { id: true, role: true },
+    }),
+    prisma.couponTemplate.findUnique({
+      where: { id: payload.templateId },
+      select: {
+        id: true,
+        projectId: true,
+        name: true,
+        percentOff: true,
+        startAt: true,
+        endAt: true,
+        status: true,
+        stripeCouponId: true,
+        allowedMarketerIds: true,
+      },
     }),
   ]);
 
@@ -54,6 +68,63 @@ export async function POST(request: Request) {
       { error: "Creator Stripe account not set" },
       { status: 400 },
     );
+  }
+  if (!template || template.projectId !== project.id) {
+    return NextResponse.json({ error: "Coupon template not found" }, { status: 404 });
+  }
+  if (template.status !== "ACTIVE") {
+    return NextResponse.json(
+      { error: "Coupon template is not active" },
+      { status: 400 },
+    );
+  }
+  const now = new Date();
+  if (template.startAt && now < template.startAt) {
+    return NextResponse.json(
+      { error: "Coupon template is not active yet" },
+      { status: 400 },
+    );
+  }
+  if (template.endAt && now > template.endAt) {
+    return NextResponse.json(
+      { error: "Coupon template has expired" },
+      { status: 400 },
+    );
+  }
+  const allowedMarketers = Array.isArray(template.allowedMarketerIds)
+    ? template.allowedMarketerIds
+    : [];
+  if (
+    allowedMarketers.length > 0 &&
+    !allowedMarketers.includes(marketer.id)
+  ) {
+    return NextResponse.json(
+      { error: "You are not allowed to claim this coupon template" },
+      { status: 403 },
+    );
+  }
+
+  const existingCoupon = await prisma.coupon.findUnique({
+    where: {
+      templateId_marketerId: {
+        templateId: template.id,
+        marketerId: marketer.id,
+      },
+    },
+    select: {
+      id: true,
+      code: true,
+      percentOff: true,
+      commissionPercent: true,
+      status: true,
+      claimedAt: true,
+      projectId: true,
+      templateId: true,
+    },
+  });
+
+  if (existingCoupon) {
+    return NextResponse.json({ data: existingCoupon });
   }
 
   const contract = await prisma.contract.findUnique({
@@ -76,30 +147,18 @@ export async function POST(request: Request) {
   const stripe = platformStripe();
   const stripeAccount = project.creatorStripeAccountId;
 
-  const percentOff = payload.percentOff ?? 10;
-  const code = payload.code ?? generatePromoCode(derivePrefix(project.name));
-
-  const stripeCoupon = await stripe.coupons.create(
-    {
-      percent_off: percentOff,
-      duration: "once",
-      metadata: {
-        projectId: project.id,
-        marketerId: marketer.id,
-      },
-    },
-    { stripeAccount },
-  );
+  const code = payload.code ?? generatePromoCode(derivePrefix(template.name));
 
   const promotionCode = await stripe.promotionCodes.create(
     {
       promotion: {
         type: "coupon",
-        coupon: stripeCoupon.id,
+        coupon: template.stripeCouponId,
       },
       code,
       metadata: {
         projectId: project.id,
+        templateId: template.id,
         marketerId: marketer.id,
       },
     },
@@ -109,11 +168,12 @@ export async function POST(request: Request) {
   const coupon = await prisma.coupon.create({
     data: {
       projectId: project.id,
+      templateId: template.id,
       marketerId: marketer.id,
       code,
-      stripeCouponId: stripeCoupon.id,
+      stripeCouponId: template.stripeCouponId,
       stripePromotionCodeId: promotionCode.id,
-      percentOff,
+      percentOff: template.percentOff,
       commissionPercent: contract.commissionPercent.toString(),
     },
     select: {

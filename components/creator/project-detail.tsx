@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProjects, useEvents } from "@/lib/data/store";
 import {
   getProjectMetrics,
@@ -27,7 +27,37 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Project } from "@/lib/data/types";
 import { useProject, useProjectPurchases, useProjectStats } from "@/lib/hooks/projects";
-import { useProjectCoupons } from "@/lib/hooks/coupons";
+import { useProjectCoupons, useProjectCouponTemplates } from "@/lib/hooks/coupons";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown, MoreHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -105,6 +135,33 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const projects = useProjects();
   const events = useEvents();
   const [connectError, setConnectError] = useState("");
+  const { data: authUserId } = useAuthUserId();
+  const { data: currentUser } = useUser(authUserId);
+  const queryClient = useQueryClient();
+  const [isTemplateOpen, setIsTemplateOpen] = useState(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isLoadingMarketers, setIsLoadingMarketers] = useState(false);
+  const [productOptions, setProductOptions] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [marketerOptions, setMarketerOptions] = useState<
+    Array<{ id: string; label: string }>
+  >([]);
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [marketersOpen, setMarketersOpen] = useState(false);
+  const [templateForm, setTemplateForm] = useState({
+    name: "",
+    description: "",
+    percentOff: "10",
+    startAt: "",
+    endAt: "",
+    maxRedemptions: "",
+    productIds: [] as string[],
+    allowedMarketerIds: [] as string[],
+  });
 
   const { data: apiProject, isLoading } = useProject(projectId);
   const {
@@ -122,7 +179,85 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     isLoading: isCouponsLoading,
     error: couponsError,
   } = useProjectCoupons(projectId);
+  const {
+    data: couponTemplates = [],
+    isLoading: isTemplatesLoading,
+    error: templatesError,
+  } = useProjectCouponTemplates(projectId, true);
   const isStripeConnected = Boolean(apiProject?.creatorStripeAccountId);
+
+  useEffect(() => {
+    if (!isTemplateOpen) {
+      return;
+    }
+    let isActive = true;
+    const loadProducts = async () => {
+      setIsLoadingProducts(true);
+      try {
+        const response = await fetch(`/api/projects/${projectId}/products`);
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.error ?? "Failed to load products.");
+        }
+        const products = payload?.data?.products ?? [];
+        const options = products.map((product: { id: string; name: string }) => ({
+          id: product.id,
+          name: product.name,
+        }));
+        if (isActive) {
+          setProductOptions(options);
+        }
+      } catch (error) {
+        if (isActive) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load products.";
+          setTemplateError(message);
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingProducts(false);
+        }
+      }
+    };
+
+    const loadMarketers = async () => {
+      setIsLoadingMarketers(true);
+      try {
+        const response = await fetch(`/api/projects/${projectId}/marketers`);
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.error ?? "Failed to load marketers.");
+        }
+        const marketers = payload?.data ?? [];
+        const options = marketers.map(
+          (marketer: { id: string; name: string | null; email: string }) => ({
+            id: marketer.id,
+            label: marketer.name?.trim() || marketer.email,
+          }),
+        );
+        if (isActive) {
+          setMarketerOptions(options);
+        }
+      } catch (error) {
+        if (isActive) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load marketers.";
+          setTemplateError(message);
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingMarketers(false);
+        }
+      }
+    };
+
+    void loadProducts();
+    void loadMarketers();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isTemplateOpen, projectId]);
 
   const project = projects.find((p) => p.id === projectId);
   const resolvedProject: Project | null =
@@ -208,6 +343,122 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       setConnectError(
         error instanceof Error ? error.message : "Unable to start Stripe connect."
       );
+    }
+  };
+
+  const formatDateInput = (value: string | Date | null | undefined) => {
+    if (!value) return "";
+    const date = typeof value === "string" ? new Date(value) : value;
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const openCreateTemplate = () => {
+    setEditingTemplateId(null);
+    setTemplateError(null);
+    setTemplateForm({
+      name: "",
+      description: "",
+      percentOff: "10",
+      startAt: "",
+      endAt: "",
+      maxRedemptions: "",
+      productIds: [],
+      allowedMarketerIds: [],
+    });
+    setIsTemplateOpen(true);
+  };
+
+  const openEditTemplate = (template: (typeof couponTemplates)[number]) => {
+    setEditingTemplateId(template.id);
+    setTemplateError(null);
+    setTemplateForm({
+      name: template.name,
+      description: template.description ?? "",
+      percentOff: String(template.percentOff),
+      startAt: formatDateInput(template.startAt),
+      endAt: formatDateInput(template.endAt),
+      maxRedemptions: template.maxRedemptions
+        ? String(template.maxRedemptions)
+        : "",
+      productIds: template.productIds ?? [],
+      allowedMarketerIds: (template.allowedMarketerIds as string[]) ?? [],
+    });
+    setIsTemplateOpen(true);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!currentUser) return;
+    setTemplateError(null);
+    setIsCreatingTemplate(true);
+    try {
+      const now = new Date();
+      const startAt = templateForm.startAt
+        ? new Date(templateForm.startAt)
+        : null;
+      const endAt = templateForm.endAt ? new Date(templateForm.endAt) : null;
+      if (startAt && Number.isNaN(startAt.getTime())) {
+        setTemplateError("Start date is invalid.");
+        return;
+      }
+      if (endAt && Number.isNaN(endAt.getTime())) {
+        setTemplateError("End date is invalid.");
+        return;
+      }
+      if (startAt && endAt && startAt > endAt) {
+        setTemplateError("Start date must be before end date.");
+        return;
+      }
+      if (endAt && endAt <= now) {
+        setTemplateError("End date must be in the future.");
+        return;
+      }
+      const isEditing = Boolean(editingTemplateId);
+      const response = await fetch(
+        `/api/projects/${projectId}/coupon-templates`,
+        {
+          method: isEditing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorId: currentUser.id,
+            templateId: editingTemplateId ?? undefined,
+            name: templateForm.name,
+            description: templateForm.description || undefined,
+            percentOff: Number(templateForm.percentOff),
+            startAt: templateForm.startAt || undefined,
+            endAt: templateForm.endAt || undefined,
+            maxRedemptions: templateForm.maxRedemptions
+              ? Number(templateForm.maxRedemptions)
+              : undefined,
+            productIds:
+              templateForm.productIds.length > 0
+                ? templateForm.productIds
+                : undefined,
+            allowedMarketerIds:
+              templateForm.allowedMarketerIds.length > 0
+                ? templateForm.allowedMarketerIds
+                : undefined,
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to save template.");
+      }
+      setEditingTemplateId(null);
+      setIsTemplateOpen(false);
+      await queryClient.invalidateQueries({
+        queryKey: ["coupon-templates", projectId, true],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to save template.";
+      setTemplateError(message);
+    } finally {
+      setIsCreatingTemplate(false);
     }
   };
 
@@ -371,6 +622,100 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         showAffiliate={true}
       />
 
+      {/* Coupon Templates */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle className="text-base">Coupon Templates</CardTitle>
+          {currentUser?.role === "creator" ? (
+            <Button size="sm" onClick={openCreateTemplate}>
+              Create template
+            </Button>
+          ) : null}
+        </CardHeader>
+        <CardContent>
+          {isTemplatesLoading ? (
+            <p className="text-muted-foreground">Loading templates...</p>
+          ) : couponTemplates.length === 0 ? (
+            <p className="text-muted-foreground">
+              No coupon templates yet. Create one to issue marketer promo codes.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="text-right">Discount</TableHead>
+                  <TableHead>Window</TableHead>
+                  <TableHead className="text-right">Max Redemptions</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[56px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {couponTemplates.map((template) => {
+                  const start = template.startAt
+                    ? new Date(template.startAt).toLocaleDateString()
+                    : "Anytime";
+                  const end = template.endAt
+                    ? new Date(template.endAt).toLocaleDateString()
+                    : "No end";
+                  return (
+                    <TableRow key={template.id}>
+                      <TableCell className="font-medium">
+                        {template.name}
+                        {template.description ? (
+                          <p className="text-xs text-muted-foreground">
+                            {template.description}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {template.percentOff}%
+                      </TableCell>
+                      <TableCell>
+                        {start} → {end}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {template.maxRedemptions ?? "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize">
+                          {template.status.toLowerCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Template actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => openEditTemplate(template)}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+          {templatesError ? (
+            <p className="text-sm text-destructive mt-3">
+              {templatesError instanceof Error
+                ? templatesError.message
+                : "Unable to load templates."}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
       {/* Marketers Table */}
       <Card>
         <CardHeader>
@@ -444,6 +789,287 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           ) : null}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={isTemplateOpen}
+        onOpenChange={(open) => {
+          setIsTemplateOpen(open);
+          if (!open) {
+            setEditingTemplateId(null);
+            setTemplateError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTemplateId ? "Edit coupon template" : "Create coupon template"}
+            </DialogTitle>
+            <DialogDescription>
+              Define discount settings for marketer promo codes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="templateName">Name</Label>
+              <Input
+                id="templateName"
+                value={templateForm.name}
+                onChange={(event) =>
+                  setTemplateForm((prev) => ({ ...prev, name: event.target.value }))
+                }
+                placeholder="Black Friday"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="templateDescription">Description</Label>
+              <Input
+                id="templateDescription"
+                value={templateForm.description}
+                onChange={(event) =>
+                  setTemplateForm((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
+                }
+                placeholder="Seasonal discount campaign"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="templatePercentOff">Discount (%)</Label>
+                <Input
+                  id="templatePercentOff"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={templateForm.percentOff}
+                  onChange={(event) =>
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      percentOff: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="templateMaxRedemptions">Max redemptions</Label>
+                <Input
+                  id="templateMaxRedemptions"
+                  type="number"
+                  min={1}
+                  value={templateForm.maxRedemptions}
+                  onChange={(event) =>
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      maxRedemptions: event.target.value,
+                    }))
+                  }
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="templateStart">Start date</Label>
+                <Input
+                  id="templateStart"
+                  type="date"
+                  value={templateForm.startAt}
+                  onChange={(event) =>
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      startAt: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="templateEnd">End date</Label>
+                <Input
+                  id="templateEnd"
+                  type="date"
+                  value={templateForm.endAt}
+                  onChange={(event) =>
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      endAt: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Products</Label>
+              <Popover open={productsOpen} onOpenChange={setProductsOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={productsOpen}
+                    className="w-full justify-between"
+                    disabled={isLoadingProducts}
+                  >
+                    {templateForm.productIds.length === 0
+                      ? "All products"
+                      : templateForm.productIds.length === 1
+                        ? productOptions.find(
+                            (item) => item.id === templateForm.productIds[0],
+                          )?.name ?? "1 product selected"
+                        : `${templateForm.productIds.length} products selected`}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search products..." />
+                    <CommandList>
+                      <CommandEmpty>No products found.</CommandEmpty>
+                      <CommandGroup>
+                        {productOptions.map((product) => {
+                          const isSelected = templateForm.productIds.includes(
+                            product.id,
+                          );
+                          return (
+                            <CommandItem
+                              key={product.id}
+                              value={product.name}
+                              onSelect={() => {
+                                setTemplateForm((prev) => {
+                                  const alreadySelected = prev.productIds.includes(
+                                    product.id,
+                                  );
+                                  return {
+                                    ...prev,
+                                    productIds: alreadySelected
+                                      ? prev.productIds.filter(
+                                          (id) => id !== product.id,
+                                        )
+                                      : [...prev.productIds, product.id],
+                                  };
+                                });
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "ml-2 mr-2 h-4 w-4",
+                                  isSelected ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              {product.name}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Leave empty to apply to all products.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Marketers</Label>
+              <Popover open={marketersOpen} onOpenChange={setMarketersOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={marketersOpen}
+                    className="w-full justify-between"
+                    disabled={isLoadingMarketers}
+                  >
+                    {templateForm.allowedMarketerIds.length === 0
+                      ? "All marketers"
+                      : templateForm.allowedMarketerIds.length === 1
+                        ? marketerOptions.find(
+                            (item) =>
+                              item.id === templateForm.allowedMarketerIds[0],
+                          )?.label ?? "1 marketer selected"
+                        : `${templateForm.allowedMarketerIds.length} marketers selected`}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search marketers..." />
+                    <CommandList>
+                      <CommandEmpty>No marketers found.</CommandEmpty>
+                      <CommandGroup>
+                        {marketerOptions.map((marketer) => {
+                          const isSelected =
+                            templateForm.allowedMarketerIds.includes(
+                              marketer.id,
+                            );
+                          return (
+                            <CommandItem
+                              key={marketer.id}
+                              value={marketer.label}
+                              onSelect={() => {
+                                setTemplateForm((prev) => {
+                                  const alreadySelected =
+                                    prev.allowedMarketerIds.includes(
+                                      marketer.id,
+                                    );
+                                  return {
+                                    ...prev,
+                                    allowedMarketerIds: alreadySelected
+                                      ? prev.allowedMarketerIds.filter(
+                                          (id) => id !== marketer.id,
+                                        )
+                                      : [...prev.allowedMarketerIds, marketer.id],
+                                  };
+                                });
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "ml-2 mr-2 h-4 w-4",
+                                  isSelected ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              {marketer.label}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Leave empty to allow all approved marketers.
+              </p>
+            </div>
+            {templateError ? (
+              <p className="text-sm text-destructive">{templateError}</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setIsTemplateOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveTemplate}
+              disabled={isCreatingTemplate || !templateForm.name.trim()}
+            >
+              {isCreatingTemplate
+                ? editingTemplateId
+                  ? "Saving..."
+                  : "Creating..."
+                : editingTemplateId
+                  ? "Save changes"
+                  : "Create template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

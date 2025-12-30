@@ -26,11 +26,20 @@ export async function GET(request: Request) {
     select: {
       id: true,
       projectId: true,
+      templateId: true,
       code: true,
       percentOff: true,
       commissionPercent: true,
       status: true,
       claimedAt: true,
+      template: {
+        select: {
+          name: true,
+          startAt: true,
+          endAt: true,
+          status: true,
+        },
+      },
     },
     orderBy: { claimedAt: "desc" },
   });

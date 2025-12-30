@@ -21,7 +21,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Copy, ExternalLink } from "lucide-react";
 import { Offer } from "@/lib/data/types";
 import { Contract } from "@/lib/hooks/contracts";
-import { useClaimCoupon, useCouponsForMarketer } from "@/lib/hooks/coupons";
+import {
+  useClaimCoupon,
+  useCouponsForMarketer,
+  useProjectCouponTemplates,
+} from "@/lib/hooks/coupons";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -80,6 +84,11 @@ export function MyOffersTable({
     }>
   >([]);
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [templateProjectId, setTemplateProjectId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const { data: templates = [], isLoading: isTemplatesLoading } =
+    useProjectCouponTemplates(templateProjectId, false, userId);
   const hasContracts = contracts.length > 0;
 
   const displayOffers = limit ? offers.slice(0, limit) : offers;
@@ -114,7 +123,13 @@ export function MyOffersTable({
   }
 
   const getCouponForProject = (projectId: string) => {
-    return coupons.find((coupon) => coupon.projectId === projectId) ?? null;
+    const projectCoupons = coupons.filter((coupon) => coupon.projectId === projectId);
+    if (projectCoupons.length === 0) return null;
+    return projectCoupons.sort((a, b) => {
+      const aTime = new Date(a.claimedAt).getTime();
+      const bTime = new Date(b.claimedAt).getTime();
+      return bTime - aTime;
+    })[0];
   };
 
   const buildReferralLink = (projectId: string, code: string) => {
@@ -122,11 +137,19 @@ export function MyOffersTable({
     return `${window.location.origin}/?projectId=${projectId}&promotionCode=${code}`;
   };
 
-  const handleClaimCoupon = async (projectId: string) => {
+  const handleOpenTemplateDialog = (projectId: string) => {
+    setTemplateProjectId(projectId);
+    setSelectedTemplateId("");
+    setCouponError(null);
+    setIsTemplateDialogOpen(true);
+  };
+
+  const handleClaimCoupon = async (projectId: string, templateId: string) => {
     if (!userId) return;
     setCouponError(null);
     try {
-      await claimCoupon.mutateAsync({ projectId, marketerId: userId });
+      await claimCoupon.mutateAsync({ projectId, templateId, marketerId: userId });
+      setIsTemplateDialogOpen(false);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to claim coupon.";
@@ -240,6 +263,13 @@ export function MyOffersTable({
     };
   }, [checkoutForm.priceId, checkoutProjectId, isCheckoutOpen]);
 
+  useEffect(() => {
+    if (!isTemplateDialogOpen || selectedTemplateId || templates.length === 0) {
+      return;
+    }
+    setSelectedTemplateId(templates[0].id);
+  }, [isTemplateDialogOpen, selectedTemplateId, templates]);
+
   if (hasContracts) {
     if (!userId) {
       return null;
@@ -280,7 +310,12 @@ export function MyOffersTable({
                 return (
                   <TableRow key={contract.id}>
                     <TableCell className="font-medium">
-                      {contract.projectName}
+                      <Link
+                        href={`/marketer/projects/${contract.projectId}`}
+                        className="hover:underline"
+                      >
+                        {contract.projectName}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-right">
                       {commissionPercent}%
@@ -312,9 +347,16 @@ export function MyOffersTable({
                     <TableCell>
                       {coupon ? (
                         <div className="flex items-center gap-2">
-                          <code className="bg-muted px-2 py-1 rounded text-xs">
-                            {coupon.code}
-                          </code>
+                          <div className="space-y-1">
+                            <code className="bg-muted px-2 py-1 rounded text-xs">
+                              {coupon.code}
+                            </code>
+                            {coupon.template?.name ? (
+                              <p className="text-xs text-muted-foreground">
+                                {coupon.template.name}
+                              </p>
+                            ) : null}
+                          </div>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -328,7 +370,7 @@ export function MyOffersTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleClaimCoupon(contract.projectId)}
+                          onClick={() => handleOpenTemplateDialog(contract.projectId)}
                           disabled={isClaiming}
                         >
                           {isClaiming ? "Generating..." : "Generate coupon"}
@@ -371,6 +413,74 @@ export function MyOffersTable({
             </Button>
           </div>
         )}
+        <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+          <DialogContent className="sm:max-w-[460px]">
+            <DialogHeader>
+              <DialogTitle>Select coupon template</DialogTitle>
+              <DialogDescription>
+                Choose a creator-managed template to generate your promo code.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {isTemplatesLoading ? (
+                <p className="text-sm text-muted-foreground">
+                  Loading templates...
+                </p>
+              ) : templates.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No active templates available for this project yet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Template</Label>
+                  <Select
+                    value={selectedTemplateId}
+                    onValueChange={setSelectedTemplateId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name} · {template.percentOff}% off
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {couponError ? (
+                <p className="text-sm text-destructive">{couponError}</p>
+              ) : null}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsTemplateDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (templateProjectId && selectedTemplateId) {
+                    handleClaimCoupon(templateProjectId, selectedTemplateId);
+                  }
+                }}
+                disabled={
+                  isTemplatesLoading ||
+                  templates.length === 0 ||
+                  !selectedTemplateId ||
+                  claimCoupon.isPending
+                }
+              >
+                {claimCoupon.isPending ? "Generating..." : "Generate coupon"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
           <DialogContent className="sm:max-w-[460px]">
             <DialogHeader>
@@ -553,7 +663,12 @@ export function MyOffersTable({
                 <TableRow key={offer.id}>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{project.name}</p>
+                      <Link
+                        href={`/marketer/projects/${project.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {project.name}
+                      </Link>
                       <Badge variant="secondary" className="text-xs mt-1">
                         {project.category}
                       </Badge>

@@ -12,11 +12,20 @@ export async function GET(
     where: { projectId },
     select: {
       id: true,
+      templateId: true,
       code: true,
       percentOff: true,
       commissionPercent: true,
       status: true,
       claimedAt: true,
+      template: {
+        select: {
+          name: true,
+          startAt: true,
+          endAt: true,
+          status: true,
+        },
+      },
       marketer: {
         select: {
           id: true,

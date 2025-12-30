@@ -3,6 +3,8 @@
 import {
   ChartConfig,
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
@@ -78,27 +80,28 @@ export function RevenueChart({
                 />
               }
             />
-            <Area
-              type="monotone"
-              dataKey="revenue"
+          <Area
+            type="monotone"
+            dataKey="revenue"
               stroke="var(--color-revenue)"
               fill="var(--color-revenue)"
               fillOpacity={0.2}
               strokeWidth={2}
             />
-            {showAffiliate && (
-              <Area
-                type="monotone"
-                dataKey="affiliateRevenue"
-                stroke="var(--color-affiliateRevenue)"
-                fill="var(--color-affiliateRevenue)"
-                fillOpacity={0.2}
-                strokeWidth={2}
-              />
-            )}
-          </AreaChart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
+          {showAffiliate && (
+            <Area
+              type="monotone"
+              dataKey="affiliateRevenue"
+              stroke="var(--color-affiliateRevenue)"
+              fill="var(--color-affiliateRevenue)"
+              fillOpacity={0.2}
+              strokeWidth={2}
+            />
+          )}
+          <ChartLegend content={<ChartLegendContent />} />
+        </AreaChart>
+      </ChartContainer>
+    </CardContent>
+  </Card>
   );
 }

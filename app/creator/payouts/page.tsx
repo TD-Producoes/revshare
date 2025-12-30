@@ -377,7 +377,7 @@ export default function PayoutsPage() {
                           ) : (
                             <Badge
                               variant="default"
-                              className="gap-1 bg-green-600"
+                              className="gap-1 bg-green-600 text-white"
                             >
                               <CheckCircle className="h-3 w-3" />
                               Paid

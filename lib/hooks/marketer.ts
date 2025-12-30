@@ -23,6 +23,22 @@ export type MarketerStats = {
   pendingEarnings: number;
 };
 
+export type MarketerProjectStats = {
+  projectId: string;
+  projectName: string;
+  commissionPercent: number;
+  totals: {
+    purchases: number;
+    revenue: number;
+    commission: number;
+  };
+  commissions: {
+    awaitingCreator: { count: number; amount: number };
+    ready: { count: number; amount: number };
+    paid: { count: number; amount: number };
+  };
+};
+
 export function useMarketerPurchases(userId?: string | null) {
   return useQuery<MarketerPurchase[]>({
     queryKey: ["marketer-purchases", userId ?? "none"],
@@ -51,6 +67,27 @@ export function useMarketerStats(userId?: string | null) {
       }
       const payload = await response.json();
       return payload?.data as MarketerStats;
+    },
+  });
+}
+
+export function useMarketerProjectStats(
+  projectId?: string | null,
+  userId?: string | null,
+) {
+  return useQuery<MarketerProjectStats>({
+    queryKey: ["marketer-project-stats", projectId ?? "none", userId ?? "none"],
+    enabled: Boolean(projectId && userId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/marketer/projects/${projectId}/stats?userId=${userId}`,
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch project stats.");
+      }
+      const payload = await response.json();
+      return payload?.data as MarketerProjectStats;
     },
   });
 }
