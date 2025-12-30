@@ -362,7 +362,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Stripe Connection */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className="text-base">Stripe Connection</CardTitle>
           <CardDescription>
@@ -401,7 +401,7 @@ export default function SettingsPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Payment Methods */}
       <Card>

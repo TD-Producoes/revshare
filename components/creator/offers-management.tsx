@@ -69,7 +69,7 @@ export function OffersManagement() {
         );
       case "approved":
         return (
-          <Badge variant="default" className="gap-1 bg-green-600">
+          <Badge variant="default" className="gap-1 bg-green-600 text-white">
             <CheckCircle className="h-3 w-3" />
             Approved
           </Badge>
