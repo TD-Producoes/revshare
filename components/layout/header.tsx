@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useTheme } from "@/components/theme-provider";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,10 +25,37 @@ export function Header() {
   const { data: user } = useUser(authUserId);
   const { theme, setTheme } = useTheme();
   const [logoutError, setLogoutError] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const displayName = useMemo(() => user?.name ?? "User", [user?.name]);
 
   if (!authUserId || !user) return null;
+
+  useEffect(() => {
+    let isActive = true;
+    const loadAvatar = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.getUser();
+      if (!isActive) return;
+      if (error || !data.user) {
+        setAvatarUrl(null);
+        return;
+      }
+      const metadata = data.user.user_metadata ?? {};
+      const url =
+        typeof metadata.avatar_url === "string"
+          ? metadata.avatar_url
+          : typeof metadata.picture === "string"
+            ? metadata.picture
+            : null;
+      setAvatarUrl(url);
+    };
+    void loadAvatar();
+
+    return () => {
+      isActive = false;
+    };
+  }, [authUserId]);
 
   const getInitials = (name: string) => {
     return name
@@ -87,6 +114,9 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 gap-2 px-2">
                 <Avatar className="h-6 w-6">
+                  {avatarUrl ? (
+                    <AvatarImage src={avatarUrl} alt={displayName} />
+                  ) : null}
                   <AvatarFallback className="text-[10px]">
                     {getInitials(displayName)}
                   </AvatarFallback>

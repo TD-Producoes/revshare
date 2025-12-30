@@ -1,5 +1,5 @@
 import { LoginForm } from "@/components/auth/login-form";
-import { Zap } from "lucide-react";
+import { ChartPie } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -11,7 +11,7 @@ export default function LoginPage() {
           className="flex items-center gap-2 self-center font-semibold"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+            <ChartPie strokeWidth={3} className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="text-lg">RevShare</span>
         </Link>

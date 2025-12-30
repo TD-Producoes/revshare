@@ -20,7 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, Sparkles, Github, LayoutDashboard } from "lucide-react";
+import { Menu, ChartPie, Sparkles, Github, LayoutDashboard } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 
@@ -39,7 +39,7 @@ export function Navbar() {
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="h-4 w-4" />
+              <ChartPie strokeWidth={3} className="h-4 w-4" />
             </div>
             <span>RevShare</span>
           </Link>

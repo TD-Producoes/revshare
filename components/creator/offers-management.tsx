@@ -124,7 +124,7 @@ export function OffersManagement() {
               </TableCell>
               <TableCell>{contract.projectName}</TableCell>
               <TableCell className="text-right">
-                {contract.commissionPercent}%
+                {contract.commissionPercent * 100}%
               </TableCell>
               <TableCell>{getStatusBadge(contract.status)}</TableCell>
               <TableCell className="text-muted-foreground">
