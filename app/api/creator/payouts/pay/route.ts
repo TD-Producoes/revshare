@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { notificationMessages } from "@/lib/notifications/messages";
 
 const payInput = z.object({
   userId: z.string().min(1),
@@ -114,6 +115,22 @@ export async function POST(request: Request) {
       },
     });
 
+    await prisma.event.create({
+      data: {
+        type: "TRANSFER_INITIATED",
+        actorId: creator.id,
+        projectId: group.projectId,
+        subjectType: "Transfer",
+        subjectId: transferRecord.id,
+        data: {
+          creatorId: creator.id,
+          marketerId: group.marketerId,
+          amount: group.totalAmount,
+          currency: group.currency,
+        },
+      },
+    });
+
     try {
       const transfer = await stripe.transfers.create(
         {
@@ -136,6 +153,35 @@ export async function POST(request: Request) {
           status: "PAID",
           stripeTransferId: transfer.id,
           failureReason: null,
+        },
+      });
+
+      await prisma.event.create({
+        data: {
+          type: "TRANSFER_COMPLETED",
+          actorId: creator.id,
+          projectId: group.projectId,
+          subjectType: "Transfer",
+          subjectId: transferRecord.id,
+          data: {
+            transferId: transfer.id,
+            marketerId: group.marketerId,
+            amount: group.totalAmount,
+            currency: group.currency,
+          },
+        },
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: group.marketerId,
+          type: "PAYOUT_SENT",
+          ...notificationMessages.payoutSent(group.totalAmount, group.currency),
+          data: {
+            transferRecordId: transferRecord.id,
+            transferId: transfer.id,
+            projectId: group.projectId,
+          },
         },
       });
 
@@ -162,6 +208,34 @@ export async function POST(request: Request) {
       await prisma.transfer.update({
         where: { id: transferRecord.id },
         data: { status: "FAILED", failureReason },
+      });
+
+      await prisma.event.create({
+        data: {
+          type: "TRANSFER_FAILED",
+          actorId: creator.id,
+          projectId: group.projectId,
+          subjectType: "Transfer",
+          subjectId: transferRecord.id,
+          data: {
+            marketerId: group.marketerId,
+            amount: group.totalAmount,
+            currency: group.currency,
+            failureReason,
+          },
+        },
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: group.marketerId,
+          type: "PAYOUT_FAILED",
+          ...notificationMessages.payoutFailed(failureReason),
+          data: {
+            transferRecordId: transferRecord.id,
+            projectId: group.projectId,
+          },
+        },
       });
 
       await prisma.purchase.updateMany({

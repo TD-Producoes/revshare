@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { notificationMessages } from "@/lib/notifications/messages";
 
 const createContractInput = z.object({
   projectId: z.string().min(1),
@@ -161,12 +162,47 @@ export async function POST(request: Request) {
 
   const commissionPercent = normalizePercent(payload.commissionPercent);
 
-  const contract = await prisma.contract.create({
-    data: {
-      projectId: project.id,
-      userId: marketer.id,
-      commissionPercent: commissionPercent.toString(),
-    },
+  const contract = await prisma.$transaction(async (tx) => {
+    const createdContract = await tx.contract.create({
+      data: {
+        projectId: project.id,
+        userId: marketer.id,
+        commissionPercent: commissionPercent.toString(),
+      },
+    });
+
+    await tx.event.create({
+      data: {
+        type: "CONTRACT_CREATED",
+        actorId: marketer.id,
+        projectId: project.id,
+        subjectType: "Contract",
+        subjectId: createdContract.id,
+        data: {
+          projectId: project.id,
+          contractStatus: "PENDING",
+          marketerId: marketer.id,
+        },
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId: project.userId,
+        type: "SYSTEM",
+        ...notificationMessages.contractApplied(
+          marketer.name ?? "A marketer",
+          project.name,
+        ),
+        data: {
+          projectId: project.id,
+          marketerId: marketer.id,
+          contractId: createdContract.id,
+        },
+      },
+    });
+
+    return createdContract;
   });
 
   return NextResponse.json(

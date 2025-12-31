@@ -47,6 +47,8 @@ import {
   PieChart,
   ReceiptText,
   Banknote,
+  Building2,
+  CheckCircle2,
 } from "lucide-react";
 
 const topMarketers = [
@@ -306,54 +308,92 @@ export default function Home() {
                   <Link href="/login">View live demo</Link>
                 </Button>
               </div>
+
+              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <span>Creators only pay on successful sales. No monthly fees.</span>
+              </div>
             </div>
 
-            {/* Hero Card / Snapshot - stylized like a dashboard widget */}
+            {/* Hero Card / Commission Flow Visualizer */}
             <div className="relative mt-8 lg:mt-0">
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-primary/20 to-secondary/20 blur-2xl opacity-50" />
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-primary/20 to-emerald-500/20 blur-2xl opacity-50" />
               <Card className="relative overflow-hidden border-border/50 bg-background/60 shadow-2xl backdrop-blur-xl">
-                <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
-                  <div className="space-y-1">
-                    <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Weekly Snapshot</CardTitle>
-                    <CardDescription>Live revenue metrics</CardDescription>
+                <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground">The 20% Model</CardTitle>
+                    <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-500 text-[10px]"><Zap className="mr-1 h-3 w-3" /> AUTOMATED</Badge>
                   </div>
-                  <Badge variant="secondary" className="font-mono text-xs">LIVE</Badge>
                 </CardHeader>
-                <CardContent className="space-y-8">
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <span className="text-sm text-muted-foreground">Creator Payouts</span>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold tracking-tight">{formatCurrency(38200)}</span>
-                        <span className="text-xs font-medium text-emerald-500 flex items-center">
-                          <TrendingUp className="mr-1 h-3 w-3" /> +12%
-                        </span>
+                <CardContent className="space-y-6">
+                  {/* Top: The Sale */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-background p-3 shadow-sm w-full max-w-[280px] justify-between group hover:border-primary/30 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-lg bg-blue-500/10 p-2 text-blue-500">
+                          <CreditCard className="h-5 w-5" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Sale</span>
+                          <span className="text-sm font-bold text-foreground">Customer Purchase</span>
+                        </div>
+                      </div>
+                      <span className="text-lg font-bold text-foreground">$100.00</span>
+                    </div>
+                  </div>
+
+                  {/* Middle: The Split Flow */}
+                  <div className="relative flex justify-center py-2">
+                    <div className="absolute top-0 bottom-0 w-px border-l-2 border-dashed border-border/60" />
+                    <div className="absolute top-1/2 left-[20%] right-[20%] h-px border-t-2 border-dashed border-border/60" />
+                    {/* Connection Dots */}
+                    <div className="absolute top-0 w-2 h-2 rounded-full bg-border -mt-1" />
+                    <div className="absolute top-1/2 left-[20%] w-2 h-2 rounded-full bg-border -mt-1 -ml-1" />
+                    <div className="absolute top-1/2 right-[20%] w-2 h-2 rounded-full bg-border -mt-1 -mr-1" />
+                  </div>
+
+                  {/* Bottom: The Distribution */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Maker Side */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-3 rounded-xl border border-border/50 bg-background/50 p-4 shadow-sm h-full">
+                        <div className="flex items-center justify-between">
+                          <div className="rounded-lg bg-zinc-500/10 p-2 text-zinc-500">
+                            <Building2 className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-mono text-muted-foreground">80%</span>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-foreground">$80.00</div>
+                          <div className="text-xs text-muted-foreground">Maker Revenue</div>
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <span className="text-sm text-muted-foreground">Marketer Earnings</span>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold tracking-tight">{formatCurrency(14650)}</span>
-                        <span className="text-xs font-medium text-emerald-500 flex items-center">
-                          <TrendingUp className="mr-1 h-3 w-3" /> +8%
-                        </span>
+
+                    {/* Marketer Side - Highlighted */}
+                    <div className="flex flex-col gap-2">
+                      <div className="relative flex flex-col gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm h-full overflow-hidden">
+                        <div className="absolute top-0 right-0 p-1.5 opacity-20">
+                          <Sparkles className="h-12 w-12 text-emerald-500" />
+                        </div>
+                        <div className="flex items-center justify-between relative z-10">
+                          <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
+                            <Wallet className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">20%</span>
+                        </div>
+                        <div className="relative z-10">
+                          <div className="text-2xl font-bold text-emerald-600">$20.00</div>
+                          <div className="text-xs text-emerald-600/80 font-medium">Your Commission</div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl bg-card border border-border/50 p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="rounded-full bg-primary/10 p-2 text-primary">
-                        <Zap className="h-4 w-4" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">Top Mover</p>
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-semibold text-foreground">BuildPublic</span> jumped +22% after a new affiliate bundle launch.
-                        </p>
-                      </div>
-                    </div>
+                  <div className="rounded-lg bg-muted/30 border border-border/40 p-3 flex items-center gap-3 justify-center">
+                    <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground font-medium">Funds routed automatically via Stripe Connect</span>
                   </div>
                 </CardContent>
               </Card>

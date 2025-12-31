@@ -17,7 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, Zap, Sun, Moon } from "lucide-react";
+import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/lib/hooks/notifications";
+import { ChevronDown, Zap, Sun, Moon, Bell } from "lucide-react";
 
 export function Header() {
   const router = useRouter();
@@ -26,8 +27,13 @@ export function Header() {
   const { theme, setTheme } = useTheme();
   const [logoutError, setLogoutError] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { data: notificationsPayload } = useNotifications(user?.id, 10);
+  const markNotificationRead = useMarkNotificationRead();
+  const markAllNotificationsRead = useMarkAllNotificationsRead();
 
   const displayName = useMemo(() => user?.name ?? "User", [user?.name]);
+  const notifications = notificationsPayload?.data ?? [];
+  const unreadCount = notificationsPayload?.unreadCount ?? 0;
 
   if (!authUserId || !user) return null;
 
@@ -81,6 +87,11 @@ export function Header() {
     router.refresh();
   };
 
+  const handleMarkAll = async () => {
+    if (!user?.id) return;
+    await markAllNotificationsRead.mutateAsync({ userId: user.id });
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-12 items-center px-4">
@@ -109,6 +120,73 @@ export function Header() {
           >
             {user.role}
           </Badge>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative h-8 w-8">
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 ? (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                ) : null}
+                <span className="sr-only">Notifications</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-semibold">Notifications</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleMarkAll}
+                  disabled={unreadCount === 0}
+                >
+                  Mark all read
+                </Button>
+              </div>
+              <DropdownMenuSeparator />
+              <div className="max-h-80 overflow-auto">
+                {notifications.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    No notifications yet.
+                  </div>
+                ) : (
+                  notifications.map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className="flex flex-col items-start gap-1 py-3"
+                      onClick={() => {
+                        if (notification.status === "UNREAD" && user?.id) {
+                          markNotificationRead.mutate({
+                            notificationId: notification.id,
+                            userId: user.id,
+                          });
+                        }
+                      }}
+                    >
+                      <div className="flex w-full items-start justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          {notification.title}
+                        </span>
+                        {notification.status === "UNREAD" ? (
+                          <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                        ) : null}
+                      </div>
+                      {notification.message ? (
+                        <span className="text-xs text-muted-foreground">
+                          {notification.message}
+                        </span>
+                      ) : null}
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </span>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { ContractStatus } from "@prisma/client";
+import { notificationMessages } from "@/lib/notifications/messages";
 
 const statusInput = z.object({
   creatorId: z.string().min(1),
@@ -34,21 +35,55 @@ export async function PATCH(
 
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
-    include: { project: { select: { userId: true } } },
+    include: { project: { select: { userId: true, name: true } } },
   });
 
   if (!contract || contract.project.userId !== creatorId) {
     return NextResponse.json({ error: "Contract not found" }, { status: 404 });
   }
 
-  const updated = await prisma.contract.update({
-    where: { id: contractId },
-    data: { status: status.toUpperCase() as ContractStatus },
-    select: {
-      id: true,
-      status: true,
-      updatedAt: true,
-    },
+  const updated = await prisma.$transaction(async (tx) => {
+    const nextStatus = status.toUpperCase() as ContractStatus;
+    const updatedContract = await tx.contract.update({
+      where: { id: contractId },
+      data: { status: nextStatus },
+      select: {
+        id: true,
+        status: true,
+        updatedAt: true,
+      },
+    });
+
+    await tx.event.create({
+      data: {
+        type: nextStatus === "APPROVED" ? "CONTRACT_APPROVED" : "CONTRACT_REJECTED",
+        actorId: creator.id,
+        projectId: contract.projectId,
+        subjectType: "Contract",
+        subjectId: contract.id,
+        data: {
+          projectId: contract.projectId,
+          contractStatus: nextStatus,
+          marketerId: contract.userId,
+        },
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId: contract.userId,
+        type: nextStatus === "APPROVED" ? "CONTRACT_APPROVED" : "CONTRACT_REJECTED",
+        ...(nextStatus === "APPROVED"
+          ? notificationMessages.contractApproved(contract.project.name)
+          : notificationMessages.contractRejected(contract.project.name)),
+        data: {
+          projectId: contract.projectId,
+          contractId: contract.id,
+        },
+      },
+    });
+
+    return updatedContract;
   });
 
   return NextResponse.json({

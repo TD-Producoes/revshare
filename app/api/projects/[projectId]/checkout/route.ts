@@ -97,6 +97,7 @@ export async function POST(
   const marketerCommissionPercent = Number(project.marketerCommissionPercent);
   const totalCommissionPercent =
     platformCommissionPercent + marketerCommissionPercent;
+  const applicationFeePercent = Number((totalCommissionPercent * 100).toFixed(2));
   const hasPromotion = Boolean(promotionCodeId);
   const quantity = payload.quantity ?? 1;
   const baseAmount = (price.unit_amount ?? 0) * quantity;
@@ -155,7 +156,7 @@ export async function POST(
             subscription_data: {
               metadata: { projectId },
               ...(hasPromotion
-                ? { application_fee_percent: totalCommissionPercent * 100 }
+                ? { application_fee_percent: applicationFeePercent }
                 : {}),
             },
           }

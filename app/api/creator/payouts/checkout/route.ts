@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { notificationMessages } from "@/lib/notifications/messages";
 
 const checkoutInput = z.object({
   userId: z.string().min(1),
@@ -112,19 +113,50 @@ export async function POST(request: Request) {
   const processingFee = calculateProcessingFee(totals.grandTotal);
   const totalWithFee = totals.grandTotal + processingFee;
 
-  const creatorPayment =
-    payment ??
-    (await prisma.creatorPayment.create({
-      data: {
-        creatorId: creator.id,
-        amountTotal: totalWithFee,
-        marketerTotal: totals.marketerTotal,
-        platformFeeTotal: totals.platformTotal,
-        status: "PENDING",
-      },
-    }));
+  let creatorPayment = payment;
+  let createdNewPayment = false;
+  if (!creatorPayment) {
+    creatorPayment = await prisma.$transaction(async (tx) => {
+      const created = await tx.creatorPayment.create({
+        data: {
+          creatorId: creator.id,
+          amountTotal: totalWithFee,
+          marketerTotal: totals.marketerTotal,
+          platformFeeTotal: totals.platformTotal,
+          status: "PENDING",
+        },
+      });
 
-  if (!payment) {
+      await tx.event.create({
+        data: {
+          type: "CREATOR_PAYMENT_CREATED",
+          actorId: creator.id,
+          subjectType: "CreatorPayment",
+          subjectId: created.id,
+          data: {
+            creatorId: creator.id,
+            amountTotal: totalWithFee,
+          },
+        },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: creator.id,
+          type: "SYSTEM",
+          ...notificationMessages.payoutInvoiceCreated(),
+          data: {
+            creatorPaymentId: created.id,
+          },
+        },
+      });
+
+      return created;
+    });
+    createdNewPayment = true;
+  }
+
+  if (createdNewPayment && creatorPayment) {
     await prisma.purchase.updateMany({
       where: { id: { in: purchases.map((purchase) => purchase.id) } },
       data: { creatorPaymentId: creatorPayment.id },

@@ -31,6 +31,8 @@ model User {
   creatorTransfers          Transfer[] @relation("CreatorTransfers")
   marketerTransfers         Transfer[] @relation("MarketerTransfers")
   creatorPayments           CreatorPayment[]
+  events                    Event[] @relation("ActorEvents")
+  notifications             Notification[]
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 }
@@ -50,6 +52,7 @@ model Project {
   coupons               Coupon[]
   purchases             Purchase[]
   contracts             Contract[]
+  events                Event[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -152,6 +155,46 @@ model Purchase {
   @@index([creatorPaymentId])
 }
 
+model Event {
+  id          String     @id @default(cuid())
+  type        EventType
+  actorId     String?
+  projectId   String?
+  subjectType String?
+  subjectId   String?
+  data        Json?
+  createdAt   DateTime   @default(now())
+
+  actor   User?    @relation("ActorEvents", fields: [actorId], references: [id], onDelete: SetNull)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+
+  @@index([type])
+  @@index([actorId])
+  @@index([projectId])
+  @@index([subjectType, subjectId])
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  eventId   String?
+  type      NotificationType
+  title     String
+  message   String?
+  data      Json?
+  status    NotificationStatus @default(UNREAD)
+  readAt    DateTime?
+  createdAt DateTime           @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+}
+
 enum CouponStatus {
   ACTIVE
   REVOKED
@@ -161,6 +204,38 @@ enum ContractStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum EventType {
+  USER_SIGNED_UP
+  USER_LOGGED_IN
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  COUPON_TEMPLATE_CREATED
+  COUPON_TEMPLATE_UPDATED
+  COUPON_CLAIMED
+  PURCHASE_CREATED
+  CREATOR_PAYMENT_CREATED
+  CREATOR_PAYMENT_COMPLETED
+  TRANSFER_INITIATED
+  TRANSFER_COMPLETED
+  TRANSFER_FAILED
+  CONTRACT_CREATED
+  CONTRACT_APPROVED
+  CONTRACT_REJECTED
+  NOTIFICATION_SENT
+}
+
+enum NotificationType {
+  SALE
+  COMMISSION_DUE
+  COMMISSION_READY
+  PAYOUT_SENT
+  PAYOUT_FAILED
+  CONTRACT_APPROVED
+  CONTRACT_REJECTED
+  PROJECT_UPDATE
+  SYSTEM
 }
 
 enum UserRole {
@@ -184,6 +259,12 @@ enum PaymentStatus {
   PENDING
   PAID
   FAILED
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
 }
 
 model CreatorPayment {

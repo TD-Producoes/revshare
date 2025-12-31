@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
+import { notificationMessages } from "@/lib/notifications/messages";
 
 export const runtime = "nodejs";
 
@@ -201,7 +202,7 @@ export async function POST(request: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     const creatorPaymentId = session.metadata?.creatorPaymentId ?? null;
     if (creatorPaymentId) {
-      await prisma.creatorPayment.update({
+      const updatedPayment = await prisma.creatorPayment.update({
         where: { id: creatorPaymentId },
         data: {
           status: "PAID",
@@ -211,13 +212,42 @@ export async function POST(request: Request) {
               ? session.payment_intent
               : null,
         },
+        select: { id: true, creatorId: true },
       });
       await prisma.purchase.updateMany({
         where: { creatorPaymentId },
         data: { commissionStatus: "READY_FOR_PAYOUT" },
       });
+      await prisma.event.create({
+        data: {
+          type: "CREATOR_PAYMENT_COMPLETED",
+          actorId: updatedPayment.creatorId,
+          subjectType: "CreatorPayment",
+          subjectId: updatedPayment.id,
+          data: {
+            creatorPaymentId: updatedPayment.id,
+          },
+        },
+      });
+      await prisma.notification.create({
+        data: {
+          userId: updatedPayment.creatorId,
+          type: "SYSTEM",
+          ...notificationMessages.payoutInvoicePaid(),
+          data: {
+            creatorPaymentId: updatedPayment.id,
+          },
+        },
+      });
       return NextResponse.json({ received: true, creatorPaymentId });
     }
+    if (session.mode === "subscription") {
+      return NextResponse.json({ received: true });
+    }
+  }
+
+  if (event.type === "payment_intent.succeeded") {
+    return NextResponse.json({ received: true });
   }
 
   const details = parseEventDetails(event);
@@ -227,6 +257,8 @@ export async function POST(request: Request) {
         where: { creatorStripeAccountId: accountId },
         select: {
           id: true,
+          userId: true,
+          name: true,
         },
       })
     : null;
@@ -237,7 +269,10 @@ export async function POST(request: Request) {
       select: { projectId: true },
     });
     if (couponMatch?.projectId) {
-      projectMatch = { id: couponMatch.projectId };
+      projectMatch = await prisma.project.findFirst({
+        where: { id: couponMatch.projectId },
+        select: { id: true, userId: true, name: true },
+      });
     }
   }
 
@@ -248,6 +283,8 @@ export async function POST(request: Request) {
         where: { id: projectId },
         select: {
           id: true,
+          userId: true,
+          name: true,
         },
       });
     }
@@ -325,7 +362,7 @@ export async function POST(request: Request) {
     coupon && commissionAmount > 0 ? "PENDING_CREATOR_PAYMENT" : "PAID";
 
   console.log(`Creating purchase record for event ${event.id}`);
-  await prisma.purchase.create({
+  const purchase = await prisma.purchase.create({
     data: {
       projectId: projectMatch.id,
       couponId: coupon?.id ?? null,
@@ -341,7 +378,60 @@ export async function POST(request: Request) {
       commissionStatus,
       status,
     },
+    select: {
+      id: true,
+      projectId: true,
+      couponId: true,
+    },
   });
+
+  await prisma.event.create({
+    data: {
+      type: "PURCHASE_CREATED",
+      actorId: coupon?.marketerId ?? null,
+      projectId: projectMatch.id,
+      subjectType: "Purchase",
+      subjectId: purchase.id,
+      data: {
+        projectId: projectMatch.id,
+        couponId: coupon?.id ?? null,
+        amount: details.amount,
+        currency: details.currency,
+      },
+    },
+  });
+
+  if (coupon?.marketerId) {
+    await prisma.notification.create({
+      data: {
+        userId: coupon.marketerId,
+        type: "SALE",
+        ...notificationMessages.referralSale(commissionAmount, details.currency),
+        data: {
+          projectId: projectMatch.id,
+          purchaseId: purchase.id,
+          commissionAmount,
+        },
+      },
+    });
+  }
+
+  if (projectMatch.userId) {
+    await prisma.notification.create({
+      data: {
+        userId: projectMatch.userId,
+        type: "COMMISSION_DUE",
+        ...notificationMessages.commissionDue(
+          projectMatch.name ?? "your project",
+        ),
+        data: {
+          projectId: projectMatch.id,
+          purchaseId: purchase.id,
+          commissionAmount,
+        },
+      },
+    });
+  }
 
   return NextResponse.json({ received: true });
 }
