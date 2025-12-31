@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { notificationMessages } from "@/lib/notifications/messages";
 
 const templateInput = z.object({
   creatorId: z.string().min(1),
@@ -150,33 +151,72 @@ export async function POST(
     { stripeAccount },
   );
 
-  const template = await prisma.couponTemplate.create({
-    data: {
-      projectId: project.id,
-      name: payload.name,
-      description: payload.description,
-      percentOff: payload.percentOff,
-      startAt,
-      endAt,
-      maxRedemptions: payload.maxRedemptions,
-      productIds: payload.productIds ?? [],
-      allowedMarketerIds: payload.allowedMarketerIds ?? [],
-      stripeCouponId: stripeCoupon.id,
-      status: "ACTIVE",
-    },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      percentOff: true,
-      startAt: true,
-      endAt: true,
-      maxRedemptions: true,
-      productIds: true,
-      allowedMarketerIds: true,
-      status: true,
-      createdAt: true,
-    },
+  const template = await prisma.$transaction(async (tx) => {
+    const createdTemplate = await tx.couponTemplate.create({
+      data: {
+        projectId: project.id,
+        name: payload.name,
+        description: payload.description,
+        percentOff: payload.percentOff,
+        startAt,
+        endAt,
+        maxRedemptions: payload.maxRedemptions,
+        productIds: payload.productIds ?? [],
+        allowedMarketerIds: payload.allowedMarketerIds ?? [],
+        stripeCouponId: stripeCoupon.id,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        percentOff: true,
+        startAt: true,
+        endAt: true,
+        maxRedemptions: true,
+        productIds: true,
+        allowedMarketerIds: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    await tx.event.create({
+      data: {
+        type: "COUPON_TEMPLATE_CREATED",
+        actorId: payload.creatorId,
+        projectId: project.id,
+        subjectType: "CouponTemplate",
+        subjectId: createdTemplate.id,
+        data: {
+          projectId: project.id,
+          templateId: createdTemplate.id,
+          percentOff: payload.percentOff,
+        },
+      },
+    });
+
+    const allowed = Array.isArray(createdTemplate.allowedMarketerIds)
+      ? createdTemplate.allowedMarketerIds
+      : [];
+    if (allowed.length > 0) {
+      await tx.notification.createMany({
+        data: allowed.map((marketerId) => ({
+          userId: marketerId,
+          type: "SYSTEM",
+          ...notificationMessages.couponTemplateCreated(
+            createdTemplate.name,
+            project.name,
+          ),
+          data: {
+            projectId: project.id,
+            templateId: createdTemplate.id,
+          },
+        })),
+      });
+    }
+
+    return createdTemplate;
   });
 
   return NextResponse.json({ data: template }, { status: 201 });

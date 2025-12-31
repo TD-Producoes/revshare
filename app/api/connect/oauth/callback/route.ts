@@ -68,6 +68,16 @@ export async function GET(request: Request) {
   };
 
   const completedAt = onboardingStatus === "complete" ? new Date() : null;
+  let currency: string | null = null;
+  try {
+    const prices = await stripe.prices.list(
+      { active: true, limit: 1 },
+      { stripeAccount: account.id },
+    );
+    currency = prices.data[0]?.currency ?? null;
+  } catch {
+    currency = null;
+  }
 
   await prisma.project.update({
     where: { id: projectId },
@@ -76,6 +86,7 @@ export async function GET(request: Request) {
       onboardingStatus,
       onboardingData: JSON.parse(JSON.stringify(onboardingData)),
       onboardingCompletedAt: completedAt,
+      ...(currency ? { currency } : {}),
     },
   });
 

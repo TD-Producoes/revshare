@@ -30,6 +30,14 @@ import {
   usePaymentMethods,
   useSetDefaultPaymentMethod,
 } from "@/lib/hooks/payment-methods";
+import { useProjects } from "@/lib/hooks/projects";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const stripePublishableKey =
   process.env.NEXT_PUBLIC_PLATFORM_STRIPE_PUBLISHABLE_KEY ?? "";
@@ -39,6 +47,9 @@ export default function SettingsPage() {
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
   const { data: paymentMethods = [], isLoading: isPaymentMethodsLoading } =
     usePaymentMethods(authUserId);
+  const { data: projects = [], isLoading: isProjectsLoading } = useProjects(
+    authUserId,
+  );
   const setDefaultPaymentMethod = useSetDefaultPaymentMethod(authUserId);
   const queryClient = useQueryClient();
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -61,6 +72,8 @@ export default function SettingsPage() {
   );
   const [isSavingPayment, setIsSavingPayment] = useState(false);
   const paymentElementRef = useRef<HTMLDivElement | null>(null);
+  const [currencyError, setCurrencyError] = useState<string | null>(null);
+  const [savingCurrencyId, setSavingCurrencyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!paymentDialogOpen) {
@@ -262,6 +275,35 @@ export default function SettingsPage() {
       setPaymentMethodError(message);
     } finally {
       setIsUpdatingAutoCharge(false);
+    }
+  };
+
+  const handleCurrencyChange = async (projectId: string, currency: string) => {
+    if (!currentUser) return;
+    setCurrencyError(null);
+    setSavingCurrencyId(projectId);
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUser.id, currency }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to update currency.");
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["projects", authUserId ?? "all"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["projects", projectId],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update currency.";
+      setCurrencyError(message);
+    } finally {
+      setSavingCurrencyId(null);
     }
   };
 
@@ -554,6 +596,64 @@ export default function SettingsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </CardContent>
+      </Card>
+
+      {/* Project Currency */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Project Currency</CardTitle>
+          <CardDescription>
+            Choose the primary currency used to display project stats.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {currencyError ? (
+            <p className="text-sm text-destructive">{currencyError}</p>
+          ) : null}
+          {isProjectsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading projects...</p>
+          ) : projects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Create a project to set its reporting currency.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between gap-4 rounded-md border p-3"
+                >
+                  <div>
+                    <p className="font-medium">{project.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {project.currency
+                        ? `Current: ${project.currency}`
+                        : "No currency set"}
+                    </p>
+                  </div>
+                  <Select
+                    value={(project.currency ?? "USD").toUpperCase()}
+                    onValueChange={(value) =>
+                      handleCurrencyChange(project.id, value)
+                    }
+                    disabled={savingCurrencyId === project.id}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="AUD">AUD</SelectItem>
+                      <SelectItem value="CAD">CAD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

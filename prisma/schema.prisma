@@ -42,10 +42,12 @@ model Project {
   userId                String
   name                  String
   description           String?
+  category              String? @default("Other")
   creatorStripeAccountId String?
   onboardingStatus       String?
   onboardingData         Json?
   onboardingCompletedAt  DateTime?
+  currency              String?
   platformCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
   marketerCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
   couponTemplates       CouponTemplate[]

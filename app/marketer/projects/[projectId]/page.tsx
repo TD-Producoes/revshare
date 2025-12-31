@@ -1,9 +1,10 @@
 import { MarketerProjectDetail } from "@/components/marketer/project-detail";
 
-export default function MarketerProjectPage({
+export default async function MarketerProjectPage({
   params,
 }: {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }) {
-  return <MarketerProjectDetail projectId={params.projectId} />;
+  const { projectId } = await params;
+  return <MarketerProjectDetail projectId={projectId} />;
 }

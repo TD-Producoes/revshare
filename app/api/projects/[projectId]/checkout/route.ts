@@ -122,6 +122,21 @@ export async function POST(
     } else if (coupon?.amount_off) {
       discountedAmount = Math.max(0, baseAmount - coupon.amount_off * quantity);
     }
+
+    const priceProductId =
+      typeof price.product === "string" ? price.product : price.product?.id;
+    if (coupon?.applies_to?.products?.length && priceProductId) {
+      const allowed = coupon.applies_to.products.includes(priceProductId);
+      if (!allowed) {
+        return NextResponse.json(
+          {
+            error:
+              "This coupon does not apply to the selected product. Please choose a compatible product.",
+          },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   const applicationFeeAmount = hasPromotion

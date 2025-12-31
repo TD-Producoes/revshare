@@ -7,7 +7,9 @@ export type ApiProject = {
   userId: string;
   name: string;
   description?: string | null;
+  category?: string | null;
   creatorStripeAccountId?: string | null;
+  currency?: string | null;
   platformCommissionPercent?: string | number | null;
   marketerCommissionPercent?: string | number | null;
   createdAt?: string | null;

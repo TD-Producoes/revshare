@@ -35,8 +35,21 @@ export const notificationMessages = {
     title: "New referral sale",
     message: `You earned ${Math.round(commissionAmount) / 100} ${currency.toUpperCase()} in commission.`,
   }),
-  commissionDue: (projectName: string) => ({
+  commissionDue: (
+    projectName: string,
+    amount: number,
+    commissionAmount: number,
+    currency: string,
+  ) => ({
     title: "Commission due",
-    message: `A new referral sale was recorded for ${projectName}.`,
+    message: `Sale ${Math.round(amount) / 100} ${currency.toUpperCase()} · Commission ${Math.round(commissionAmount) / 100} ${currency.toUpperCase()} for ${projectName}.`,
+  }),
+  newSale: (projectName: string, amount: number, currency: string) => ({
+    title: "New sale",
+    message: `Sale ${Math.round(amount) / 100} ${currency.toUpperCase()} for ${projectName}.`,
+  }),
+  couponTemplateCreated: (templateName: string, projectName: string) => ({
+    title: "New coupon template",
+    message: `${templateName} is now available for ${projectName}.`,
   }),
 };

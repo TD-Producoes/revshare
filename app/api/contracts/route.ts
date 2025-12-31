@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     }),
     prisma.project.findUnique({
       where: { id: payload.projectId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, userId: true },
     }),
   ]);
 

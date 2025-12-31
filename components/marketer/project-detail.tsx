@@ -169,6 +169,8 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
         ? Math.round(contract.commissionPercent)
         : Math.round(contract.commissionPercent * 100)
       : null;
+  const projectCurrency =
+    typeof project.currency === "string" ? project.currency : "USD";
 
   const totals = stats?.totals ?? {
     purchases: 0,
@@ -206,25 +208,28 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Revenue Attributed"
-          value={formatCurrency(totals.revenue)}
+          value={formatCurrency(totals.revenue, projectCurrency)}
           description={`${totals.purchases} purchases`}
           icon={Tag}
         />
         <StatCard
           title="Total Commission"
-          value={formatCurrency(totals.commission)}
+          value={formatCurrency(totals.commission, projectCurrency)}
           description="All time"
           icon={Tag}
         />
         <StatCard
           title="Awaiting Creator"
-          value={formatCurrency(commissionStatus.awaitingCreator.amount)}
+          value={formatCurrency(
+            commissionStatus.awaitingCreator.amount,
+            projectCurrency,
+          )}
           description={`${commissionStatus.awaitingCreator.count} purchases`}
           icon={Tag}
         />
         <StatCard
           title="Ready to Payout"
-          value={formatCurrency(commissionStatus.ready.amount)}
+          value={formatCurrency(commissionStatus.ready.amount, projectCurrency)}
           description={`${commissionStatus.ready.count} purchases`}
           icon={Tag}
         />
@@ -433,10 +438,13 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(purchase.amount)}
+                        {formatCurrency(purchase.amount, purchase.currency)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(purchase.commissionAmount)}
+                        {formatCurrency(
+                          purchase.commissionAmount,
+                          purchase.currency,
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
@@ -444,7 +452,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {new Date(purchase.createdAt).toLocaleDateString()}
+                        {new Date(purchase.createdAt).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))}

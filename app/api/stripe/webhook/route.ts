@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
+import { platformStripe } from "@/lib/stripe";
 import { notificationMessages } from "@/lib/notifications/messages";
 
 export const runtime = "nodejs";
@@ -250,8 +251,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
-  const details = parseEventDetails(event);
+  if (event.type === "charge.succeeded") {
+    return NextResponse.json({ received: true });
+  }
+
+  let details = parseEventDetails(event);
   const accountId = event.account ?? null;
+  if (details && !details.promotionCodeId && accountId) {
+    const stripe = platformStripe();
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const refreshed = await stripe.checkout.sessions.retrieve(
+        session.id,
+        { expand: ["discounts"] },
+        { stripeAccount: accountId },
+      );
+      const promo = promotionCodeIdFromAny(refreshed.discounts ?? undefined);
+      details = { ...details, promotionCodeId: promo ?? details.promotionCodeId };
+    } else if (event.type === "invoice.payment_succeeded") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const refreshed = await stripe.invoices.retrieve(
+        invoice.id,
+        { expand: ["discounts"] },
+        { stripeAccount: accountId },
+      );
+      const promo = promotionCodeIdFromAny(
+        (refreshed.discounts as Stripe.Discount[] | null) ?? undefined,
+      );
+      details = { ...details, promotionCodeId: promo ?? details.promotionCodeId };
+    }
+  }
   let projectMatch = accountId
     ? await prisma.project.findFirst({
         where: { creatorStripeAccountId: accountId },
@@ -420,10 +449,19 @@ export async function POST(request: Request) {
     await prisma.notification.create({
       data: {
         userId: projectMatch.userId,
-        type: "COMMISSION_DUE",
-        ...notificationMessages.commissionDue(
-          projectMatch.name ?? "your project",
-        ),
+        type: coupon?.id ? "COMMISSION_DUE" : "SALE",
+        ...(coupon?.id
+          ? notificationMessages.commissionDue(
+              projectMatch.name ?? "your project",
+              details.amount,
+              commissionAmount,
+              details.currency,
+            )
+          : notificationMessages.newSale(
+              projectMatch.name ?? "your project",
+              details.amount,
+              details.currency,
+            )),
         data: {
           projectId: projectMatch.id,
           purchaseId: purchase.id,

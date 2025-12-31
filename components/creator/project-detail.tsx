@@ -2,15 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useProjects, useEvents } from "@/lib/data/store";
-import {
-  getProjectMetrics,
-  getRevenueTimeline,
-  formatCurrency,
-  formatNumber,
-} from "@/lib/data/metrics";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getProjectMetrics, getRevenueTimeline } from "@/lib/data/metrics";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -19,9 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { RevenueChart } from "@/components/shared/revenue-chart";
-import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Users, TrendingUp, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -52,6 +43,11 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-tab";
+import { ProjectCouponsTab } from "@/components/creator/project-tabs/coupons-tab";
+import { ProjectMarketersTab } from "@/components/creator/project-tabs/marketers-tab";
+import { ProjectActivityTab } from "@/components/creator/project-tabs/activity-tab";
+import { ProjectSettingsTab } from "@/components/creator/project-tabs/settings-tab";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -185,6 +181,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     error: templatesError,
   } = useProjectCouponTemplates(projectId, true);
   const isStripeConnected = Boolean(apiProject?.creatorStripeAccountId);
+  const projectCurrency =
+    typeof apiProject?.currency === "string" ? apiProject.currency : "USD";
 
   useEffect(() => {
     if (!isTemplateOpen) {
@@ -498,297 +496,86 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       </div>
 
       {/* Project Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Revenue Share Terms</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Pricing Model</p>
-              <p className="font-medium capitalize">
-                {resolvedProject.pricingModel}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Price</p>
-              <p className="font-medium">
-                {formatCurrency(resolvedProject.price)}
-                {resolvedProject.pricingModel === "subscription" && "/mo"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Revenue Share</p>
-              <p className="font-medium">{resolvedProject.revSharePercent}%</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Cookie Window</p>
-              <p className="font-medium">
-                {resolvedProject.cookieWindowDays} days
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <div className="border-b">
+          <TabsList variant="line" className="h-auto bg-transparent p-0">
+            <TabsTrigger className="px-3 py-2 text-sm" value="overview">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="coupons">
+              Coupons
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="marketers">
+              Marketers
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="activity">
+              Activity
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="settings">
+              Settings
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Revenue"
-          value={formatCurrency(metrics.totalRevenue)}
-          icon={DollarSign}
-        />
-        <StatCard
-          title="Monthly Recurring Revenue"
-          value={formatCurrency(metrics.mrr)}
-          icon={TrendingUp}
-        />
-        <StatCard
-          title="Active Subscribers"
-          value={formatNumber(metrics.activeSubscribers)}
-          icon={Users}
-        />
-        <StatCard
-          title="Affiliate Revenue"
-          value={formatCurrency(metrics.affiliateRevenue)}
-          description={`${Math.round(
-            (metrics.affiliateRevenue / (metrics.totalRevenue || 1)) * 100
-          )}% of total revenue`}
-          icon={CalendarDays}
-        />
-      </div>
+        <TabsContent value="overview">
+          <ProjectOverviewTab
+            project={{
+              pricingModel: resolvedProject.pricingModel,
+              price: resolvedProject.price,
+              revSharePercent: resolvedProject.revSharePercent,
+              cookieWindowDays: resolvedProject.cookieWindowDays,
+            }}
+            metrics={metrics}
+            currency={projectCurrency}
+            projectStats={projectStats ?? null}
+            isStatsLoading={isStatsLoading}
+            projectStatsError={projectStatsError as Error | null}
+            revenueData={revenueData}
+          />
+        </TabsContent>
 
-      {/* Stripe + Platform Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Live Stripe & Platform Stats</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isStatsLoading ? (
-            <p className="text-muted-foreground">Loading live stats...</p>
-          ) : projectStats ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Stripe Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(projectStats.stripe.totalRevenue)}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>Charges: {formatNumber(projectStats.stripe.charges)}</p>
-                  <p>
-                    New Customers: {formatNumber(projectStats.stripe.newCustomers)}
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Platform Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(projectStats.platform.totalTrackedRevenue)}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    Commission: {formatCurrency(projectStats.platform.totalCommission)}
-                  </p>
-                  <p>Purchases: {formatNumber(projectStats.platform.purchases)}</p>
-                </div>
-              </div>
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Coupon Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(projectStats.coupons.revenue)}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    Commission: {formatCurrency(projectStats.coupons.commission)}
-                  </p>
-                  <p>Purchases: {formatNumber(projectStats.coupons.purchases)}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">
-              {projectStatsError instanceof Error
-                ? projectStatsError.message
-                : "Connect Stripe to view live stats."}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="coupons">
+          <ProjectCouponsTab
+            couponTemplates={couponTemplates}
+            isTemplatesLoading={isTemplatesLoading}
+            templatesError={templatesError as Error | null}
+            canEdit={currentUser?.role === "creator"}
+            onCreateTemplate={openCreateTemplate}
+            onEditTemplate={openEditTemplate}
+          />
+        </TabsContent>
 
-      {/* Revenue Chart */}
-      <RevenueChart
-        data={revenueData}
-        title="Revenue (Last 30 Days)"
-        showAffiliate={true}
-      />
+        <TabsContent value="marketers">
+          <ProjectMarketersTab
+            affiliateRows={affiliateRows}
+            isLoading={isPurchasesLoading || isCouponsLoading}
+            error={(purchasesError as Error | null) ?? (couponsError as Error | null)}
+          />
+        </TabsContent>
 
-      {/* Coupon Templates */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle className="text-base">Coupon Templates</CardTitle>
-          {currentUser?.role === "creator" ? (
-            <Button size="sm" onClick={openCreateTemplate}>
-              Create template
-            </Button>
+        <TabsContent value="activity">
+          <ProjectActivityTab projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          {currentUser ? (
+            <ProjectSettingsTab
+              projectId={projectId}
+              creatorId={currentUser.id}
+              name={resolvedProject.name}
+              description={resolvedProject.description}
+              category={apiProject?.category ?? resolvedProject.category}
+              currency={projectCurrency}
+              marketerCommissionPercent={
+                typeof apiProject?.marketerCommissionPercent === "number" ||
+                typeof apiProject?.marketerCommissionPercent === "string"
+                  ? Number(apiProject.marketerCommissionPercent)
+                  : null
+              }
+            />
           ) : null}
-        </CardHeader>
-        <CardContent>
-          {isTemplatesLoading ? (
-            <p className="text-muted-foreground">Loading templates...</p>
-          ) : couponTemplates.length === 0 ? (
-            <p className="text-muted-foreground">
-              No coupon templates yet. Create one to issue marketer promo codes.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Discount</TableHead>
-                  <TableHead>Window</TableHead>
-                  <TableHead className="text-right">Max Redemptions</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[56px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {couponTemplates.map((template) => {
-                  const start = template.startAt
-                    ? new Date(template.startAt).toLocaleDateString()
-                    : "Anytime";
-                  const end = template.endAt
-                    ? new Date(template.endAt).toLocaleDateString()
-                    : "No end";
-                  return (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-medium">
-                        {template.name}
-                        {template.description ? (
-                          <p className="text-xs text-muted-foreground">
-                            {template.description}
-                          </p>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {template.percentOff}%
-                      </TableCell>
-                      <TableCell>
-                        {start} → {end}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {template.maxRedemptions ?? "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="capitalize">
-                          {template.status.toLowerCase()}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Template actions</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => openEditTemplate(template)}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-          {templatesError ? (
-            <p className="text-sm text-destructive mt-3">
-              {templatesError instanceof Error
-                ? templatesError.message
-                : "Unable to load templates."}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {/* Marketers Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Affiliate Marketers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isPurchasesLoading || isCouponsLoading ? (
-            <p className="text-muted-foreground text-center py-8">
-              Loading affiliate marketers...
-            </p>
-          ) : affiliateRows.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No marketers are promoting this project yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Marketer</TableHead>
-                  <TableHead>Referral Code</TableHead>
-                  <TableHead className="text-right">Clicks</TableHead>
-                  <TableHead className="text-right">Signups</TableHead>
-                  <TableHead className="text-right">Paid Customers</TableHead>
-                  <TableHead className="text-right">Conversion</TableHead>
-                  <TableHead className="text-right">MRR Attributed</TableHead>
-                  <TableHead className="text-right">Commission Owed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {affiliateRows.map((row) => (
-                  <TableRow key={row.marketerId}>
-                    <TableCell className="font-medium">
-                      {row.marketerName}
-                    </TableCell>
-                    <TableCell>
-                      <code className="bg-muted px-2 py-1 rounded text-xs">
-                        {row.referralCode}
-                      </code>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      -
-                    </TableCell>
-                    <TableCell className="text-right">
-                      -
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(row.purchases)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      -
-                    </TableCell>
-                    <TableCell className="text-right">
-                      -
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(getCommissionOwed(row.commission))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          {purchasesError || couponsError ? (
-            <p className="text-sm text-destructive mt-4">
-              {purchasesError instanceof Error
-                ? purchasesError.message
-                : couponsError instanceof Error
-                  ? couponsError.message
-                  : "Unable to load affiliate marketers."}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog
         open={isTemplateOpen}
