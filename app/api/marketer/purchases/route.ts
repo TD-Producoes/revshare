@@ -38,6 +38,8 @@ export async function GET(request: Request) {
     currency: purchase.currency,
     customerEmail: purchase.customerEmail,
     status: purchase.status.toLowerCase(),
+    commissionStatus: purchase.commissionStatus.toLowerCase(),
+    refundEligibleAt: purchase.refundEligibleAt,
     createdAt: purchase.createdAt,
   }));
 

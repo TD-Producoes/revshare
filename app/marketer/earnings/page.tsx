@@ -12,19 +12,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Clock, CheckCircle, TrendingUp } from "lucide-react";
+import { DollarSign, Clock, CheckCircle, TrendingUp, Timer } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useContractsForMarketer } from "@/lib/hooks/contracts";
-import { useMarketerPurchases, useMarketerStats } from "@/lib/hooks/marketer";
+import { useMarketerPurchases } from "@/lib/hooks/marketer";
 
 export default function EarningsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useMarketerPurchases(currentUser?.id);
-  const { data: stats, isLoading: isStatsLoading } =
-    useMarketerStats(currentUser?.id);
   const { data: contracts = [], isLoading: isContractsLoading } =
     useContractsForMarketer(currentUser?.id);
 
@@ -32,7 +30,6 @@ export default function EarningsPage() {
     isAuthLoading ||
     isUserLoading ||
     isPurchasesLoading ||
-    isStatsLoading ||
     isContractsLoading
   ) {
     return (
@@ -50,10 +47,37 @@ export default function EarningsPage() {
     );
   }
 
-  const totalEarnings = stats?.totalEarnings ?? 0;
-  const pendingEarnings = stats?.pendingEarnings ?? 0;
-  const receivedEarnings = Math.max(totalEarnings - pendingEarnings, 0);
-  const totalRevenue = stats?.totalRevenue ?? 0;
+  const totals = purchases.reduce(
+    (acc, purchase) => {
+      acc.totalRevenue += purchase.amount;
+      acc.totalEarnings += purchase.commissionAmount;
+      switch (purchase.commissionStatus) {
+        case "paid":
+          acc.paid += purchase.commissionAmount;
+          break;
+        case "ready_for_payout":
+          acc.ready += purchase.commissionAmount;
+          break;
+        case "awaiting_refund_window":
+          acc.awaitingRefund += purchase.commissionAmount;
+          break;
+        case "pending_creator_payment":
+          acc.awaitingCreator += purchase.commissionAmount;
+          break;
+        default:
+          break;
+      }
+      return acc;
+    },
+    {
+      totalRevenue: 0,
+      totalEarnings: 0,
+      paid: 0,
+      ready: 0,
+      awaitingRefund: 0,
+      awaitingCreator: 0,
+    },
+  );
 
   const contractByProject = new Map(
     contracts.map((contract) => [contract.projectId, contract]),
@@ -68,17 +92,23 @@ export default function EarningsPage() {
         totalRevenue: 0,
         totalEarnings: 0,
         paidEarnings: 0,
-        pendingEarnings: 0,
+        readyEarnings: 0,
+        awaitingRefundEarnings: 0,
+        awaitingCreatorEarnings: 0,
         commissionPercent: null as number | null,
       };
 
       existing.purchaseCount += 1;
       existing.totalRevenue += purchase.amount;
       existing.totalEarnings += purchase.commissionAmount;
-      if (purchase.status === "paid") {
+      if (purchase.commissionStatus === "paid") {
         existing.paidEarnings += purchase.commissionAmount;
-      } else if (purchase.status === "pending") {
-        existing.pendingEarnings += purchase.commissionAmount;
+      } else if (purchase.commissionStatus === "ready_for_payout") {
+        existing.readyEarnings += purchase.commissionAmount;
+      } else if (purchase.commissionStatus === "awaiting_refund_window") {
+        existing.awaitingRefundEarnings += purchase.commissionAmount;
+      } else if (purchase.commissionStatus === "pending_creator_payment") {
+        existing.awaitingCreatorEarnings += purchase.commissionAmount;
       }
 
       const contract = contractByProject.get(purchase.projectId);
@@ -102,7 +132,9 @@ export default function EarningsPage() {
         totalRevenue: number;
         totalEarnings: number;
         paidEarnings: number;
-        pendingEarnings: number;
+        readyEarnings: number;
+        awaitingRefundEarnings: number;
+        awaitingCreatorEarnings: number;
         commissionPercent: number | null;
       }
     >(),
@@ -122,28 +154,40 @@ export default function EarningsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Earnings"
-          value={formatCurrency(totalEarnings)}
+          value={formatCurrency(totals.totalEarnings)}
           description="All time"
           icon={DollarSign}
         />
         <StatCard
           title="Received"
-          value={formatCurrency(receivedEarnings)}
-          description="Paid out"
+          value={formatCurrency(totals.paid)}
+          description="Paid out to you"
           icon={CheckCircle}
         />
         <StatCard
-          title="Pending"
-          value={formatCurrency(pendingEarnings)}
-          description="Awaiting payout"
+          title="Ready to receive"
+          value={formatCurrency(totals.ready)}
+          description="Creator paid"
+          icon={CheckCircle}
+        />
+        <StatCard
+          title="Refund window"
+          value={formatCurrency(totals.awaitingRefund)}
+          description="Waiting period"
+          icon={Timer}
+        />
+        <StatCard
+          title="Awaiting creator"
+          value={formatCurrency(totals.awaitingCreator)}
+          description="Creator payment pending"
           icon={Clock}
         />
         <StatCard
           title="Revenue"
-          value={formatCurrency(totalRevenue)}
+          value={formatCurrency(totals.totalRevenue)}
           description="Coupon-attributed"
           icon={TrendingUp}
         />
@@ -169,7 +213,9 @@ export default function EarningsPage() {
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Total Earned</TableHead>
                   <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Pending</TableHead>
+                  <TableHead className="text-right">Ready</TableHead>
+                  <TableHead className="text-right">Refund Window</TableHead>
+                  <TableHead className="text-right">Awaiting Creator</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -203,8 +249,14 @@ export default function EarningsPage() {
                       <TableCell className="text-right text-green-600">
                         {formatCurrency(item.paidEarnings)}
                       </TableCell>
+                      <TableCell className="text-right text-sky-400">
+                        {formatCurrency(item.readyEarnings)}
+                      </TableCell>
+                      <TableCell className="text-right text-amber-500">
+                        {formatCurrency(item.awaitingRefundEarnings)}
+                      </TableCell>
                       <TableCell className="text-right text-yellow-600">
-                        {formatCurrency(item.pendingEarnings)}
+                        {formatCurrency(item.awaitingCreatorEarnings)}
                       </TableCell>
                     </TableRow>
                   );

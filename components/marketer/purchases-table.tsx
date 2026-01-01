@@ -41,6 +41,7 @@ export function PurchasesTable({ purchases, limit }: PurchasesTableProps) {
             <TableHead className="text-right">Amount</TableHead>
             <TableHead className="text-right">Commission</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead className="text-right">Refund Ends</TableHead>
             <TableHead className="text-right">Date</TableHead>
           </TableRow>
         </TableHeader>
@@ -67,6 +68,11 @@ export function PurchasesTable({ purchases, limit }: PurchasesTableProps) {
                 <Badge variant="outline" className="capitalize">
                   {purchase.status}
                 </Badge>
+              </TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                {purchase.refundEligibleAt
+                  ? new Date(purchase.refundEligibleAt).toLocaleDateString()
+                  : "-"}
               </TableCell>
               <TableCell className="text-right text-muted-foreground">
                 {new Date(purchase.createdAt).toLocaleDateString()}

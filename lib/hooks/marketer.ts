@@ -12,6 +12,8 @@ export type MarketerPurchase = {
   commissionAmount: number;
   currency: string;
   customerEmail: string | null;
+  commissionStatus: string;
+  refundEligibleAt: string | Date | null;
   status: string;
   createdAt: string | Date;
 };
