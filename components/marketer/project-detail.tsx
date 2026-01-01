@@ -179,6 +179,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
   };
   const commissionStatus = stats?.commissions ?? {
     awaitingCreator: { count: 0, amount: 0 },
+    awaitingRefundWindow: { count: 0, amount: 0 },
     ready: { count: 0, amount: 0 },
     paid: { count: 0, amount: 0 },
   };
@@ -225,6 +226,15 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
             projectCurrency,
           )}
           description={`${commissionStatus.awaitingCreator.count} purchases`}
+          icon={Tag}
+        />
+        <StatCard
+          title="Refund Window"
+          value={formatCurrency(
+            commissionStatus.awaitingRefundWindow.amount,
+            projectCurrency,
+          )}
+          description={`${commissionStatus.awaitingRefundWindow.count} purchases`}
           icon={Tag}
         />
         <StatCard

@@ -215,10 +215,67 @@ export async function POST(request: Request) {
         },
         select: { id: true, creatorId: true },
       });
-      await prisma.purchase.updateMany({
+      const purchases = await prisma.purchase.findMany({
         where: { creatorPaymentId },
-        data: { commissionStatus: "READY_FOR_PAYOUT" },
+        select: {
+          id: true,
+          createdAt: true,
+          refundEligibleAt: true,
+          refundWindowDays: true,
+          project: { select: { refundWindowDays: true } },
+        },
       });
+      const now = new Date();
+      const readyIds: string[] = [];
+      const awaitingIds: string[] = [];
+      const backfillUpdates: Promise<unknown>[] = [];
+
+      purchases.forEach((purchase) => {
+        const effectiveDays =
+          purchase.refundWindowDays ??
+          purchase.project.refundWindowDays ??
+          30;
+        const eligibleAt =
+          purchase.refundEligibleAt ??
+          new Date(
+            purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
+          );
+        const nextStatus =
+          eligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+
+        if (purchase.refundEligibleAt == null || purchase.refundWindowDays == null) {
+          backfillUpdates.push(
+            prisma.purchase.update({
+              where: { id: purchase.id },
+              data: {
+                refundWindowDays: effectiveDays,
+                refundEligibleAt: eligibleAt,
+                commissionStatus: nextStatus,
+              },
+            }),
+          );
+        } else if (nextStatus === "READY_FOR_PAYOUT") {
+          readyIds.push(purchase.id);
+        } else {
+          awaitingIds.push(purchase.id);
+        }
+      });
+
+      if (readyIds.length > 0) {
+        await prisma.purchase.updateMany({
+          where: { id: { in: readyIds } },
+          data: { commissionStatus: "READY_FOR_PAYOUT" },
+        });
+      }
+      if (awaitingIds.length > 0) {
+        await prisma.purchase.updateMany({
+          where: { id: { in: awaitingIds } },
+          data: { commissionStatus: "AWAITING_REFUND_WINDOW" },
+        });
+      }
+      if (backfillUpdates.length > 0) {
+        await Promise.all(backfillUpdates);
+      }
       await prisma.event.create({
         data: {
           type: "CREATOR_PAYMENT_COMPLETED",
@@ -288,6 +345,7 @@ export async function POST(request: Request) {
           id: true,
           userId: true,
           name: true,
+          refundWindowDays: true,
         },
       })
     : null;
@@ -300,7 +358,7 @@ export async function POST(request: Request) {
     if (couponMatch?.projectId) {
       projectMatch = await prisma.project.findFirst({
         where: { id: couponMatch.projectId },
-        select: { id: true, userId: true, name: true },
+        select: { id: true, userId: true, name: true, refundWindowDays: true },
       });
     }
   }
@@ -314,6 +372,7 @@ export async function POST(request: Request) {
           id: true,
           userId: true,
           name: true,
+          refundWindowDays: true,
         },
       });
     }
@@ -379,6 +438,18 @@ export async function POST(request: Request) {
       })
     : null;
 
+  const contract = coupon
+    ? await prisma.contract.findUnique({
+        where: {
+          projectId_userId: {
+            projectId: projectMatch.id,
+            userId: coupon.marketerId,
+          },
+        },
+        select: { refundWindowDays: true },
+      })
+    : null;
+
   const commissionPercent = coupon ? Number(coupon.commissionPercent) : 0;
   const commissionAmount = coupon
     ? Math.round(details.amount * commissionPercent)
@@ -389,6 +460,12 @@ export async function POST(request: Request) {
     coupon && commissionAmount > 0 ? "PENDING" : "PAID";
   const commissionStatus: "PENDING_CREATOR_PAYMENT" | "PAID" =
     coupon && commissionAmount > 0 ? "PENDING_CREATOR_PAYMENT" : "PAID";
+  const refundWindowDays =
+    contract?.refundWindowDays ?? projectMatch.refundWindowDays ?? 30;
+  const eventCreatedAt = new Date(event.created * 1000);
+  const refundEligibleAt = new Date(
+    eventCreatedAt.getTime() + refundWindowDays * 24 * 60 * 60 * 1000,
+  );
 
   console.log(`Creating purchase record for event ${event.id}`);
   const purchase = await prisma.purchase.create({
@@ -403,6 +480,8 @@ export async function POST(request: Request) {
       currency: details.currency,
       customerEmail: details.customerEmail,
       commissionAmount,
+      refundWindowDays,
+      refundEligibleAt,
       transferId,
       commissionStatus,
       status,

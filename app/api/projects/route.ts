@@ -19,6 +19,7 @@ const projectInput = z.object({
   features: z.array(z.string().max(100)).max(10).optional(),
   logoUrl: z.string().url().optional(),
   imageUrls: z.array(z.string().url()).max(6).optional(),
+  refundWindowDays: z.number().int().min(0).max(3650).optional(),
 });
 
 function normalizePercent(value: number) {
@@ -32,6 +33,7 @@ export async function GET() {
       name: true,
       description: true,
       category: true,
+      refundWindowDays: true,
       userId: true,
       user: {
         select: {
@@ -109,7 +111,12 @@ export async function POST(request: Request) {
       name: payload.name,
       description: payload.description,
       ...(payload.category ? { category: payload.category } : {}),
-      ...(creatorStripeAccountId ? { creatorStripeAccountId } : {}),
+      ...(payload.refundWindowDays !== undefined
+        ? { refundWindowDays: payload.refundWindowDays }
+        : {}),
+      ...(creatorStripeAccountId
+        ? { creatorStripeAccountId }
+        : {}),
       platformCommissionPercent: platformCommissionPercent.toString(),
       marketerCommissionPercent: marketerCommissionPercent.toString(),
       ...(payload.country ? { country: payload.country } : {}),
@@ -127,6 +134,7 @@ export async function POST(request: Request) {
       name: true,
       description: true,
       category: true,
+      refundWindowDays: true,
       userId: true,
       user: {
         select: {

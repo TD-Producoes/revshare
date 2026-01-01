@@ -34,6 +34,7 @@ export type MarketerProjectStats = {
   };
   commissions: {
     awaitingCreator: { count: number; amount: number };
+    awaitingRefundWindow: { count: number; amount: number };
     ready: { count: number; amount: number };
     paid: { count: number; amount: number };
   };

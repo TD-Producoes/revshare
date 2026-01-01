@@ -21,7 +21,7 @@ export async function GET(
     }),
     prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, refundWindowDays: true },
     }),
     prisma.contract.findUnique({
       where: { projectId_userId: { projectId, userId } },
@@ -41,6 +41,53 @@ export async function GET(
       { status: 403 },
     );
   }
+
+  const now = new Date();
+  const missingEligible = await prisma.purchase.findMany({
+    where: {
+      projectId,
+      coupon: { marketerId: userId },
+      commissionStatus: "AWAITING_REFUND_WINDOW",
+      refundEligibleAt: null,
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      refundWindowDays: true,
+    },
+  });
+
+  if (missingEligible.length > 0) {
+    const fallbackDays = project.refundWindowDays ?? 30;
+    await Promise.all(
+      missingEligible.map((purchase) => {
+        const effectiveDays = purchase.refundWindowDays ?? fallbackDays;
+        const refundEligibleAt = new Date(
+          purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
+        );
+        const nextStatus =
+          refundEligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+        return prisma.purchase.update({
+          where: { id: purchase.id },
+          data: {
+            refundWindowDays: effectiveDays,
+            refundEligibleAt,
+            commissionStatus: nextStatus,
+          },
+        });
+      }),
+    );
+  }
+
+  await prisma.purchase.updateMany({
+    where: {
+      projectId,
+      coupon: { marketerId: userId },
+      commissionStatus: "AWAITING_REFUND_WINDOW",
+      refundEligibleAt: { lte: now },
+    },
+    data: { commissionStatus: "READY_FOR_PAYOUT" },
+  });
 
   const purchaseWhere = {
     projectId,
@@ -85,6 +132,8 @@ export async function GET(
       commissions: {
         awaitingCreator:
           commissionByStatus.PENDING_CREATOR_PAYMENT ?? { count: 0, amount: 0 },
+        awaitingRefundWindow:
+          commissionByStatus.AWAITING_REFUND_WINDOW ?? { count: 0, amount: 0 },
         ready:
           commissionByStatus.READY_FOR_PAYOUT ?? { count: 0, amount: 0 },
         paid: commissionByStatus.PAID ?? { count: 0, amount: 0 },

@@ -6,6 +6,9 @@ export type CreatorPayoutTotals = {
   totalCommissions: number;
   paidCommissions: number;
   pendingCommissions: number;
+  pendingCreatorCommissions: number;
+  awaitingRefundCommissions: number;
+  readyCommissions: number;
   failedCommissions: number;
   platformFee: number;
   platformCommissionPercent?: number | null;
@@ -19,6 +22,8 @@ export type CreatorPayout = {
   totalEarnings: number;
   paidEarnings: number;
   pendingEarnings: number;
+  awaitingCreatorEarnings: number;
+  awaitingRefundEarnings: number;
   failedEarnings: number;
   readyEarnings: number;
   failureReason?: string | null;

@@ -303,6 +303,36 @@ export function OffersManagement() {
               )}
 
               <div className="rounded-lg border p-4">
+                <div className="text-sm text-muted-foreground">Refund window</div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {selectedContract.refundWindowDays ??
+                    selectedContract.projectRefundWindowDays ??
+                    0}{" "}
+                  days
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Project default:{" "}
+                  {selectedContract.projectRefundWindowDays ?? 0} days
+                </div>
+              </div>
+
+              {selectedContract.refundWindowDays != null &&
+                selectedContract.projectRefundWindowDays != null &&
+                selectedContract.refundWindowDays !==
+                  selectedContract.projectRefundWindowDays && (
+                  <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100">
+                    <AlertTitle className="text-amber-900 dark:text-amber-100">
+                      Refund window differs from default
+                    </AlertTitle>
+                    <AlertDescription>
+                      This application requests{" "}
+                      {selectedContract.refundWindowDays} days instead of the
+                      default {selectedContract.projectRefundWindowDays} days.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+              <div className="rounded-lg border p-4">
                 <div className="text-sm font-medium">Marketer stats</div>
                 {isStatsLoading ? (
                   <div className="mt-3 text-sm text-muted-foreground">

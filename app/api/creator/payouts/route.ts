@@ -37,6 +37,9 @@ export async function GET(request: Request) {
           totalCommissions: 0,
           paidCommissions: 0,
           pendingCommissions: 0,
+          pendingCreatorCommissions: 0,
+          awaitingRefundCommissions: 0,
+          readyCommissions: 0,
           failedCommissions: 0,
           platformFee: 0,
           platformCommissionPercent,
@@ -45,6 +48,53 @@ export async function GET(request: Request) {
       },
     });
   }
+
+  const now = new Date();
+  const awaitingWithMissing = await prisma.purchase.findMany({
+    where: {
+      projectId: { in: projectIds },
+      commissionStatus: "AWAITING_REFUND_WINDOW",
+      refundEligibleAt: null,
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      refundWindowDays: true,
+      project: { select: { refundWindowDays: true } },
+    },
+  });
+  if (awaitingWithMissing.length > 0) {
+    await Promise.all(
+      awaitingWithMissing.map((purchase) => {
+        const effectiveDays =
+          purchase.refundWindowDays ??
+          purchase.project.refundWindowDays ??
+          30;
+        const refundEligibleAt = new Date(
+          purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
+        );
+        const nextStatus =
+          refundEligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+        return prisma.purchase.update({
+          where: { id: purchase.id },
+          data: {
+            refundWindowDays: effectiveDays,
+            refundEligibleAt,
+            commissionStatus: nextStatus,
+          },
+        });
+      }),
+    );
+  }
+
+  await prisma.purchase.updateMany({
+    where: {
+      projectId: { in: projectIds },
+      commissionStatus: "AWAITING_REFUND_WINDOW",
+      refundEligibleAt: { lte: now },
+    },
+    data: { commissionStatus: "READY_FOR_PAYOUT" },
+  });
 
   const purchases = await prisma.purchase.findMany({
     where: { projectId: { in: projectIds } },
@@ -74,6 +124,9 @@ export async function GET(request: Request) {
   let totalCommissions = 0;
   let paidCommissions = 0;
   let pendingCommissions = 0;
+  let pendingCreatorCommissions = 0;
+  let awaitingRefundCommissions = 0;
+  let readyCommissions = 0;
   let failedCommissions = 0;
   let platformFee = 0;
 
@@ -87,6 +140,8 @@ export async function GET(request: Request) {
       totalEarnings: number;
       paidEarnings: number;
       pendingEarnings: number;
+      awaitingCreatorEarnings: number;
+      awaitingRefundEarnings: number;
       failedEarnings: number;
       readyEarnings: number;
     }
@@ -108,6 +163,8 @@ export async function GET(request: Request) {
         totalEarnings: 0,
         paidEarnings: 0,
         pendingEarnings: 0,
+        awaitingCreatorEarnings: 0,
+        awaitingRefundEarnings: 0,
         failedEarnings: 0,
         readyEarnings: 0,
       };
@@ -123,10 +180,18 @@ export async function GET(request: Request) {
       paidCommissions += purchase.commissionAmount;
     } else if (purchase.commissionStatus === "PENDING_CREATOR_PAYMENT") {
       existing.pendingEarnings += purchase.commissionAmount;
+      existing.awaitingCreatorEarnings += purchase.commissionAmount;
       pendingCommissions += purchase.commissionAmount;
+      pendingCreatorCommissions += purchase.commissionAmount;
+    } else if (purchase.commissionStatus === "AWAITING_REFUND_WINDOW") {
+      existing.pendingEarnings += purchase.commissionAmount;
+      existing.awaitingRefundEarnings += purchase.commissionAmount;
+      pendingCommissions += purchase.commissionAmount;
+      awaitingRefundCommissions += purchase.commissionAmount;
     } else if (purchase.commissionStatus === "READY_FOR_PAYOUT") {
       existing.pendingEarnings += purchase.commissionAmount;
       pendingCommissions += purchase.commissionAmount;
+      readyCommissions += purchase.commissionAmount;
       existing.readyEarnings += purchase.commissionAmount;
       if (purchase.status === "FAILED") {
         existing.failedEarnings += purchase.commissionAmount;
@@ -150,13 +215,15 @@ export async function GET(request: Request) {
         marketerName: entry.marketerName,
         marketerEmail: entry.marketerEmail,
         projectCount: entry.projectIds.size,
-      totalEarnings: entry.totalEarnings,
-      paidEarnings: entry.paidEarnings,
-      pendingEarnings: entry.pendingEarnings,
-      failedEarnings: entry.failedEarnings,
-      readyEarnings: entry.readyEarnings,
-      failureReason: latestFailure?.failureReason ?? null,
-    };
+        totalEarnings: entry.totalEarnings,
+        paidEarnings: entry.paidEarnings,
+        pendingEarnings: entry.pendingEarnings,
+        awaitingCreatorEarnings: entry.awaitingCreatorEarnings,
+        awaitingRefundEarnings: entry.awaitingRefundEarnings,
+        failedEarnings: entry.failedEarnings,
+        readyEarnings: entry.readyEarnings,
+        failureReason: latestFailure?.failureReason ?? null,
+      };
     })
     .sort((a, b) => b.totalEarnings - a.totalEarnings);
 
@@ -166,6 +233,9 @@ export async function GET(request: Request) {
         totalCommissions,
         paidCommissions,
         pendingCommissions,
+        pendingCreatorCommissions,
+        awaitingRefundCommissions,
+        readyCommissions,
         failedCommissions,
         platformFee,
         platformCommissionPercent,

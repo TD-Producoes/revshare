@@ -52,6 +52,7 @@ export function BrowseProjects() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [commissionInput, setCommissionInput] = useState<string>("");
   const [applicationMessage, setApplicationMessage] = useState<string>("");
+  const [refundWindowInput, setRefundWindowInput] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
   const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(
     () => new Set(),
@@ -124,6 +125,9 @@ export function BrowseProjects() {
     );
     setSelectedProjectId(projectId);
     setCommissionInput(defaultCommission !== null ? String(defaultCommission) : "");
+    setRefundWindowInput(
+      project.refundWindowDays != null ? String(project.refundWindowDays) : "30",
+    );
     setApplicationMessage("");
     setFormError(null);
     setIsDialogOpen(true);
@@ -138,6 +142,15 @@ export function BrowseProjects() {
       setFormError("Enter a valid commission percent.");
       return;
     }
+    const refundWindowDays = refundWindowInput
+      ? Number(refundWindowInput)
+      : null;
+    if (refundWindowDays !== null) {
+      if (!Number.isFinite(refundWindowDays) || refundWindowDays < 0) {
+        setFormError("Enter a valid refund window in days.");
+        return;
+      }
+    }
 
     try {
       await createContract.mutateAsync({
@@ -145,9 +158,11 @@ export function BrowseProjects() {
         userId: currentUser.id,
         commissionPercent,
         message: applicationMessage.trim() || undefined,
+        refundWindowDays: refundWindowDays ?? undefined,
       });
       setAppliedProjectIds((prev) => new Set(prev).add(selectedProject.id));
       setCommissionInput("");
+      setRefundWindowInput("");
       setApplicationMessage("");
       setIsDialogOpen(false);
     } catch (error) {
@@ -318,6 +333,20 @@ export function BrowseProjects() {
               />
               <p className="text-xs text-muted-foreground">
                 You can negotiate a custom commission for this project.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="refundWindow">Refund window (days)</Label>
+              <Input
+                id="refundWindow"
+                type="number"
+                min={0}
+                value={refundWindowInput}
+                onChange={(event) => setRefundWindowInput(event.target.value)}
+                placeholder="30"
+              />
+              <p className="text-xs text-muted-foreground">
+                Commissions become payable after this window passes.
               </p>
             </div>
             <div className="space-y-2">

@@ -45,6 +45,7 @@ export function ProjectSettingsTab({
   features,
   logoUrl,
   imageUrls,
+  refundWindowDays,
 }: {
   projectId: string;
   creatorId: string;
@@ -60,6 +61,7 @@ export function ProjectSettingsTab({
   features?: string[] | null;
   logoUrl?: string | null;
   imageUrls?: string[] | null;
+  refundWindowDays?: number | null;
 }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
@@ -82,6 +84,8 @@ export function ProjectSettingsTab({
     features: features ?? [],
     logoUrl: logoUrl ?? null,
     imageUrls: imageUrls ?? [],
+    refundWindowDays:
+      refundWindowDays != null ? String(refundWindowDays) : "30",
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +111,8 @@ export function ProjectSettingsTab({
       features: features ?? [],
       logoUrl: logoUrl ?? null,
       imageUrls: imageUrls ?? [],
+      refundWindowDays:
+        refundWindowDays != null ? String(refundWindowDays) : "30",
     });
   }, [
     name,
@@ -121,6 +127,7 @@ export function ProjectSettingsTab({
     features,
     logoUrl,
     imageUrls,
+    refundWindowDays,
   ]);
 
   const handleSave = async () => {
@@ -148,6 +155,9 @@ export function ProjectSettingsTab({
           features: form.features,
           logoUrl: form.logoUrl,
           imageUrls: form.imageUrls,
+          refundWindowDays: form.refundWindowDays
+            ? Number(form.refundWindowDays)
+            : undefined,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -315,6 +325,26 @@ export function ProjectSettingsTab({
               Updating this won&apos;t change existing contracts.
             </p>
           </div>
+          <div className="space-y-2">
+          <Label htmlFor="refundWindow">Refund window (days)</Label>
+          <Input
+            id="refundWindow"
+            type="number"
+            min={0}
+            value={form.refundWindowDays}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                refundWindowDays: event.target.value,
+              }))
+            }
+            placeholder="30"
+          />
+          <p className="text-xs text-muted-foreground">
+            Applies to new purchases only. Existing purchases keep their original
+            window.
+          </p>
+        </div>
         </CardContent>
       </Card>
 

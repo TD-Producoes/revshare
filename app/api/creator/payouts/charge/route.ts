@@ -159,10 +159,67 @@ export async function POST(request: Request) {
     });
 
     if (intent.status === "succeeded") {
-      await prisma.purchase.updateMany({
+      const purchases = await prisma.purchase.findMany({
         where: { creatorPaymentId: creatorPayment.id },
-        data: { commissionStatus: "READY_FOR_PAYOUT" },
+        select: {
+          id: true,
+          createdAt: true,
+          refundEligibleAt: true,
+          refundWindowDays: true,
+          project: { select: { refundWindowDays: true } },
+        },
       });
+      const now = new Date();
+      const readyIds: string[] = [];
+      const awaitingIds: string[] = [];
+      const backfillUpdates: Promise<unknown>[] = [];
+
+      purchases.forEach((purchase) => {
+        const effectiveDays =
+          purchase.refundWindowDays ??
+          purchase.project.refundWindowDays ??
+          30;
+        const eligibleAt =
+          purchase.refundEligibleAt ??
+          new Date(
+            purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
+          );
+        const nextStatus =
+          eligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+
+        if (purchase.refundEligibleAt == null || purchase.refundWindowDays == null) {
+          backfillUpdates.push(
+            prisma.purchase.update({
+              where: { id: purchase.id },
+              data: {
+                refundWindowDays: effectiveDays,
+                refundEligibleAt: eligibleAt,
+                commissionStatus: nextStatus,
+              },
+            }),
+          );
+        } else if (nextStatus === "READY_FOR_PAYOUT") {
+          readyIds.push(purchase.id);
+        } else {
+          awaitingIds.push(purchase.id);
+        }
+      });
+
+      if (readyIds.length > 0) {
+        await prisma.purchase.updateMany({
+          where: { id: { in: readyIds } },
+          data: { commissionStatus: "READY_FOR_PAYOUT" },
+        });
+      }
+      if (awaitingIds.length > 0) {
+        await prisma.purchase.updateMany({
+          where: { id: { in: awaitingIds } },
+          data: { commissionStatus: "AWAITING_REFUND_WINDOW" },
+        });
+      }
+      if (backfillUpdates.length > 0) {
+        await Promise.all(backfillUpdates);
+      }
     }
 
     return NextResponse.json({

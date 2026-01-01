@@ -18,6 +18,53 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Creator not found" }, { status: 404 });
   }
 
+  const now = new Date();
+  const awaitingWithMissing = await prisma.purchase.findMany({
+    where: {
+      project: { userId: creator.id },
+      commissionStatus: "AWAITING_REFUND_WINDOW",
+      refundEligibleAt: null,
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      refundWindowDays: true,
+      project: { select: { refundWindowDays: true } },
+    },
+  });
+  if (awaitingWithMissing.length > 0) {
+    await Promise.all(
+      awaitingWithMissing.map((purchase) => {
+        const effectiveDays =
+          purchase.refundWindowDays ??
+          purchase.project.refundWindowDays ??
+          30;
+        const refundEligibleAt = new Date(
+          purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
+        );
+        const nextStatus =
+          refundEligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+        return prisma.purchase.update({
+          where: { id: purchase.id },
+          data: {
+            refundWindowDays: effectiveDays,
+            refundEligibleAt,
+            commissionStatus: nextStatus,
+          },
+        });
+      }),
+    );
+  }
+
+  await prisma.purchase.updateMany({
+    where: {
+      project: { userId: creator.id },
+      commissionStatus: "AWAITING_REFUND_WINDOW",
+      refundEligibleAt: { lte: now },
+    },
+    data: { commissionStatus: "READY_FOR_PAYOUT" },
+  });
+
   const purchases = await prisma.purchase.findMany({
     where: { project: { userId: creator.id } },
     orderBy: { createdAt: "desc" },

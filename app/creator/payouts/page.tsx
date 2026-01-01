@@ -133,13 +133,16 @@ export default function PayoutsPage() {
     totalCommissions: 0,
     paidCommissions: 0,
     pendingCommissions: 0,
+    pendingCreatorCommissions: 0,
+    awaitingRefundCommissions: 0,
+    readyCommissions: 0,
     failedCommissions: 0,
     platformFee: 0,
     platformCommissionPercent: null,
   };
   const outstandingCommissions =
     totals.pendingCommissions + totals.failedCommissions;
-  const hasPending = outstandingCommissions > 0;
+  const hasPending = totals.pendingCreatorCommissions > 0;
   const readyTotal = payouts.reduce((sum, payout) => sum + payout.readyEarnings, 0);
   const hasReady = readyTotal > 0;
   const defaultPaymentMethod = paymentMethods.find((method) => method.isDefault);
@@ -303,13 +306,19 @@ export default function PayoutsPage() {
                   <TableHead className="text-right">
                     <HeaderWithInfo
                       label="To Pay"
-                      help="Total owed (ready + awaiting creator payment)."
+                      help="Commissions awaiting creator payment."
                     />
                   </TableHead>
                   <TableHead className="text-right">
                     <HeaderWithInfo
                       label="Ready"
                       help="Creator has paid; platform can transfer now."
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithInfo
+                      label="Refund window"
+                      help="Awaiting refund window before payout is ready."
                     />
                   </TableHead>
                   <TableHead className="text-right">
@@ -324,8 +333,8 @@ export default function PayoutsPage() {
             <TableBody>
               {payouts.map((payout) => {
                   const paid = payout.paidEarnings;
-                  const pending = payout.pendingEarnings;
-                  const retryable = payout.pendingEarnings + payout.failedEarnings;
+                  const awaitingCreator = payout.awaitingCreatorEarnings;
+                  const awaitingRefund = payout.awaitingRefundEarnings;
                   const failed = payout.failedEarnings;
                   const ready = payout.readyEarnings;
 
@@ -344,21 +353,39 @@ export default function PayoutsPage() {
                         {formatCurrency(paid)}
                       </TableCell>
                       <TableCell className="text-right text-yellow-600">
-                        {formatCurrency(retryable)}
+                        {formatCurrency(awaitingCreator)}
                       </TableCell>
                       <TableCell className="text-right text-sky-400">
                         {formatCurrency(ready)}
+                      </TableCell>
+                      <TableCell className="text-right text-amber-500">
+                        {formatCurrency(awaitingRefund)}
                       </TableCell>
                       <TableCell className="text-right text-red-600">
                         {formatCurrency(failed)}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col items-start gap-1">
-                          {pending > 0 ? (
+                          {awaitingCreator > 0 ? (
                             <Badge variant="outline" className="gap-1">
                               <Clock className="h-3 w-3" />
                               Pending
                             </Badge>
+                          ) : awaitingRefund > 0 ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Refund window
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" align="start">
+                                <div className="max-w-xs text-xs leading-relaxed">
+                                  Commissions are held until the refund window
+                                  expires.
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
                           ) : failed > 0 ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -374,6 +401,11 @@ export default function PayoutsPage() {
                                 </div>
                               </TooltipContent>
                             </Tooltip>
+                          ) : ready > 0 ? (
+                            <Badge variant="outline" className="gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Ready
+                            </Badge>
                           ) : (
                             <Badge
                               variant="default"
@@ -408,10 +440,8 @@ export default function PayoutsPage() {
               const marketerPurchases = commissionPurchases.filter(
                 (purchase) => purchase.marketer?.id === payout.marketerId,
               );
-              const awaitingCreator = Math.max(
-                0,
-                payout.pendingEarnings - payout.readyEarnings,
-              );
+              const awaitingCreator = payout.awaitingCreatorEarnings;
+              const awaitingRefund = payout.awaitingRefundEarnings;
 
               if (marketerPurchases.length === 0) {
                 return null;
@@ -424,7 +454,8 @@ export default function PayoutsPage() {
                       <p className="font-medium">{payout.marketerName}</p>
                       <p className="text-xs text-muted-foreground">
                         Ready: {formatCurrency(payout.readyEarnings)} · Awaiting
-                        Creator: {formatCurrency(awaitingCreator)}
+                        Creator: {formatCurrency(awaitingCreator)} · Refund
+                        window: {formatCurrency(awaitingRefund)}
                       </p>
                     </div>
                     <Badge variant="outline" className="capitalize">
@@ -486,6 +517,19 @@ export default function PayoutsPage() {
                             <TableCell>
                               {purchase.commissionStatus === "ready_for_payout" ? (
                                 <Badge variant="outline">Ready</Badge>
+                              ) : purchase.commissionStatus ===
+                                "awaiting_refund_window" ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline">Refund window</Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" align="start">
+                                    <div className="max-w-xs text-xs leading-relaxed">
+                                      Waiting for the refund window to pass
+                                      before commission becomes payable.
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
                               ) : purchase.commissionStatus ===
                                 "pending_creator_payment" ? (
                                 <Badge variant="secondary">Awaiting Creator</Badge>

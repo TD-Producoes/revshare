@@ -43,6 +43,7 @@ model Project {
   name                  String
   description           String?
   category              String? @default("Other")
+  refundWindowDays      Int      @default(30)
   creatorStripeAccountId String?
   onboardingStatus       String?
   onboardingData         Json?
@@ -76,6 +77,7 @@ model Contract {
   userId           String
   commissionPercent Decimal        @db.Decimal(5, 2)
   message          String?        @db.Text
+  refundWindowDays Int?
   status           ContractStatus @default(PENDING)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -147,6 +149,8 @@ model Purchase {
   currency              String
   customerEmail         String?
   commissionAmount      Int
+  refundWindowDays      Int?
+  refundEligibleAt      DateTime?
   transferId            String?
   transferRecordId      String?
   creatorPaymentId      String?
@@ -261,6 +265,7 @@ enum PayoutStatus {
 
 enum CommissionStatus {
   PENDING_CREATOR_PAYMENT
+  AWAITING_REFUND_WINDOW
   READY_FOR_PAYOUT
   PAID
 }

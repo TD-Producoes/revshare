@@ -576,6 +576,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               features={apiProject?.features}
               logoUrl={apiProject?.logoUrl}
               imageUrls={apiProject?.imageUrls}
+              refundWindowDays={
+                typeof apiProject?.refundWindowDays === "number"
+                  ? apiProject.refundWindowDays
+                  : null
+              }
             />
           ) : null}
         </TabsContent>

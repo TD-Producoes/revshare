@@ -12,6 +12,7 @@ export type ApiProject = {
   name: string;
   description?: string | null;
   category?: string | null;
+  refundWindowDays?: number | null;
   creatorStripeAccountId?: string | null;
   currency?: string | null;
   platformCommissionPercent?: string | number | null;

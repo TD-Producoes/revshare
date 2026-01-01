@@ -15,6 +15,8 @@ export type Contract = {
   commissionPercent: number;
   projectCommissionPercent: number;
   message?: string | null;
+  refundWindowDays?: number | null;
+  projectRefundWindowDays?: number | null;
   status: ContractStatus;
   createdAt: string | Date;
 };
@@ -92,6 +94,7 @@ export function useCreateContract() {
       userId: string;
       commissionPercent: number;
       message?: string;
+      refundWindowDays?: number;
     }) => {
       const response = await fetch("/api/contracts", {
         method: "POST",

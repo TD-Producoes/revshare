@@ -23,6 +23,7 @@ const updateSchema = z
     features: z.array(z.string().max(100)).max(10).optional(),
     logoUrl: z.string().url().optional().nullable(),
     imageUrls: z.array(z.string().url()).max(6).optional(),
+    refundWindowDays: z.number().int().min(0).max(3650).optional(),
   })
   .refine(
     (data) =>
@@ -37,7 +38,8 @@ const updateSchema = z
       data.about !== undefined ||
       data.features !== undefined ||
       data.logoUrl !== undefined ||
-      data.imageUrls !== undefined,
+      data.imageUrls !== undefined ||
+      data.refundWindowDays !== undefined,
     {
       message: "At least one field must be provided",
     },
@@ -59,6 +61,7 @@ export async function GET(
       userId: true,
       creatorStripeAccountId: true,
       currency: true,
+      refundWindowDays: true,
       platformCommissionPercent: true,
       marketerCommissionPercent: true,
       country: true,
@@ -132,6 +135,9 @@ export async function PATCH(
       ...(payload.currency
         ? { currency: payload.currency.toUpperCase() }
         : {}),
+      ...(payload.refundWindowDays !== undefined
+        ? { refundWindowDays: payload.refundWindowDays }
+        : {}),
       ...(payload.marketerCommissionPercent !== undefined
         ? {
             marketerCommissionPercent: (
@@ -165,6 +171,7 @@ export async function PATCH(
       description: true,
       category: true,
       currency: true,
+      refundWindowDays: true,
       marketerCommissionPercent: true,
       country: true,
       website: true,

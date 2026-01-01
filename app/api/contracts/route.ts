@@ -9,6 +9,7 @@ const createContractInput = z.object({
   userId: z.string().min(1),
   commissionPercent: z.number().min(0).max(100),
   message: z.string().max(2000).optional(),
+  refundWindowDays: z.number().int().min(0).max(3650).optional(),
 });
 
 function normalizePercent(value: number) {
@@ -44,7 +45,12 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
       include: {
         project: {
-          select: { id: true, name: true, marketerCommissionPercent: true },
+          select: {
+            id: true,
+            name: true,
+            marketerCommissionPercent: true,
+            refundWindowDays: true,
+          },
         },
         user: { select: { id: true, name: true, email: true, role: true } },
       },
@@ -61,6 +67,8 @@ export async function GET(request: Request) {
       commissionPercent: Number(contract.commissionPercent),
       message: contract.message,
       projectCommissionPercent: Number(contract.project.marketerCommissionPercent),
+      refundWindowDays: contract.refundWindowDays,
+      projectRefundWindowDays: contract.project.refundWindowDays,
       status: contract.status.toLowerCase(),
       createdAt: contract.createdAt,
     }));
@@ -99,7 +107,12 @@ export async function GET(request: Request) {
     orderBy: { createdAt: "desc" },
     include: {
       project: {
-        select: { id: true, name: true, marketerCommissionPercent: true },
+        select: {
+          id: true,
+          name: true,
+          marketerCommissionPercent: true,
+          refundWindowDays: true,
+        },
       },
       user: { select: { id: true, name: true, email: true, role: true } },
     },
@@ -116,6 +129,8 @@ export async function GET(request: Request) {
     commissionPercent: Number(contract.commissionPercent),
     message: contract.message,
     projectCommissionPercent: Number(contract.project.marketerCommissionPercent),
+    refundWindowDays: contract.refundWindowDays,
+    projectRefundWindowDays: contract.project.refundWindowDays,
     status: contract.status.toLowerCase(),
     createdAt: contract.createdAt,
   }));
@@ -140,7 +155,7 @@ export async function POST(request: Request) {
     }),
     prisma.project.findUnique({
       where: { id: payload.projectId },
-      select: { id: true, name: true, userId: true },
+      select: { id: true, name: true, userId: true, refundWindowDays: true },
     }),
   ]);
 
@@ -178,6 +193,8 @@ export async function POST(request: Request) {
         userId: marketer.id,
         commissionPercent: commissionPercent.toString(),
         message: payload.message?.trim() || null,
+        refundWindowDays:
+          payload.refundWindowDays !== undefined ? payload.refundWindowDays : null,
       },
     });
 
@@ -228,6 +245,8 @@ export async function POST(request: Request) {
         commissionPercent: Number(contract.commissionPercent),
         message: contract.message,
         projectCommissionPercent: Number(project.marketerCommissionPercent),
+        refundWindowDays: contract.refundWindowDays,
+        projectRefundWindowDays: project.refundWindowDays,
         status: contract.status.toLowerCase(),
         createdAt: contract.createdAt,
       },
