@@ -569,6 +569,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                   ? Number(apiProject.marketerCommissionPercent)
                   : null
               }
+              country={apiProject?.country}
+              website={apiProject?.website}
+              foundationDate={apiProject?.foundationDate}
+              about={apiProject?.about}
+              features={apiProject?.features}
+              logoUrl={apiProject?.logoUrl}
+              imageUrls={apiProject?.imageUrls}
             />
           ) : null}
         </TabsContent>

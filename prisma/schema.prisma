@@ -50,6 +50,13 @@ model Project {
   currency              String?
   platformCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
   marketerCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
+  country               String?
+  website               String?
+  foundationDate        DateTime?
+  about                 String?  @db.Text
+  features              String[] @default([])
+  logoUrl               String?
+  imageUrls             String[] @default([])
   couponTemplates       CouponTemplate[]
   coupons               Coupon[]
   purchases             Purchase[]

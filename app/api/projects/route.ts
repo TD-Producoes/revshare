@@ -12,6 +12,13 @@ const projectInput = z.object({
   creatorStripeAccountId: z.string().min(1).optional(),
   platformCommissionPercent: z.number().min(0).max(100).optional(),
   marketerCommissionPercent: z.number().min(0).max(100).optional(),
+  country: z.string().length(2).optional(),
+  website: z.string().url().optional().or(z.literal("")),
+  foundationDate: z.string().datetime().optional().or(z.literal("")),
+  about: z.string().max(5000).optional(),
+  features: z.array(z.string().max(100)).max(10).optional(),
+  logoUrl: z.string().url().optional(),
+  imageUrls: z.array(z.string().url()).max(6).optional(),
 });
 
 function normalizePercent(value: number) {
@@ -36,6 +43,13 @@ export async function GET() {
       currency: true,
       platformCommissionPercent: true,
       marketerCommissionPercent: true,
+      country: true,
+      website: true,
+      foundationDate: true,
+      about: true,
+      features: true,
+      logoUrl: true,
+      imageUrls: true,
       createdAt: true,
     },
     orderBy: { createdAt: "desc" },
@@ -95,11 +109,18 @@ export async function POST(request: Request) {
       name: payload.name,
       description: payload.description,
       ...(payload.category ? { category: payload.category } : {}),
-      ...(creatorStripeAccountId
-        ? { creatorStripeAccountId }
-        : {}),
+      ...(creatorStripeAccountId ? { creatorStripeAccountId } : {}),
       platformCommissionPercent: platformCommissionPercent.toString(),
       marketerCommissionPercent: marketerCommissionPercent.toString(),
+      ...(payload.country ? { country: payload.country } : {}),
+      ...(payload.website ? { website: payload.website } : {}),
+      ...(payload.foundationDate
+        ? { foundationDate: new Date(payload.foundationDate) }
+        : {}),
+      ...(payload.about ? { about: payload.about } : {}),
+      ...(payload.features ? { features: payload.features } : {}),
+      ...(payload.logoUrl ? { logoUrl: payload.logoUrl } : {}),
+      ...(payload.imageUrls ? { imageUrls: payload.imageUrls } : {}),
     },
     select: {
       id: true,
@@ -117,6 +138,13 @@ export async function POST(request: Request) {
       currency: true,
       platformCommissionPercent: true,
       marketerCommissionPercent: true,
+      country: true,
+      website: true,
+      foundationDate: true,
+      about: true,
+      features: true,
+      logoUrl: true,
+      imageUrls: true,
       createdAt: true,
     },
   });

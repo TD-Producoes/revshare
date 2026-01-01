@@ -16,6 +16,13 @@ export type ApiProject = {
   currency?: string | null;
   platformCommissionPercent?: string | number | null;
   marketerCommissionPercent?: string | number | null;
+  country?: string | null;
+  website?: string | null;
+  foundationDate?: string | Date | null;
+  about?: string | null;
+  features?: string[] | null;
+  logoUrl?: string | null;
+  imageUrls?: string[] | null;
   createdAt?: string | null;
 };
 
