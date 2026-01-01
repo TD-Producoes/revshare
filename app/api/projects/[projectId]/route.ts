@@ -11,6 +11,18 @@ const updateSchema = z
     category: z.string().min(1).optional(),
     currency: z.string().min(3).max(3).optional(),
     marketerCommissionPercent: z.number().min(0).max(100).optional(),
+    country: z.string().length(2).optional().nullable(),
+    website: z.string().url().optional().nullable().or(z.literal("")),
+    foundationDate: z
+      .string()
+      .datetime()
+      .optional()
+      .nullable()
+      .or(z.literal("")),
+    about: z.string().max(5000).optional().nullable(),
+    features: z.array(z.string().max(100)).max(10).optional(),
+    logoUrl: z.string().url().optional().nullable(),
+    imageUrls: z.array(z.string().url()).max(6).optional(),
   })
   .refine(
     (data) =>
@@ -18,7 +30,14 @@ const updateSchema = z
       data.description !== undefined ||
       data.currency ||
       data.category ||
-      data.marketerCommissionPercent !== undefined,
+      data.marketerCommissionPercent !== undefined ||
+      data.country !== undefined ||
+      data.website !== undefined ||
+      data.foundationDate !== undefined ||
+      data.about !== undefined ||
+      data.features !== undefined ||
+      data.logoUrl !== undefined ||
+      data.imageUrls !== undefined,
     {
       message: "At least one field must be provided",
     },
@@ -36,11 +55,19 @@ export async function GET(
       id: true,
       name: true,
       description: true,
+      category: true,
       userId: true,
       creatorStripeAccountId: true,
       currency: true,
       platformCommissionPercent: true,
       marketerCommissionPercent: true,
+      country: true,
+      website: true,
+      foundationDate: true,
+      about: true,
+      features: true,
+      logoUrl: true,
+      imageUrls: true,
       createdAt: true,
     },
   });
@@ -114,6 +141,23 @@ export async function PATCH(
             ).toString(),
           }
         : {}),
+      ...(payload.country !== undefined ? { country: payload.country } : {}),
+      ...(payload.website !== undefined
+        ? { website: payload.website || null }
+        : {}),
+      ...(payload.foundationDate !== undefined
+        ? {
+            foundationDate: payload.foundationDate
+              ? new Date(payload.foundationDate)
+              : null,
+          }
+        : {}),
+      ...(payload.about !== undefined ? { about: payload.about } : {}),
+      ...(payload.features !== undefined ? { features: payload.features } : {}),
+      ...(payload.logoUrl !== undefined ? { logoUrl: payload.logoUrl } : {}),
+      ...(payload.imageUrls !== undefined
+        ? { imageUrls: payload.imageUrls }
+        : {}),
     },
     select: {
       id: true,
@@ -122,6 +166,13 @@ export async function PATCH(
       category: true,
       currency: true,
       marketerCommissionPercent: true,
+      country: true,
+      website: true,
+      foundationDate: true,
+      about: true,
+      features: true,
+      logoUrl: true,
+      imageUrls: true,
     },
   });
 
