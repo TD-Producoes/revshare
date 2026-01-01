@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useUsers } from "@/lib/data/store";
 import {
   Card,
   CardContent,
@@ -44,7 +43,6 @@ export function BrowseProjects() {
   const { data: projects = [], isLoading: isProjectsLoading } = useProjects();
   const { data: contracts = [], isLoading: isContractsLoading } =
     useContractsForMarketer(currentUser?.id);
-  const users = useUsers();
   const createContract = useCreateContract();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,8 +71,14 @@ export function BrowseProjects() {
     );
   }
 
-  // Get unique categories
-  const categories = ["Uncategorized"];
+  const categories = Array.from(
+    new Set(
+      projects
+        .map((project) => project.category?.trim())
+        .filter((category): category is string => Boolean(category)),
+    ),
+  );
+  const categoryOptions = categories.length ? categories : ["Other"];
 
   const selectedProject =
     projects.find((project) => project.id === selectedProjectId) ?? null;
@@ -91,14 +95,11 @@ export function BrowseProjects() {
     const matchesSearch =
       project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (project.description ?? "").toLowerCase().includes(searchTerm.toLowerCase());
+    const categoryLabel = project.category || "Other";
     const matchesCategory =
-      categoryFilter === "all" || categoryFilter === "Uncategorized";
+      categoryFilter === "all" || categoryFilter === categoryLabel;
     return matchesSearch && matchesCategory;
   });
-
-  const getCreator = (userId: string) => {
-    return users.find((u) => u.id === userId);
-  };
 
   const getContractStatus = (projectId: string) => {
     const existingContract = contracts.find(
@@ -177,7 +178,7 @@ export function BrowseProjects() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((cat) => (
+            {categoryOptions.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
               </SelectItem>
@@ -194,7 +195,8 @@ export function BrowseProjects() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredProjects.map((project) => {
-            const creator = getCreator(project.userId);
+            const creatorName = project.user?.name || "Unknown";
+            const categoryLabel = project.category || "Other";
             const offerStatus = getContractStatus(project.id);
             const revSharePercent =
               getRevSharePercent(project.marketerCommissionPercent);
@@ -203,7 +205,7 @@ export function BrowseProjects() {
               <Card key={project.id} className="flex flex-col">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <Badge variant="secondary">Uncategorized</Badge>
+                    <Badge variant="secondary">{categoryLabel}</Badge>
                     <Badge variant="outline" className="gap-1">
                       <Percent className="h-3 w-3" />
                       {revSharePercent !== null ? `${revSharePercent}%` : "-"} rev share
@@ -219,7 +221,7 @@ export function BrowseProjects() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Creator</span>
                       <span className="font-medium">
-                        {creator?.name || "Unknown"}
+                        {creatorName}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">

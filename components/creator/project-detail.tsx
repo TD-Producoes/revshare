@@ -474,9 +474,6 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <h1 className="text-2xl font-bold">{resolvedProject.name}</h1>
             <Badge variant="secondary">{resolvedProject.category}</Badge>
           </div>
-          <p className="text-muted-foreground max-w-2xl">
-            {resolvedProject.description}
-          </p>
         </div>
         <div className="flex flex-col items-end gap-2 self-end">
           {isStripeConnected ? (

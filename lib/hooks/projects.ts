@@ -5,6 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 export type ApiProject = {
   id: string;
   userId: string;
+  user?: {
+    id: string;
+    name: string | null;
+  } | null;
   name: string;
   description?: string | null;
   category?: string | null;

@@ -26,6 +26,12 @@ export async function GET() {
       description: true,
       category: true,
       userId: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       creatorStripeAccountId: true,
       currency: true,
       platformCommissionPercent: true,
@@ -101,6 +107,12 @@ export async function POST(request: Request) {
       description: true,
       category: true,
       userId: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       creatorStripeAccountId: true,
       currency: true,
       platformCommissionPercent: true,
