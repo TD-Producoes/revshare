@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,14 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Avatar,
   AvatarFallback,
@@ -35,9 +28,6 @@ import {
   Users,
   Zap,
   CreditCard,
-  DollarSign,
-  FileCheck,
-  BarChart3,
   Layers,
   Wallet,
   FileSignature,
@@ -46,10 +36,21 @@ import {
   LineChart,
   PieChart,
   ReceiptText,
-  Banknote,
   Building2,
   CheckCircle2,
 } from "lucide-react";
+
+// Type for leaderboard project data
+type LeaderboardProject = {
+  id: string;
+  name: string;
+  category: string;
+  logoUrl: string | null;
+  revenue: number;
+  marketers: number;
+  commission: number;
+  growth: string;
+};
 
 const topMarketers = [
   {
@@ -144,98 +145,24 @@ const topMarketers = [
   },
 ];
 
-const topProjects = [
-  {
-    name: "SocialPulse",
-    category: "Social Media",
-    revenue: 150000,
-    marketers: 12,
-    commission: 30000,
-    growth: "+20%",
-    image: "https://ui-avatars.com/api/?name=SP&background=EC4899&color=fff",
-  },
-  {
-    name: "CryptoTracker",
-    category: "Web3",
-    revenue: 130500,
-    marketers: 20,
-    commission: 26100,
-    growth: "+40%",
-    image: "https://ui-avatars.com/api/?name=CT&background=F59E0B&color=fff",
-  },
-  {
-    name: "BuildPublic",
-    category: "Creator Tools",
-    revenue: 121000,
-    marketers: 9,
-    commission: 24200,
-    growth: "+15%",
-    image: "https://ui-avatars.com/api/?name=BP&background=2563EB&color=fff",
-  },
-  {
-    name: "Designify",
-    category: "Design Tools",
-    revenue: 110200,
-    marketers: 15,
-    commission: 22040,
-    growth: "+12%",
-    image: "https://ui-avatars.com/api/?name=DS&background=8B5CF6&color=fff",
-  },
-  {
-    name: "TaskMaster",
-    category: "Productivity",
-    revenue: 95400,
-    marketers: 8,
-    commission: 19080,
-    growth: "+5%",
-    image: "https://ui-avatars.com/api/?name=TM&background=10B981&color=fff",
-  },
-  {
-    name: "Flowdesk Pro",
-    category: "Sales Enablement",
-    revenue: 88200,
-    marketers: 7,
-    commission: 17640,
-    growth: "+7%",
-    image: "https://ui-avatars.com/api/?name=FP&background=7C3AED&color=fff",
-  },
-  {
-    name: "HealthDash",
-    category: "Healthcare",
-    revenue: 80100,
-    marketers: 10,
-    commission: 16020,
-    growth: "+15%",
-    image: "https://ui-avatars.com/api/?name=HD&background=EF4444&color=fff",
-  },
-  {
-    name: "MetricForge",
-    category: "Analytics",
-    revenue: 73400,
-    marketers: 5,
-    commission: 14680,
-    growth: "+32%",
-    image: "https://ui-avatars.com/api/?name=MF&background=059669&color=fff",
-  },
-  {
-    name: "CodeStream",
-    category: "Dev Tools",
-    revenue: 60500,
-    marketers: 6,
-    commission: 12100,
-    growth: "+8%",
-    image: "https://ui-avatars.com/api/?name=CS&background=6366F1&color=fff",
-  },
-  {
-    name: "LearnEasy",
-    category: "Education",
-    revenue: 45200,
-    marketers: 5,
-    commission: 9040,
-    growth: "+3%",
-    image: "https://ui-avatars.com/api/?name=LE&background=F97316&color=fff",
-  },
-];
+// Helper function to generate avatar URL from project name
+function getProjectAvatarUrl(name: string, logoUrl: string | null): string {
+  if (logoUrl) return logoUrl;
+  // Generate initials from project name
+  const initials = name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+  // Generate a consistent color based on name
+  const colors = [
+    "EC4899", "F59E0B", "2563EB", "8B5CF6", "10B981",
+    "7C3AED", "EF4444", "059669", "6366F1", "F97316"
+  ];
+  const colorIndex = name.length % colors.length;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${colors[colorIndex]}&color=fff`;
+}
 
 const highlights = [
   {
@@ -259,6 +186,35 @@ const highlights = [
 ];
 
 export default function Home() {
+  // State for leaderboard projects
+  const [topProjects, setTopProjects] = useState<LeaderboardProject[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+
+  // Fetch leaderboard projects on mount
+  useEffect(() => {
+    async function fetchLeaderboard() {
+      try {
+        setIsLoadingProjects(true);
+        setProjectsError(null);
+        const response = await fetch("/api/projects/leaderboard");
+        if (!response.ok) {
+          throw new Error("Failed to fetch leaderboard");
+        }
+        const payload = await response.json();
+        setTopProjects(payload.data || []);
+      } catch (error) {
+        console.error("Error fetching leaderboard:", error);
+        setProjectsError("Failed to load projects");
+        setTopProjects([]);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    }
+
+    fetchLeaderboard();
+  }, []);
+
   return (
     <main className="relative min-h-screen bg-background selection:bg-primary/10">
       <Navbar />
@@ -476,38 +432,52 @@ export default function Home() {
                   <div className="text-right">Revenue & Growth</div>
                 </div>
                 <div className="divide-y divide-border/40">
-                  {topProjects.map((project, i) => (
-                    <Link
-                      href={`/projects/${project.name.toLowerCase().replace(/\s+/g, '-')}`}
-                      key={project.name}
-                      className="group flex items-center justify-between p-5 hover:bg-muted/30 transition-colors block"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-sm font-bold text-muted-foreground shadow-sm">
-                          {i < 9 ? `0${i + 1}` : i + 1}
-                        </div>
-                        <Avatar className="h-10 w-10 rounded-lg">
-                          <AvatarImage src={project.image} alt={project.name} />
-                          <AvatarFallback className="rounded-lg">{project.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{project.name}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{project.category}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {project.marketers}
-                            </span>
+                  {isLoadingProjects ? (
+                    <div className="p-5 text-center text-sm text-muted-foreground">
+                      Loading projects...
+                    </div>
+                  ) : projectsError ? (
+                    <div className="p-5 text-center text-sm text-destructive">
+                      {projectsError}
+                    </div>
+                  ) : topProjects.length === 0 ? (
+                    <div className="p-5 text-center text-sm text-muted-foreground">
+                      No projects with revenue yet
+                    </div>
+                  ) : (
+                    topProjects.map((project, i) => (
+                      <Link
+                        href={`/projects/${project.id}`}
+                        key={project.id}
+                        className="group flex items-center justify-between p-5 hover:bg-muted/30 transition-colors block"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-sm font-bold text-muted-foreground shadow-sm">
+                            {i < 9 ? `0${i + 1}` : i + 1}
+                          </div>
+                          <Avatar className="h-10 w-10 rounded-lg">
+                            <AvatarImage src={getProjectAvatarUrl(project.name, project.logoUrl)} alt={project.name} />
+                            <AvatarFallback className="rounded-lg">{project.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{project.name}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>{project.category}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {project.marketers}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-foreground">{formatCurrency(project.revenue)}</p>
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400">{project.growth}</p>
-                      </div>
-                    </Link>
-                  ))}
+                        <div className="text-right">
+                          <p className="font-medium text-foreground">{formatCurrency(project.revenue)}</p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400">{project.growth}</p>
+                        </div>
+                      </Link>
+                    ))
+                  )}
                 </div>
                 <div className="p-4 bg-muted/10 border-t border-border/40">
                   <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground justify-between group">
@@ -852,7 +822,7 @@ export default function Home() {
           {/* Logo Marquee */}
           <div className="flex w-full animate-in fade-in zoom-in duration-1000 justify-center gap-12 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all">
             {/* Placeholder Logos represented by text for now, in a real app these would be SVGs */}
-            {['Acme Corp', 'Waave', 'Catalog', 'Sisyphus', 'Quotient', 'Layers'].map(brand => (
+            {['Flowceipt', 'Obstie', 'BuildPublic', 'ClipRing', 'Quotient', 'Layers'].map(brand => (
               <div key={brand} className="text-xl font-bold tracking-tight text-foreground/40 hover:text-foreground/80 cursor-default">
                 {brand}
               </div>

@@ -67,6 +67,12 @@ export type ProjectPurchase = {
   } | null;
 };
 
+export type PublicProjectStats = {
+  activeMarketers: number;
+  totalPurchases: number;
+  avgCommissionPercent: number | null;
+};
+
 export function useProjects(userId?: string | null) {
   return useQuery<ApiProject[]>({
     queryKey: ["projects", userId ?? "all"],
@@ -127,6 +133,20 @@ export function useProjectPurchases(id: string) {
       }
       const payload = await response.json();
       return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export function usePublicProjectStats(id: string) {
+  return useQuery<PublicProjectStats>({
+    queryKey: ["public-project-stats", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${id}/public-stats`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch project stats.");
+      }
+      return payload?.data as PublicProjectStats;
     },
   });
 }
