@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -21,11 +22,27 @@ import {
   useContractsForCreator,
   useUpdateContractStatus,
 } from "@/lib/hooks/contracts";
+import { useMarketerStats } from "@/lib/hooks/marketer";
+import { formatCurrency, formatNumber } from "@/lib/data/metrics";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function OffersManagement() {
   const { data: creatorId } = useAuthUserId();
   const { data: contracts = [] } = useContractsForCreator(creatorId);
   const updateStatus = useUpdateContractStatus();
+  const [reviewContractId, setReviewContractId] = useState<string | null>(null);
+  const selectedContract =
+    contracts.find((contract) => contract.id === reviewContractId) ?? null;
+  const { data: marketerStats, isLoading: isStatsLoading } = useMarketerStats(
+    selectedContract?.userId,
+  );
 
   const pendingContracts = useMemo(
     () => contracts.filter((contract) => contract.status === "pending"),
@@ -47,6 +64,7 @@ export function OffersManagement() {
       creatorId,
       status: "approved",
     });
+    setReviewContractId(null);
   };
 
   const handleReject = (contractId: string) => {
@@ -56,6 +74,7 @@ export function OffersManagement() {
       creatorId,
       status: "rejected",
     });
+    setReviewContractId(null);
   };
 
   const getStatusBadge = (status: ContractStatus) => {
@@ -132,26 +151,14 @@ export function OffersManagement() {
               </TableCell>
               {showActions && (
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 gap-1"
-                      onClick={() => handleApprove(contract.id)}
-                    >
-                      <Check className="h-3 w-3" />
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 gap-1 text-destructive hover:text-destructive"
-                      onClick={() => handleReject(contract.id)}
-                    >
-                      <X className="h-3 w-3" />
-                      Reject
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => setReviewContractId(contract.id)}
+                  >
+                    Review
+                  </Button>
                 </TableCell>
               )}
             </TableRow>
@@ -248,6 +255,134 @@ export function OffersManagement() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={Boolean(selectedContract)}
+        onOpenChange={(open) => {
+          if (!open) setReviewContractId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[620px]">
+          <DialogHeader>
+            <DialogTitle>Review application</DialogTitle>
+            <DialogDescription>
+              {selectedContract
+                ? `${selectedContract.userName} · ${selectedContract.projectName}`
+                : "Review this application."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedContract && (
+            <div className="space-y-6">
+              <div className="rounded-lg border p-4">
+                <div className="text-sm text-muted-foreground">Requested commission</div>
+                <div className="mt-2 text-3xl font-semibold">
+                  {formatNumber(selectedContract.commissionPercent * 100)}%
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Project default:{" "}
+                  {formatNumber(selectedContract.projectCommissionPercent * 100)}%
+                </div>
+              </div>
+
+              {Math.abs(
+                selectedContract.commissionPercent -
+                  selectedContract.projectCommissionPercent,
+              ) > 0.0001 && (
+                <Alert>
+                  <AlertTitle>Commission differs from default</AlertTitle>
+                  <AlertDescription>
+                    This application requests{" "}
+                    {formatNumber(selectedContract.commissionPercent * 100)}% instead
+                    of the default{" "}
+                    {formatNumber(selectedContract.projectCommissionPercent * 100)}%.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="rounded-lg border p-4">
+                <div className="text-sm font-medium">Marketer stats</div>
+                {isStatsLoading ? (
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    Loading stats...
+                  </div>
+                ) : marketerStats ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Total sales
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatNumber(marketerStats.totalPurchases)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Total revenue
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(marketerStats.totalRevenue)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Total earnings
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(marketerStats.totalEarnings)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Pending earnings
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(marketerStats.pendingEarnings)}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    No stats available yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <div className="text-sm font-medium">Message</div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {selectedContract.message?.trim()
+                    ? selectedContract.message
+                    : "No message provided."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {selectedContract && (
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setReviewContractId(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleReject(selectedContract.id)}
+              >
+                Reject
+              </Button>
+              <Button type="button" onClick={() => handleApprove(selectedContract.id)}>
+                Approve
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

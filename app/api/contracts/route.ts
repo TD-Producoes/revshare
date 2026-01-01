@@ -8,6 +8,7 @@ const createContractInput = z.object({
   projectId: z.string().min(1),
   userId: z.string().min(1),
   commissionPercent: z.number().min(0).max(100),
+  message: z.string().max(2000).optional(),
 });
 
 function normalizePercent(value: number) {
@@ -42,7 +43,9 @@ export async function GET(request: Request) {
       where: { userId, user: { role: "marketer" } },
       orderBy: { createdAt: "desc" },
       include: {
-        project: { select: { id: true, name: true } },
+        project: {
+          select: { id: true, name: true, marketerCommissionPercent: true },
+        },
         user: { select: { id: true, name: true, email: true, role: true } },
       },
     });
@@ -56,6 +59,8 @@ export async function GET(request: Request) {
       userEmail: contract.user.email,
       userRole: contract.user.role,
       commissionPercent: Number(contract.commissionPercent),
+      message: contract.message,
+      projectCommissionPercent: Number(contract.project.marketerCommissionPercent),
       status: contract.status.toLowerCase(),
       createdAt: contract.createdAt,
     }));
@@ -93,7 +98,9 @@ export async function GET(request: Request) {
     where: { projectId: { in: projectIds }, user: { role: "marketer" } },
     orderBy: { createdAt: "desc" },
     include: {
-      project: { select: { id: true, name: true } },
+      project: {
+        select: { id: true, name: true, marketerCommissionPercent: true },
+      },
       user: { select: { id: true, name: true, email: true, role: true } },
     },
   });
@@ -107,6 +114,8 @@ export async function GET(request: Request) {
     userEmail: contract.user.email,
     userRole: contract.user.role,
     commissionPercent: Number(contract.commissionPercent),
+    message: contract.message,
+    projectCommissionPercent: Number(contract.project.marketerCommissionPercent),
     status: contract.status.toLowerCase(),
     createdAt: contract.createdAt,
   }));
@@ -168,6 +177,7 @@ export async function POST(request: Request) {
         projectId: project.id,
         userId: marketer.id,
         commissionPercent: commissionPercent.toString(),
+        message: payload.message?.trim() || null,
       },
     });
 
@@ -216,6 +226,8 @@ export async function POST(request: Request) {
         userEmail: marketer.email,
         userRole: marketer.role,
         commissionPercent: Number(contract.commissionPercent),
+        message: contract.message,
+        projectCommissionPercent: Number(project.marketerCommissionPercent),
         status: contract.status.toLowerCase(),
         createdAt: contract.createdAt,
       },

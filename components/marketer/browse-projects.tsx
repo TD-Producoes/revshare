@@ -36,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export function BrowseProjects() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
@@ -50,6 +51,7 @@ export function BrowseProjects() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [commissionInput, setCommissionInput] = useState<string>("");
+  const [applicationMessage, setApplicationMessage] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
   const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(
     () => new Set(),
@@ -122,6 +124,7 @@ export function BrowseProjects() {
     );
     setSelectedProjectId(projectId);
     setCommissionInput(defaultCommission !== null ? String(defaultCommission) : "");
+    setApplicationMessage("");
     setFormError(null);
     setIsDialogOpen(true);
   };
@@ -141,9 +144,11 @@ export function BrowseProjects() {
         projectId: selectedProject.id,
         userId: currentUser.id,
         commissionPercent,
+        message: applicationMessage.trim() || undefined,
       });
       setAppliedProjectIds((prev) => new Set(prev).add(selectedProject.id));
       setCommissionInput("");
+      setApplicationMessage("");
       setIsDialogOpen(false);
     } catch (error) {
       const message =
@@ -313,6 +318,19 @@ export function BrowseProjects() {
               />
               <p className="text-xs text-muted-foreground">
                 You can negotiate a custom commission for this project.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea
+                id="message"
+                value={applicationMessage}
+                onChange={(event) => setApplicationMessage(event.target.value)}
+                placeholder="Introduce yourself or share why you’re a great fit."
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional message for the creator (max 2000 characters).
               </p>
             </div>
             {formError ? (
