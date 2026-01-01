@@ -29,6 +29,7 @@ export async function GET(request: Request) {
       id: true,
       createdAt: true,
       refundWindowDays: true,
+      creatorPaymentId: true,
       project: { select: { refundWindowDays: true } },
     },
   });
@@ -43,7 +44,11 @@ export async function GET(request: Request) {
           purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
         );
         const nextStatus =
-          refundEligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+          refundEligibleAt <= now
+            ? purchase.creatorPaymentId
+              ? "READY_FOR_PAYOUT"
+              : "PENDING_CREATOR_PAYMENT"
+            : "AWAITING_REFUND_WINDOW";
         return prisma.purchase.update({
           where: { id: purchase.id },
           data: {
@@ -55,15 +60,6 @@ export async function GET(request: Request) {
       }),
     );
   }
-
-  await prisma.purchase.updateMany({
-    where: {
-      project: { userId: creator.id },
-      commissionStatus: "AWAITING_REFUND_WINDOW",
-      refundEligibleAt: { lte: now },
-    },
-    data: { commissionStatus: "READY_FOR_PAYOUT" },
-  });
 
   const purchases = await prisma.purchase.findMany({
     where: { project: { userId: creator.id } },
@@ -93,6 +89,7 @@ export async function GET(request: Request) {
     commissionStatus: purchase.commissionStatus.toLowerCase(),
     status: purchase.status.toLowerCase(),
     createdAt: purchase.createdAt,
+    refundEligibleAt: purchase.refundEligibleAt,
     couponCode: purchase.coupon?.code ?? null,
     marketer: purchase.coupon?.marketer
       ? {

@@ -42,12 +42,19 @@ async function buildReceiptPurchases(
     return { purchases: payment.purchases, payment };
   }
 
+  const now = new Date();
   const purchases = await prisma.purchase.findMany({
     where: {
       creatorPaymentId: null,
       commissionAmount: { gt: 0 },
-      commissionStatus: "PENDING_CREATOR_PAYMENT",
       project: { userId: creatorId },
+      OR: [
+        { commissionStatus: "PENDING_CREATOR_PAYMENT" },
+        {
+          commissionStatus: "AWAITING_REFUND_WINDOW",
+          refundEligibleAt: { lte: now },
+        },
+      ],
     },
     include: {
       project: { select: { name: true, platformCommissionPercent: true } },

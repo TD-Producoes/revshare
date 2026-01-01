@@ -458,14 +458,22 @@ export async function POST(request: Request) {
   const transferId: string | null = null;
   const status: "PENDING" | "PAID" | "FAILED" =
     coupon && commissionAmount > 0 ? "PENDING" : "PAID";
-  const commissionStatus: "PENDING_CREATOR_PAYMENT" | "PAID" =
-    coupon && commissionAmount > 0 ? "PENDING_CREATOR_PAYMENT" : "PAID";
   const refundWindowDays =
     contract?.refundWindowDays ?? projectMatch.refundWindowDays ?? 30;
   const eventCreatedAt = new Date(event.created * 1000);
   const refundEligibleAt = new Date(
     eventCreatedAt.getTime() + refundWindowDays * 24 * 60 * 60 * 1000,
   );
+  const isRefundEligible = refundEligibleAt <= new Date();
+  const commissionStatus:
+    | "AWAITING_REFUND_WINDOW"
+    | "PENDING_CREATOR_PAYMENT"
+    | "PAID" =
+    coupon && commissionAmount > 0
+      ? isRefundEligible
+        ? "PENDING_CREATOR_PAYMENT"
+        : "AWAITING_REFUND_WINDOW"
+      : "PAID";
 
   console.log(`Creating purchase record for event ${event.id}`);
   const purchase = await prisma.purchase.create({

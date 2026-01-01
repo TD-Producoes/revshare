@@ -3,12 +3,15 @@
 import { formatCurrency, formatNumber } from "@/lib/data/metrics";
 import { StatCard } from "@/components/shared/stat-card";
 import { MyOffersTable } from "./my-offers-table";
-import { MousePointerClick, Users, TrendingUp, DollarSign } from "lucide-react";
+import { MousePointerClick, Users, TrendingUp, DollarSign, AlertCircle } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useContractsForMarketer } from "@/lib/hooks/contracts";
 import { useMarketerPurchases, useMarketerStats } from "@/lib/hooks/marketer";
 import { PurchasesTable } from "./purchases-table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export function MarketerDashboard() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
@@ -56,6 +59,24 @@ export function MarketerDashboard() {
           Welcome back, {currentUser.name}. Here&apos;s your affiliate performance.
         </p>
       </div>
+
+      {!currentUser.stripeConnectedAccountId && (
+        <Alert className="border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100">
+          <AlertCircle className="h-4 w-4" />
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <AlertTitle>Connect Stripe to receive payouts</AlertTitle>
+              <AlertDescription>
+                You can keep using the platform, but funds will be transferred only after
+                you connect Stripe.
+              </AlertDescription>
+            </div>
+            <Button asChild size="sm" className="shrink-0">
+              <Link href="/marketer/settings">Go to settings</Link>
+            </Button>
+          </div>
+        </Alert>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

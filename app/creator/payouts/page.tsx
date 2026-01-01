@@ -97,6 +97,7 @@ export default function PayoutsPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const now = new Date();
 
   useEffect(() => {
     const status = searchParams.get("payment");
@@ -216,6 +217,21 @@ export default function PayoutsPage() {
         error instanceof Error ? error.message : "Failed to process transfers.";
       toast.error(message);
     }
+  };
+
+  const getEffectiveCommissionStatus = (purchase: {
+    commissionStatus: string;
+    refundEligibleAt?: string | Date | null;
+  }) => {
+    if (purchase.commissionStatus !== "awaiting_refund_window") {
+      return purchase.commissionStatus;
+    }
+    if (!purchase.refundEligibleAt) {
+      return purchase.commissionStatus;
+    }
+    return new Date(purchase.refundEligibleAt) <= now
+      ? "pending_creator_payment"
+      : "awaiting_refund_window";
   };
 
   return (
@@ -487,6 +503,7 @@ export default function PayoutsPage() {
                             />
                           </TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Refund Ends</TableHead>
                           <TableHead className="text-right">Date</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -515,9 +532,10 @@ export default function PayoutsPage() {
                               {formatCurrency(purchase.platformFee)}
                             </TableCell>
                             <TableCell>
-                              {purchase.commissionStatus === "ready_for_payout" ? (
+                              {getEffectiveCommissionStatus(purchase) ===
+                              "ready_for_payout" ? (
                                 <Badge variant="outline">Ready</Badge>
-                              ) : purchase.commissionStatus ===
+                              ) : getEffectiveCommissionStatus(purchase) ===
                                 "awaiting_refund_window" ? (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -530,12 +548,17 @@ export default function PayoutsPage() {
                                     </div>
                                   </TooltipContent>
                                 </Tooltip>
-                              ) : purchase.commissionStatus ===
+                              ) : getEffectiveCommissionStatus(purchase) ===
                                 "pending_creator_payment" ? (
                                 <Badge variant="secondary">Awaiting Creator</Badge>
                               ) : (
                                 <Badge className="bg-green-600 text-white">Paid</Badge>
                               )}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {purchase.refundEligibleAt
+                                ? new Date(purchase.refundEligibleAt).toLocaleDateString()
+                                : "-"}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
                               {new Date(purchase.createdAt).toLocaleDateString()}
@@ -676,16 +699,19 @@ export default function PayoutsPage() {
                         </TableCell>
                         <TableCell>{purchase.marketerName}</TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(purchase.amount)}
+                          {formatCurrency(purchase.amount, purchase.currency)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(purchase.marketerCommission)}
+                          {formatCurrency(
+                            purchase.marketerCommission,
+                            purchase.currency,
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(purchase.platformFee)}
+                          {formatCurrency(purchase.platformFee, purchase.currency)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(purchase.merchantNet)}
+                          {formatCurrency(purchase.merchantNet, purchase.currency)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -700,8 +726,12 @@ export default function PayoutsPage() {
                     <div key={entry.marketerId ?? "direct"} className="flex justify-between text-sm">
                       <span>{entry.marketerName}</span>
                       <span>
-                        {formatCurrency(entry.marketerTotal)} +{" "}
-                        {formatCurrency(entry.platformTotal)}
+                        {entry.currency
+                          ? `${formatCurrency(entry.marketerTotal, entry.currency)} + ${formatCurrency(
+                              entry.platformTotal,
+                              entry.currency,
+                            )}`
+                          : "Multiple currencies"}
                       </span>
                     </div>
                   ))}
@@ -709,19 +739,47 @@ export default function PayoutsPage() {
                 <div className="mt-4 border-t pt-3 text-sm">
                   <div className="flex justify-between">
                     <span>Marketer commissions</span>
-                    <span>{formatCurrency(preview.totals.marketerTotal)}</span>
+                    <span>
+                      {preview.totals.currency
+                        ? formatCurrency(
+                            preview.totals.marketerTotal,
+                            preview.totals.currency,
+                          )
+                        : "Multiple currencies"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Platform commissions</span>
-                    <span>{formatCurrency(preview.totals.platformTotal)}</span>
+                    <span>
+                      {preview.totals.currency
+                        ? formatCurrency(
+                            preview.totals.platformTotal,
+                            preview.totals.currency,
+                          )
+                        : "Multiple currencies"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Processing fee</span>
-                    <span>{formatCurrency(preview.totals.processingFee)}</span>
+                    <span>
+                      {preview.totals.currency
+                        ? formatCurrency(
+                            preview.totals.processingFee,
+                            preview.totals.currency,
+                          )
+                        : "Multiple currencies"}
+                    </span>
                   </div>
                   <div className="flex justify-between font-medium">
                     <span>Total due</span>
-                    <span>{formatCurrency(preview.totals.totalWithFee)}</span>
+                    <span>
+                      {preview.totals.currency
+                        ? formatCurrency(
+                            preview.totals.totalWithFee,
+                            preview.totals.currency,
+                          )
+                        : "Multiple currencies"}
+                    </span>
                   </div>
                 </div>
               </div>

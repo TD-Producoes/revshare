@@ -13,6 +13,7 @@ type ReceiptLine = {
   marketerCommission: number;
   platformFee: number;
   merchantNet: number;
+  currency: string;
   createdAt: Date;
 };
 
@@ -30,6 +31,7 @@ function buildReceiptLines(
     projectId: string;
     amount: number;
     commissionAmount: number;
+    currency: string;
     customerEmail: string | null;
     createdAt: Date;
     project: { name: string; platformCommissionPercent: unknown };
@@ -54,6 +56,7 @@ function buildReceiptLines(
       marketerCommission,
       platformFee,
       merchantNet,
+      currency: purchase.currency,
       createdAt: purchase.createdAt,
     };
   });
@@ -67,6 +70,8 @@ function buildReceiptLines(
     },
     { marketerTotal: 0, platformTotal: 0, grandTotal: 0 },
   );
+  const currencySet = new Set(lines.map((line) => line.currency).filter(Boolean));
+  const totalsCurrency = currencySet.size === 1 ? [...currencySet][0] : null;
 
   const processingFee = calculateProcessingFee(totals.grandTotal);
   const totalWithFee = totals.grandTotal + processingFee;
@@ -78,6 +83,7 @@ function buildReceiptLines(
       marketerName: string;
       marketerTotal: number;
       platformTotal: number;
+      currency: string | null;
     }
   >();
 
@@ -88,7 +94,11 @@ function buildReceiptLines(
       marketerName: line.marketerName,
       marketerTotal: 0,
       platformTotal: 0,
+      currency: line.currency,
     };
+    if (existing.currency && existing.currency !== line.currency) {
+      existing.currency = null;
+    }
     existing.marketerTotal += line.marketerCommission;
     existing.platformTotal += line.platformFee;
     perMarketer.set(key, existing);
@@ -100,6 +110,7 @@ function buildReceiptLines(
       ...totals,
       processingFee,
       totalWithFee,
+      currency: totalsCurrency,
     },
     perMarketer: Array.from(perMarketer.values()),
   };
@@ -136,6 +147,7 @@ export async function GET(request: Request) {
     orderBy: { createdAt: "desc" },
   });
 
+  const now = new Date();
   const purchases =
     pendingPayment?.purchases.length
       ? pendingPayment.purchases
@@ -143,8 +155,14 @@ export async function GET(request: Request) {
           where: {
             creatorPaymentId: null,
             commissionAmount: { gt: 0 },
-            commissionStatus: "PENDING_CREATOR_PAYMENT",
             project: { userId: creator.id },
+            OR: [
+              { commissionStatus: "PENDING_CREATOR_PAYMENT" },
+              {
+                commissionStatus: "AWAITING_REFUND_WINDOW",
+                refundEligibleAt: { lte: now },
+              },
+            ],
           },
           include: {
             project: { select: { name: true, platformCommissionPercent: true } },

@@ -33,12 +33,19 @@ async function buildReceiptPurchases(creatorId: string, paymentId?: string | nul
     return { purchases: payment.purchases, payment };
   }
 
+  const now = new Date();
   const purchases = await prisma.purchase.findMany({
     where: {
       creatorPaymentId: null,
       commissionAmount: { gt: 0 },
-      commissionStatus: "PENDING_CREATOR_PAYMENT",
       project: { userId: creatorId },
+      OR: [
+        { commissionStatus: "PENDING_CREATOR_PAYMENT" },
+        {
+          commissionStatus: "AWAITING_REFUND_WINDOW",
+          refundEligibleAt: { lte: now },
+        },
+      ],
     },
     include: {
       project: { select: { platformCommissionPercent: true } },
@@ -169,7 +176,6 @@ export async function POST(request: Request) {
           project: { select: { refundWindowDays: true } },
         },
       });
-      const now = new Date();
       const readyIds: string[] = [];
       const awaitingIds: string[] = [];
       const backfillUpdates: Promise<unknown>[] = [];
@@ -185,7 +191,9 @@ export async function POST(request: Request) {
             purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
           );
         const nextStatus =
-          eligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+          eligibleAt <= new Date()
+            ? "READY_FOR_PAYOUT"
+            : "AWAITING_REFUND_WINDOW";
 
         if (purchase.refundEligibleAt == null || purchase.refundWindowDays == null) {
           backfillUpdates.push(

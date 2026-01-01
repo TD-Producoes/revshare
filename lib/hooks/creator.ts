@@ -71,6 +71,7 @@ export type CreatorPaymentLine = {
   marketerCommission: number;
   platformFee: number;
   merchantNet: number;
+  currency: string;
   createdAt: string | Date;
 };
 
@@ -82,6 +83,7 @@ export type CreatorPaymentPreview = {
     marketerName: string;
     marketerTotal: number;
     platformTotal: number;
+    currency: string | null;
   }>;
   totals: {
     marketerTotal: number;
@@ -89,6 +91,7 @@ export type CreatorPaymentPreview = {
     grandTotal: number;
     processingFee: number;
     totalWithFee: number;
+    currency: string | null;
   };
 };
 
@@ -114,6 +117,7 @@ export type CreatorPurchase = {
   commissionStatus: string;
   status: string;
   createdAt: string | Date;
+  refundEligibleAt: string | Date | null;
   couponCode: string | null;
   marketer: {
     id: string;

@@ -47,11 +47,28 @@ export default function EarningsPage() {
     );
   }
 
+  const now = new Date();
+  const getEffectiveCommissionStatus = (purchase: {
+    commissionStatus: string;
+    refundEligibleAt?: string | Date | null;
+  }) => {
+    if (purchase.commissionStatus !== "awaiting_refund_window") {
+      return purchase.commissionStatus;
+    }
+    if (!purchase.refundEligibleAt) {
+      return purchase.commissionStatus;
+    }
+    return new Date(purchase.refundEligibleAt) <= now
+      ? "pending_creator_payment"
+      : "awaiting_refund_window";
+  };
+
   const totals = purchases.reduce(
     (acc, purchase) => {
       acc.totalRevenue += purchase.amount;
       acc.totalEarnings += purchase.commissionAmount;
-      switch (purchase.commissionStatus) {
+      const effectiveStatus = getEffectiveCommissionStatus(purchase);
+      switch (effectiveStatus) {
         case "paid":
           acc.paid += purchase.commissionAmount;
           break;
@@ -101,13 +118,14 @@ export default function EarningsPage() {
       existing.purchaseCount += 1;
       existing.totalRevenue += purchase.amount;
       existing.totalEarnings += purchase.commissionAmount;
-      if (purchase.commissionStatus === "paid") {
+      const effectiveStatus = getEffectiveCommissionStatus(purchase);
+      if (effectiveStatus === "paid") {
         existing.paidEarnings += purchase.commissionAmount;
-      } else if (purchase.commissionStatus === "ready_for_payout") {
+      } else if (effectiveStatus === "ready_for_payout") {
         existing.readyEarnings += purchase.commissionAmount;
-      } else if (purchase.commissionStatus === "awaiting_refund_window") {
+      } else if (effectiveStatus === "awaiting_refund_window") {
         existing.awaitingRefundEarnings += purchase.commissionAmount;
-      } else if (purchase.commissionStatus === "pending_creator_payment") {
+      } else if (effectiveStatus === "pending_creator_payment") {
         existing.awaitingCreatorEarnings += purchase.commissionAmount;
       }
 

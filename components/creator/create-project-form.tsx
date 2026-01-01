@@ -27,7 +27,8 @@ import { ImageUpload } from "@/components/ui/image-upload";
 import { FeaturesInput } from "@/components/ui/features-input";
 import { PricingModel } from "@/lib/data/types";
 import { countries } from "@/lib/data/countries";
-import { Plus } from "lucide-react";
+import { Info, Plus } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const categories = [
   "Productivity",
@@ -54,7 +55,7 @@ export function CreateProjectForm() {
     pricingModel: "subscription" as PricingModel,
     price: "",
     revSharePercent: "20",
-    cookieWindowDays: "30",
+    refundWindowDays: "30",
     country: "",
     website: "",
     foundationDate: "",
@@ -82,7 +83,7 @@ export function CreateProjectForm() {
       pricingModel: "subscription",
       price: "",
       revSharePercent: "20",
-      cookieWindowDays: "30",
+      refundWindowDays: "30",
       country: "",
       website: "",
       foundationDate: "",
@@ -102,6 +103,7 @@ export function CreateProjectForm() {
 
       const description = formData.description.trim();
       const marketerCommissionPercent = Number(formData.revSharePercent);
+      const refundWindowDays = Number(formData.refundWindowDays);
       const payload = {
         userId: data.user.id,
         name: formData.name.trim(),
@@ -110,6 +112,7 @@ export function CreateProjectForm() {
         ...(Number.isFinite(marketerCommissionPercent)
           ? { marketerCommissionPercent }
           : {}),
+        ...(Number.isFinite(refundWindowDays) ? { refundWindowDays } : {}),
         ...(formData.country ? { country: formData.country } : {}),
         ...(formData.website.trim() ? { website: formData.website.trim() } : {}),
         ...(formData.foundationDate
@@ -349,7 +352,24 @@ export function CreateProjectForm() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="revShare">Revenue Share (%)</Label>
+                  <Label htmlFor="revShare" className="flex items-center gap-2">
+                    Revenue Share (%)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
+                          aria-label="Revenue share default info"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        Default commission for new contracts. You can override it per
+                        contract when reviewing applications.
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
                   <div className="relative">
                     <Input
                       id="revShare"
@@ -369,15 +389,33 @@ export function CreateProjectForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="cookieWindow">Cookie Window (days)</Label>
+                  <Label htmlFor="refundWindow" className="flex items-center gap-2">
+                    Refund Window (days)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
+                          aria-label="Refund window default info"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        Default refund window for new contracts. Commissions become
+                        payable only after this period passes without a refund. Each
+                        contract can override it without changing existing purchases.
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
                   <Input
-                    id="cookieWindow"
+                    id="refundWindow"
                     type="number"
                     min="1"
                     max="365"
-                    value={formData.cookieWindowDays}
+                    value={formData.refundWindowDays}
                     onChange={(e) =>
-                      setFormData({ ...formData, cookieWindowDays: e.target.value })
+                      setFormData({ ...formData, refundWindowDays: e.target.value })
                     }
                     required
                   />

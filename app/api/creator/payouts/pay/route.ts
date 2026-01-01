@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       id: true,
       createdAt: true,
       refundWindowDays: true,
+      creatorPaymentId: true,
       project: { select: { refundWindowDays: true } },
     },
   });
@@ -79,7 +80,11 @@ export async function POST(request: Request) {
           purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
         );
         const nextStatus =
-          refundEligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+          refundEligibleAt <= now
+            ? purchase.creatorPaymentId
+              ? "READY_FOR_PAYOUT"
+              : "PENDING_CREATOR_PAYMENT"
+            : "AWAITING_REFUND_WINDOW";
         return prisma.purchase.update({
           where: { id: purchase.id },
           data: {
@@ -92,22 +97,20 @@ export async function POST(request: Request) {
     );
   }
 
-  await prisma.purchase.updateMany({
-    where: {
-      projectId: { in: Array.from(projectMap.keys()) },
-      commissionStatus: "AWAITING_REFUND_WINDOW",
-      refundEligibleAt: { lte: now },
-    },
-    data: { commissionStatus: "READY_FOR_PAYOUT" },
-  });
-
   const pendingPurchases = await prisma.purchase.findMany({
     where: {
       projectId: { in: Array.from(projectMap.keys()) },
-      commissionStatus: "READY_FOR_PAYOUT",
       status: { in: ["PENDING", "FAILED"] },
       commissionAmount: { gt: 0 },
       coupon: { isNot: null },
+      OR: [
+        { commissionStatus: "READY_FOR_PAYOUT" },
+        {
+          commissionStatus: "AWAITING_REFUND_WINDOW",
+          refundEligibleAt: { lte: now },
+          creatorPaymentId: { not: null },
+        },
+      ],
     },
     include: {
       coupon: {
