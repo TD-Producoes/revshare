@@ -289,8 +289,10 @@ export function OffersManagement() {
                 selectedContract.commissionPercent -
                   selectedContract.projectCommissionPercent,
               ) > 0.0001 && (
-                <Alert>
-                  <AlertTitle>Commission differs from default</AlertTitle>
+                <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100">
+                  <AlertTitle className="text-amber-900 dark:text-amber-100">
+                    Commission differs from default
+                  </AlertTitle>
                   <AlertDescription>
                     This application requests{" "}
                     {formatNumber(selectedContract.commissionPercent * 100)}% instead
