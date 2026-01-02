@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +31,7 @@ import { FeaturesInput } from "@/components/ui/features-input";
 import { PricingModel } from "@/lib/data/types";
 import { countries } from "@/lib/data/countries";
 import { projectCategories } from "@/lib/data/categories";
-import { Info, Plus, Loader2, Sparkles } from "lucide-react";
+import { Info, Plus, Loader2, Sparkles, CheckCircle2, CreditCard } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 
@@ -157,12 +159,15 @@ function formatDateForInput(dateStr: string | null): string {
 
 export function CreateProjectForm() {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<1 | 2>(1); // Step 1: URL input, Step 2: Form
+  const [step, setStep] = useState<1 | "loading" | 2 | "success">(1); // Step 1: URL input, loading: scraping, Step 2: Form, success: success message
   const [urlInput, setUrlInput] = useState("");
   const [error, setError] = useState("");
+  const [isConnectingStripe, setIsConnectingStripe] = useState(false);
   const queryClient = useQueryClient();
   const [tempProjectId] = useState(() => `temp-${Date.now()}`);
   const [userId, setUserId] = useState<string | null>(null);
+  const { data: authUserId } = useAuthUserId();
+  const { data: currentUser } = useUser(authUserId);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -219,6 +224,7 @@ export function CreateProjectForm() {
       setUrlInput("");
       resetForm();
       setError("");
+      setIsConnectingStripe(false);
     }
   };
 
@@ -256,7 +262,7 @@ export function CreateProjectForm() {
         imageUrls: scrapedData.images || prev.imageUrls,
       }));
       
-      // Move to step 2
+      // Move to step 2 after successful scraping
       setStep(2);
       setError("");
     },
@@ -272,7 +278,13 @@ export function CreateProjectForm() {
     }
 
     setError("");
-    await scrapeWebsite.mutateAsync(urlInput.trim());
+    setStep("loading");
+    try {
+      await scrapeWebsite.mutateAsync(urlInput.trim());
+    } catch {
+      // Error is handled by scrapeWebsite mutation
+      setStep(1);
+    }
   };
 
   const handleSkip = () => {
@@ -333,8 +345,8 @@ export function CreateProjectForm() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setOpen(false);
-      resetForm();
+      // Move to success step
+      setStep("success");
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : "Unable to create project.");
@@ -353,6 +365,47 @@ export function CreateProjectForm() {
     await createProject.mutateAsync();
   };
 
+  const handleConnectStripe = async () => {
+    if (!userId) return;
+    
+    setIsConnectingStripe(true);
+    setError("");
+    
+    try {
+      const origin = window.location.origin;
+      const response = await fetch("/api/connect/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userId,
+          email: currentUser?.email || "",
+          name: currentUser?.name || "",
+          role: "creator",
+          returnUrl: `${origin}/creator/settings`,
+          refreshUrl: `${origin}/creator/settings`,
+        }),
+      });
+      
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to connect Stripe.");
+      }
+      
+      if (payload?.data?.onboardingUrl) {
+        window.location.href = payload.data.onboardingUrl;
+        return;
+      }
+      
+      throw new Error("Missing onboarding URL.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to connect Stripe.";
+      setError(message);
+    } finally {
+      setIsConnectingStripe(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -362,25 +415,58 @@ export function CreateProjectForm() {
         </Button>
       </DialogTrigger>
       <DialogContent className={`sm:max-w-[600px] flex flex-col p-0 overflow-hidden ${
-        step === 1 ? "max-h-[400px]" : "h-[90vh]"
+        step === 1 || step === "loading" || step === "success" ? "max-h-[400px]" : "h-[90vh]"
       }`}>
         {/* Header - Fixed */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <DialogTitle>
-            {step === 1 ? "Enter Website URL" : "Create New Project"}
+            {step === 1
+              ? "Generate project details from website URL"
+              : step === "loading"
+              ? "Scraping website..."
+              : step === "success"
+              ? "Project Created Successfully!"
+              : "Create New Project"}
           </DialogTitle>
           <DialogDescription>
             {step === 1
               ? "Provide your project's website URL to automatically fill in the form, or skip to fill it manually."
+              : step === "loading"
+              ? "Please wait while we analyze your website..."
+              : step === "success"
+              ? "Your project has been created. Connect Stripe to start receiving payments."
               : "Add a new project and set up revenue sharing terms for affiliates."}
           </DialogDescription>
         </DialogHeader>
 
         {/* Content - Scrollable */}
-        <div className={step === 1 ? "max-h-[200px] overflow-hidden" : "flex-1 min-h-0 overflow-hidden"}>
-          <ScrollArea className={step === 1 ? "max-h-[200px] px-6" : "h-full px-6"}>
+        <div className={step === 1 || step === "loading" || step === "success" ? "max-h-[200px] overflow-hidden" : "flex-1 min-h-0 overflow-hidden"}>
+          <ScrollArea className={step === 1 || step === "loading" || step === "success" ? "max-h-[200px] px-6" : "h-full px-6"}>
             <div className="py-4">
-            {step === 1 ? (
+            {step === "loading" ? (
+              // Loading Step: Scraping website
+              <div className="flex flex-col items-center justify-center gap-4 py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-medium">Scraping website...</p>
+                  <p className="text-xs text-muted-foreground">Please wait</p>
+                </div>
+              </div>
+            ) : step === "success" ? (
+              // Success Step: Project created
+              <div className="flex flex-col items-center justify-center gap-4 py-8">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <CheckCircle2 className="h-6 w-6 text-primary" />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-medium">Project created successfully!</p>
+                  <p className="text-xs text-muted-foreground">
+                    Connect your Stripe account to start receiving payments from marketers.
+                  </p>
+                </div>
+                {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+              </div>
+            ) : step === 1 ? (
               // Step 1: URL Input
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -743,15 +829,40 @@ export function CreateProjectForm() {
                 onClick={handleGenerate}
                 disabled={scrapeWebsite.isPending || !urlInput.trim()}
               >
-                {scrapeWebsite.isPending ? (
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate
+              </Button>
+            </>
+          ) : step === "loading" ? (
+            // Loading step - no buttons, just wait
+            null
+          ) : step === "success" ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOpen(false);
+                  resetForm();
+                  setStep(1);
+                }}
+              >
+                Skip
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConnectStripe}
+                disabled={isConnectingStripe || !currentUser}
+              >
+                {isConnectingStripe ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
+                    Connecting...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Generate
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Connect Stripe
                   </>
                 )}
               </Button>
