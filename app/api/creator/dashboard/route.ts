@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     projects.map((project) => [
       project.id,
       Number(project.platformCommissionPercent) || 0,
-    ]),
+    ])
   );
 
   for (const purchase of purchases) {
@@ -91,13 +91,12 @@ export async function GET(request: Request) {
       platformPercentByProject.get(purchase.projectId) ?? 0;
     platformFee += Math.round(purchase.commissionAmount * platformPercent);
 
-    const existing =
-      projectMetrics.get(purchase.projectId) ?? {
-        totalRevenue: 0,
-        affiliateRevenue: 0,
-        affiliateShareOwed: 0,
-        marketers: new Set<string>(),
-      };
+    const existing = projectMetrics.get(purchase.projectId) ?? {
+      totalRevenue: 0,
+      affiliateRevenue: 0,
+      affiliateShareOwed: 0,
+      marketers: new Set<string>(),
+    };
 
     existing.totalRevenue += purchase.amount;
     existing.affiliateShareOwed += purchase.commissionAmount;
@@ -165,6 +164,13 @@ export async function GET(request: Request) {
     };
   });
 
+  // Sort projects by total revenue descending
+  const sortedProjects = projectData.sort((a, b) => {
+    const revenueA = a.metrics?.totalRevenue ?? 0;
+    const revenueB = b.metrics?.totalRevenue ?? 0;
+    return revenueB - revenueA;
+  });
+
   return NextResponse.json({
     data: {
       totals: {
@@ -175,7 +181,7 @@ export async function GET(request: Request) {
         mrr: 0,
       },
       chart,
-      projects: projectData,
+      projects: sortedProjects,
     },
   });
 }
