@@ -250,3 +250,82 @@ export function useMarketerTestimonials(marketerId?: string | null) {
     },
   });
 }
+
+export type SearchMarketer = {
+  id: string;
+  name: string;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  location?: string | null;
+  specialties?: string[];
+  focusArea?: string | null;
+  totalEarnings: number;
+  totalRevenue: number;
+  activeProjects: number;
+};
+
+export type MarketersSearchFilters = {
+  search?: string;
+  specialties?: string[];
+  earningsRanges?: string[];
+  locations?: string[];
+  focusAreas?: string[];
+};
+
+export function useMarketersSearch(filters: MarketersSearchFilters = {}) {
+  return useQuery<SearchMarketer[]>({
+    queryKey: ["marketers-search", filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+
+      if (filters.search) {
+        params.append("search", filters.search);
+      }
+      if (filters.specialties && filters.specialties.length > 0) {
+        params.append("specialties", filters.specialties.join(","));
+      }
+      if (filters.earningsRanges && filters.earningsRanges.length > 0) {
+        params.append("earningsRanges", filters.earningsRanges.join(","));
+      }
+      if (filters.locations && filters.locations.length > 0) {
+        params.append("locations", filters.locations.join(","));
+      }
+      if (filters.focusAreas && filters.focusAreas.length > 0) {
+        params.append("focusAreas", filters.focusAreas.join(","));
+      }
+
+      const response = await fetch(
+        `/api/marketers/search?${params.toString()}`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to search marketers.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export type MarketerFilterOptions = {
+  specialties: string[];
+  locations: string[];
+  focusAreas: string[];
+};
+
+export function useMarketersFilterOptions() {
+  return useQuery<MarketerFilterOptions>({
+    queryKey: ["marketers-filter-options"],
+    queryFn: async () => {
+      const response = await fetch("/api/marketers/filter-options");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch filter options.");
+      }
+      const payload = await response.json();
+      return (
+        payload?.data ?? { specialties: [], locations: [], focusAreas: [] }
+      );
+    },
+  });
+}
