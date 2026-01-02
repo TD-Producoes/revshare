@@ -273,19 +273,19 @@ export default function Home() {
 
           <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
             {/* Marketers Table */}
-            <Card className="overflow-hidden bg-background/50 border-border/50 shadow-sm">
+            <Card className="overflow-hidden bg-background/50 border-border/50 shadow-sm p-0 flex flex-col">
               <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
                 <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
                   Top Marketers
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 flex flex-col flex-1">
                 <div className="grid grid-cols-[1fr_120px_120px] gap-4 px-5 py-2 border-b border-border/40 bg-muted/10 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                   <div>Rank & Details</div>
                   <div className="text-right">Revenue</div>
                   <div className="text-right">Commission</div>
                 </div>
-                <div className="divide-y divide-border/40">
+                <div className="divide-y divide-border/40 flex-1">
                   {isLoadingMarketers ? (
                     <div className="p-5 text-center text-sm text-muted-foreground">
                       Loading marketers...
@@ -344,33 +344,27 @@ export default function Home() {
                     ))
                   )}
                 </div>
-                <div className="p-4 bg-muted/10 border-t border-border/40">
-                  <Link href="/marketers">
-                    <Button
-                      variant="ghost"
-                      className="w-full text-muted-foreground hover:text-foreground justify-between group"
-                    >
-                      View all marketers{" "}
-                      <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </Button>
-                  </Link>
-                </div>
+                <Link href="/marketers">
+                  <div className="p-4 bg-muted/10 border-t border-border/40 text-muted-foreground cursor-pointer hover:bg-muted hover:text-foreground transition-colors">
+                    View all marketers
+                  </div>
+                </Link>
               </CardContent>
             </Card>
 
             {/* Projects List */}
-            <Card className="overflow-hidden bg-background/50 border-border/50 shadow-sm h-fit">
+            <Card className="overflow-hidden bg-background/50 border-border/50 shadow-sm p-0 flex flex-col">
               <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
                 <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
                   Top Projects
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 flex flex-col flex-1">
                 <div className="flex items-center justify-between px-5 py-2 border-b border-border/40 bg-muted/10 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                   <div>Rank & Details</div>
                   <div className="text-right">Revenue & Growth</div>
                 </div>
-                <div className="divide-y divide-border/40">
+                <div className="divide-y divide-border/40 flex-1">
                   {isLoadingProjects ? (
                     <div className="p-5 text-center text-sm text-muted-foreground">
                       Loading projects...
@@ -436,16 +430,8 @@ export default function Home() {
                     )
                   )}
                 </div>
-                <div className="p-4 bg-muted/10 border-t border-border/40">
-                  <Link href="/projects">
-                    <Button
-                      variant="ghost"
-                      className="w-full text-muted-foreground hover:text-foreground justify-between group"
-                    >
-                      View all projects{" "}
-                      <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </Button>
-                  </Link>
+                <div className="p-4 bg-muted/10 border-t border-border/40 text-muted-foreground cursor-pointer hover:bg-muted hover:text-foreground transition-colors">
+                  <Link href="/projects">View all projects</Link>
                 </div>
               </CardContent>
             </Card>
