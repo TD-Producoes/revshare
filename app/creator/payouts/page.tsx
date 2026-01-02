@@ -36,6 +36,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -89,6 +96,28 @@ function renderDateTime(value?: string | Date | null, align: DateTimeAlign = "le
   );
 }
 
+function paymentMethodLabel(method: {
+  type: string;
+  brand?: string | null;
+  last4?: string | null;
+  expMonth?: number | null;
+  expYear?: number | null;
+  bankName?: string | null;
+}) {
+  if (method.type === "us_bank_account") {
+    const bank = method.bankName ?? "Bank account";
+    const last4 = method.last4 ? `•••• ${method.last4}` : "";
+    return `${bank} ${last4}`.trim();
+  }
+  const brand = method.brand ?? "Card";
+  const last4 = method.last4 ? `•••• ${method.last4}` : "";
+  const exp =
+    method.expMonth && method.expYear
+      ? `Exp ${method.expMonth}/${method.expYear}`
+      : "";
+  return `${brand} ${last4} ${exp}`.trim();
+}
+
 export default function PayoutsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
@@ -119,6 +148,9 @@ export default function PayoutsPage() {
   const { data: adjustments = [], isLoading: isAdjustmentsLoading } =
     useCreatorAdjustments(currentUser?.id);
   const { data: paymentMethods = [] } = usePaymentMethods(currentUser?.id);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<
+    string | null
+  >(null);
   const commissionPurchases = purchases.filter(
     (purchase) => purchase.commissionAmount > 0,
   );
@@ -129,6 +161,15 @@ export default function PayoutsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const now = new Date();
+  const defaultPaymentMethod = paymentMethods.find((method) => method.isDefault);
+
+  useEffect(() => {
+    if (!selectedPaymentMethodId && paymentMethods.length > 0) {
+      setSelectedPaymentMethodId(
+        defaultPaymentMethod?.id ?? paymentMethods[0]?.id ?? null,
+      );
+    }
+  }, [defaultPaymentMethod?.id, paymentMethods, selectedPaymentMethodId]);
 
   useEffect(() => {
     const status = searchParams.get("payment");
@@ -185,7 +226,6 @@ export default function PayoutsPage() {
     0,
   );
   const hasReady = readyTotal > 0;
-  const defaultPaymentMethod = paymentMethods.find((method) => method.isDefault);
 
   const handlePayAll = async () => {
     if (!currentUser) return;
@@ -198,7 +238,10 @@ export default function PayoutsPage() {
     if (!currentUser) return;
     setChargeError(null);
     try {
-      const result = await charge.mutateAsync({ userId: currentUser.id });
+      const result = await charge.mutateAsync({
+        userId: currentUser.id,
+        paymentMethodId: selectedPaymentMethodId ?? undefined,
+      });
       if (result.status !== "succeeded") {
         throw new Error("Payment requires additional verification.");
       }
@@ -965,6 +1008,31 @@ export default function PayoutsPage() {
               No outstanding commissions to pay.
             </p>
           )}
+          {paymentMethods.length > 0 ? (
+            <div className="rounded-md border p-3 space-y-2">
+              <p className="text-sm font-medium">Charge a saved payment method</p>
+              <Select
+                value={selectedPaymentMethodId ?? undefined}
+                onValueChange={(value) => setSelectedPaymentMethodId(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentMethods.map((method) => (
+                    <SelectItem key={method.id} value={method.id}>
+                      {paymentMethodLabel(method)}
+                      {method.isDefault ? " (Default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Add a payment method to pay without going through checkout.
+            </p>
+          )}
           {chargeError ? (
             <p className="text-sm text-destructive">{chargeError}</p>
           ) : null}
@@ -975,11 +1043,15 @@ export default function PayoutsPage() {
             <Button variant="outline" onClick={() => setIsReceiptOpen(false)}>
               Close
             </Button>
-            {defaultPaymentMethod ? (
+            {paymentMethods.length > 0 ? (
               <Button
                 variant="secondary"
                 onClick={handleChargePaymentMethod}
-                disabled={charge.isPending || checkout.isPending}
+                disabled={
+                  charge.isPending ||
+                  checkout.isPending ||
+                  !selectedPaymentMethodId
+                }
               >
                 {charge.isPending ? "Charging..." : "Pay with saved method"}
               </Button>
