@@ -416,7 +416,7 @@ model PaymentMethod {
 }
 
 model MetricsSnapshot {
-  id                 String   @id @default(cuid())
+  id                 String @id @default(dbgenerated("gen_random_uuid()"))
   projectId          String
   date               DateTime
   totalRevenue       Int
