@@ -21,6 +21,7 @@ import {
   Settings,
   CreditCard,
   Bell,
+  History,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const creatorNavItems: NavItem[] = [
   { title: "Offers", href: "/creator/offers", icon: FileText },
   { title: "Payouts", href: "/creator/payouts", icon: CreditCard },
   { title: "Notifications", href: "/creator/notifications", icon: Bell },
+  { title: "Audit Log", href: "/creator/events", icon: History },
 ];
 
 const marketerNavItems: NavItem[] = [
@@ -45,6 +47,7 @@ const marketerNavItems: NavItem[] = [
   { title: "Browse", href: "/marketer/browse", icon: Search },
   { title: "Earnings", href: "/marketer/earnings", icon: CreditCard },
   { title: "Notifications", href: "/marketer/notifications", icon: Bell },
+  { title: "Audit Log", href: "/marketer/events", icon: History },
 ];
 
 function NavLink({
