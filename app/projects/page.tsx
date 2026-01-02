@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { ProjectCard, type ProjectCardData } from "@/components/projects/project-card";
 import {
@@ -11,6 +12,14 @@ import {
   useProjectsSearch,
   useProjectsFilterOptions,
 } from "@/lib/hooks/projects";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 export default function ProjectsDirectoryPage() {
   const [filters, setFilters] = useState<FilterState>({
@@ -57,6 +66,21 @@ export default function ProjectsDirectoryPage() {
     <main className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-7xl pt-24 px-6 py-8">
+        {/* Breadcrumb */}
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/">Home</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Projects</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Projects Directory</h1>

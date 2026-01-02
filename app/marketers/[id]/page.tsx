@@ -3,6 +3,14 @@
 import { Navbar } from "@/components/layout/navbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,12 +20,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Activity,
+  useMarketerTestimonials,
+  usePublicMarketerProfile,
+} from "@/lib/hooks/marketer";
+import { parseUserMetadata } from "@/lib/services/user-metadata";
+import {
   ArrowRight,
   ArrowUpRight,
   Award,
   Calendar,
-  DollarSign,
   ExternalLink,
   Globe,
   LineChart,
@@ -26,17 +37,10 @@ import {
   ShieldCheck,
   ShoppingBag,
   Star,
-  TrendingUp,
   Twitter,
-  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import {
-  usePublicMarketerProfile,
-  useMarketerTestimonials,
-} from "@/lib/hooks/marketer";
-import { parseUserMetadata } from "@/lib/services/user-metadata";
 
 // Helper functions
 
@@ -75,7 +79,11 @@ export default function MarketerProfilePage() {
   const params = useParams();
   const marketerId = params?.id as string | undefined;
 
-  const { data: profile, isLoading, error } = usePublicMarketerProfile(marketerId);
+  const {
+    data: profile,
+    isLoading,
+    error,
+  } = usePublicMarketerProfile(marketerId);
   const { data: testimonials = [], isLoading: isLoadingTestimonials } =
     useMarketerTestimonials(marketerId);
 
@@ -122,7 +130,9 @@ export default function MarketerProfilePage() {
     ? metadata.website.replace(/^https?:\/\//, "")
     : null;
   const websiteHref = metadata.website
-    ? (metadata.website.startsWith("http") ? metadata.website : `https://${metadata.website}`)
+    ? metadata.website.startsWith("http")
+      ? metadata.website
+      : `https://${metadata.website}`
     : null;
 
   // Format joined date
@@ -137,35 +147,35 @@ export default function MarketerProfilePage() {
     }
   }
 
-  // Performance metrics (using real data where available)
-  const performanceMetrics = [
-    {
-      label: "Click-Through Rate",
-      value: "8.2%", // Would need analytics data
-      trend: "+2.1%",
-      color: "text-blue-500",
-    },
-    {
-      label: "Conversion Rate",
-      value: `${stats.conversionRate}%`,
-      trend: "+0.5%",
-      color: "text-emerald-500",
-    },
-    {
-      label: "Avg. Order Value",
-      value: stats.totalSales > 0
-        ? formatCurrency(stats.totalRevenue / stats.totalSales)
-        : "$0",
-      trend: "+$45",
-      color: "text-purple-500",
-    },
-    {
-      label: "Customer Lifetime Value",
-      value: "$2,450", // Would need analytics data
-      trend: "+$320",
-      color: "text-orange-500",
-    },
-  ];
+  // // Performance metrics (using real data where available)
+  // const performanceMetrics = [
+  //   {
+  //     label: "Click-Through Rate",
+  //     value: "8.2%", // Would need analytics data
+  //     trend: "+2.1%",
+  //     color: "text-blue-500",
+  //   },
+  //   {
+  //     label: "Conversion Rate",
+  //     value: `${stats.conversionRate}%`,
+  //     trend: "+0.5%",
+  //     color: "text-emerald-500",
+  //   },
+  //   {
+  //     label: "Avg. Order Value",
+  //     value: stats.totalSales > 0
+  //       ? formatCurrency(stats.totalRevenue / stats.totalSales)
+  //       : "$0",
+  //     trend: "+$45",
+  //     color: "text-purple-500",
+  //   },
+  //   {
+  //     label: "Customer Lifetime Value",
+  //     value: "$2,450", // Would need analytics data
+  //     trend: "+$320",
+  //     color: "text-orange-500",
+  //   },
+  // ];
 
   return (
     <main className="min-h-screen bg-background selection:bg-primary/10">
@@ -176,10 +186,25 @@ export default function MarketerProfilePage() {
       </div>
 
       {/* Header / Hero Section */}
-      <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-32 lg:pb-16 overflow-hidden">
+      <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-24 lg:pb-16 overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.02)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)] pointer-events-none" />
 
         <div className="mx-auto max-w-7xl px-6 relative z-10">
+          {/* Breadcrumb */}
+          <Breadcrumb className="mb-6">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/">Home</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{profile.user.name}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
             <div className="flex gap-6 items-center">
               <Avatar className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-sm border-2 border-primary/20">
@@ -234,18 +259,23 @@ export default function MarketerProfilePage() {
                   )}
                   {xProfile && (
                     <a
-                      href={`https://x.com/${xProfile.handle.replace(/^@/, "")}`}
+                      href={`https://x.com/${xProfile.handle.replace(
+                        /^@/,
+                        ""
+                      )}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                     >
-                      <Twitter className="h-4 w-4" />
-                      @{xProfile.handle.replace(/^@/, "")}
+                      <Twitter className="h-4 w-4" />@
+                      {xProfile.handle.replace(/^@/, "")}
                     </a>
                   )}
                 </div>
                 {/* Badges */}
-                {(badges.length > 0 || metadata.specialties || metadata.focusArea) && (
+                {(badges.length > 0 ||
+                  metadata.specialties ||
+                  metadata.focusArea) && (
                   <div className="flex flex-wrap gap-2 pt-2">
                     {badges.map((badge) => (
                       <Badge
@@ -299,7 +329,9 @@ export default function MarketerProfilePage() {
             <div className="text-2xl font-semibold mb-1">
               {formatCurrency(stats.totalRevenue)}
             </div>
-            <div className="text-xs text-muted-foreground">Revenue generated</div>
+            <div className="text-xs text-muted-foreground">
+              Revenue generated
+            </div>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-2xl font-semibold mb-1">
@@ -335,40 +367,60 @@ export default function MarketerProfilePage() {
                   <div className="relative h-64">
                     {/* Earnings bars */}
                     <div className="absolute inset-0 flex items-end justify-between gap-1">
-                      {earningsTimeline.map((item: { month: string; earnings: number; revenue: number }, i: number) => (
-                        <div
-                          key={i}
-                          className="flex-1 flex flex-col items-center gap-1 group"
-                        >
+                      {earningsTimeline.map(
+                        (
+                          item: {
+                            month: string;
+                            earnings: number;
+                            revenue: number;
+                          },
+                          i: number
+                        ) => (
                           <div
-                            className="w-full bg-emerald-500/20 rounded-t hover:bg-emerald-500/30 transition-colors relative group-hover:bg-emerald-500/40"
-                            style={{
-                              height: `${(item.earnings / maxEarnings) * 100}%`,
-                            }}
+                            key={i}
+                            className="flex-1 flex flex-col items-center gap-1 group"
                           >
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">
-                              {formatCurrency(item.earnings)}
+                            <div
+                              className="w-full bg-emerald-500/20 rounded-t hover:bg-emerald-500/30 transition-colors relative group-hover:bg-emerald-500/40"
+                              style={{
+                                height: `${
+                                  (item.earnings / maxEarnings) * 100
+                                }%`,
+                              }}
+                            >
+                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">
+                                {formatCurrency(item.earnings)}
+                              </div>
                             </div>
+                            <span className="text-[10px] text-muted-foreground">
+                              {item.month}
+                            </span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground">
-                            {item.month}
-                          </span>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                     {/* Revenue line overlay */}
                     <div className="absolute inset-0 flex items-end justify-between">
-                      {earningsTimeline.map((item: { month: string; earnings: number; revenue: number }, i: number) => (
-                        <div
-                          key={i}
-                          className="flex-1 flex items-end justify-center"
-                          style={{
-                            height: `${(item.revenue / maxRevenue) * 100}%`,
-                          }}
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mb-0.5" />
-                        </div>
-                      ))}
+                      {earningsTimeline.map(
+                        (
+                          item: {
+                            month: string;
+                            earnings: number;
+                            revenue: number;
+                          },
+                          i: number
+                        ) => (
+                          <div
+                            key={i}
+                            className="flex-1 flex items-end justify-center"
+                            style={{
+                              height: `${(item.revenue / maxRevenue) * 100}%`,
+                            }}
+                          >
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mb-0.5" />
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
                   {/* Legend */}
@@ -401,7 +453,7 @@ export default function MarketerProfilePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {projects.map((project: typeof projects[0]) => {
+                  {projects.map((project: (typeof projects)[0]) => {
                     const percentage =
                       (project.revenue / stats.totalRevenue) * 100;
                     return (
@@ -452,7 +504,7 @@ export default function MarketerProfilePage() {
                 Active Partnerships
               </h3>
               <div className="grid gap-4">
-                {projects.map((project: typeof projects[0]) => (
+                {projects.map((project: (typeof projects)[0]) => (
                   <Link
                     key={project.id}
                     href={`/projects/${project.id}`}
@@ -504,8 +556,8 @@ export default function MarketerProfilePage() {
                           </div>
                         </div>
                       </CardContent>
-                  </Card>
-                </Link>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -560,7 +612,9 @@ export default function MarketerProfilePage() {
                     <span className="text-sm text-muted-foreground">
                       Focus Area
                     </span>
-                    <span className="font-semibold">{metadata.focusArea || "N/A"}</span>
+                    <span className="font-semibold">
+                      {metadata.focusArea || "N/A"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-border/40">
                     <span className="text-sm text-muted-foreground">
@@ -627,37 +681,39 @@ export default function MarketerProfilePage() {
                       No commissions yet
                     </div>
                   ) : (
-                    recentCommissions.map((commission: typeof recentCommissions[0]) => (
-                    <div
-                      key={commission.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-muted/20"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">
-                          {commission.project}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {commission.sales} sales •{" "}
-                          {new Date(commission.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-emerald-600">
-                          {formatCurrency(commission.amount)}
-                        </p>
-                        <Badge
-                          variant={
-                            commission.status === "paid"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className="text-[10px] mt-1"
+                    recentCommissions.map(
+                      (commission: (typeof recentCommissions)[0]) => (
+                        <div
+                          key={commission.id}
+                          className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-muted/20"
                         >
-                          {commission.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    ))
+                          <div>
+                            <p className="font-medium text-sm">
+                              {commission.project}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {commission.sales} sales •{" "}
+                              {new Date(commission.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-emerald-600">
+                              {formatCurrency(commission.amount)}
+                            </p>
+                            <Badge
+                              variant={
+                                commission.status === "paid"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                              className="text-[10px] mt-1"
+                            >
+                              {commission.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      )
+                    )
                   )}
                 </div>
                 <Button variant="ghost" className="w-full mt-4" size="sm">

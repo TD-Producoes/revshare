@@ -341,9 +341,11 @@ export default function Home() {
                   )}
                 </div>
                 <div className="p-4 bg-muted/10 border-t border-border/40">
-                  <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground justify-between group">
-                    View all projects <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </Button>
+                  <Link href="/projects">
+                    <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground justify-between group">
+                      View all projects <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
