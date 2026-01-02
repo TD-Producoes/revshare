@@ -56,49 +56,52 @@ export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <Link href={`/projects/${project.id}`}>
       <Card className="group h-full transition-all hover:shadow-lg hover:border-primary/50">
-        <CardContent className="p-6 py-2">
-          {/* Logo/Image Section */}
-          <div className="mb-3 flex h-16 w-16 items-center justify-center">
-            <Avatar className="h-full w-full rounded-lg">
-              <AvatarImage
-                src={getProjectAvatarUrl(project.name, project.logoUrl)}
-                alt={project.name}
-              />
-              <AvatarFallback className="rounded-lg text-sm font-bold">
-                {getInitials(project.name)}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-
-          {/* Name */}
-          <h3 className="mb-2 text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-            {project.name}
-          </h3>
-
-          {/* Category Badge */}
-          {project.category && (
-            <div className="mb-3">
-              <Badge variant="secondary">{project.category}</Badge>
+        <CardContent className="p-6 py-2 flex flex-col h-full">
+          {/* Main Content */}
+          <div className="flex-1">
+            {/* Logo/Image Section */}
+            <div className="mb-3 flex h-16 w-16 items-center justify-center">
+              <Avatar className="h-full w-full rounded-lg">
+                <AvatarImage
+                  src={getProjectAvatarUrl(project.name, project.logoUrl)}
+                  alt={project.name}
+                />
+                <AvatarFallback className="rounded-lg text-sm font-bold">
+                  {getInitials(project.name)}
+                </AvatarFallback>
+              </Avatar>
             </div>
-          )}
 
-          {/* Details */}
-          <div className="space-y-2 text-sm text-muted-foreground">
-            {project.country && (
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                <span>{project.country}</span>
+            {/* Name */}
+            <h3 className="mb-2 text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+              {project.name}
+            </h3>
+
+            {/* Category Badge */}
+            {project.category && (
+              <div className="mb-3">
+                <Badge variant="secondary">{project.category}</Badge>
               </div>
             )}
-            {project.website && (
+
+            {/* Details */}
+            <div className="space-y-2 text-sm text-muted-foreground">
+              {project.country && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  <span>{project.country}</span>
+                </div>
+              )}
+              {project.website && (
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  <span className="truncate">{project.website.replace(/^https?:\/\//, "")}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                <span className="truncate">{project.website.replace(/^https?:\/\//, "")}</span>
+                <Building2 className="h-4 w-4" />
+                <span>{formatCurrency(project.revenue)} revenue</span>
               </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              <span>{formatCurrency(project.revenue)} revenue</span>
             </div>
           </div>
 
