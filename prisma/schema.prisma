@@ -28,7 +28,6 @@ model User {
   coupons                  Coupon[]
   contracts                Contract[]
   paymentMethods           PaymentMethod[]
-  metricsSnapshots         MetricsSnapshot[]
   creatorTransfers         Transfer[]              @relation("CreatorTransfers")
   marketerTransfers        Transfer[]              @relation("MarketerTransfers")
   creatorPayments          CreatorPayment[]
@@ -70,6 +69,7 @@ model Project {
   contracts                 Contract[]
   events                    Event[]
   commissionAdjustments     CommissionAdjustment[]
+  metricsSnapshots          MetricsSnapshot[]
   testimonials              Testimonial[]
   createdAt                 DateTime               @default(now())
   updatedAt                 DateTime               @updatedAt
@@ -416,25 +416,25 @@ model PaymentMethod {
 }
 
 model MetricsSnapshot {
-  id                      String   @id @default(cuid())
-  creatorId               String
-  date                    DateTime
-  totalRevenue            Int
-  affiliateRevenue        Int
-  affiliateShareOwed      Int
-  platformFee             Int
-  mrr                     Int
-  purchasesCount          Int
+  id                 String   @id @default(cuid())
+  projectId          String
+  date               DateTime
+  totalRevenue       Int
+  affiliateRevenue   Int
+  affiliateShareOwed Int
+  platformFee        Int
+  mrr                Int
+  purchasesCount     Int
   affiliatePurchasesCount Int
   directPurchasesCount    Int
   uniqueCustomers         Int
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([creatorId, date])
-  @@index([creatorId])
+  @@unique([projectId, date])
+  @@index([projectId])
   @@index([date])
 }
 

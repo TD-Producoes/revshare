@@ -2,13 +2,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import Stripe from "https://esm.sh/stripe@16.2.0?target=deno";
 
 type PurchaseRow = {
+  projectId: string;
   amount: number;
   commissionAmount: number;
   couponId: string | null;
   customerEmail: string | null;
   createdAt: string;
   project: {
-    userId: string;
     platformCommissionPercent: string | number | null;
   } | null;
 };
@@ -61,19 +61,18 @@ Deno.serve(async (request) => {
   });
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-06-20" });
 
-  const { data: creators, error: creatorsError } = await supabase
-    .from("User")
-    .select("id,stripeConnectedAccountId")
-    .eq("role", "creator");
+  const { data: projects, error: projectsError } = await supabase
+    .from("Project")
+    .select("id,creatorStripeAccountId");
 
-  if (creatorsError) {
-    return new Response(creatorsError.message, { status: 500 });
+  if (projectsError) {
+    return new Response(projectsError.message, { status: 500 });
   }
 
-  const mrrByCreator = new Map<string, number>();
-  for (const creator of creators ?? []) {
-    if (!creator.stripeConnectedAccountId) {
-      mrrByCreator.set(creator.id, 0);
+  const mrrByProject = new Map<string, number>();
+  for (const project of projects ?? []) {
+    if (!project.creatorStripeAccountId) {
+      mrrByProject.set(project.id, 0);
       continue;
     }
     let startingAfter: string | undefined = undefined;
@@ -86,7 +85,7 @@ Deno.serve(async (request) => {
           limit: 100,
           starting_after: startingAfter,
         },
-        { stripeAccount: creator.stripeConnectedAccountId },
+        { stripeAccount: project.creatorStripeAccountId },
       );
 
       subscriptions.data.forEach((subscription) => {
@@ -107,13 +106,13 @@ Deno.serve(async (request) => {
       if (!startingAfter) break;
     }
 
-    mrrByCreator.set(creator.id, total);
+    mrrByProject.set(project.id, total);
   }
 
   const { data, error } = await supabase
     .from("Purchase")
     .select(
-      "amount,commissionAmount,couponId,customerEmail,createdAt,project:Project(userId,platformCommissionPercent)",
+      "projectId,amount,commissionAmount,couponId,customerEmail,createdAt,project:Project(platformCommissionPercent)",
     )
     .gte("createdAt", since.toISOString());
 
@@ -125,11 +124,11 @@ Deno.serve(async (request) => {
   const snapshotMap = new Map<string, SnapshotTotals>();
 
   rows.forEach((row) => {
-    if (!row.project?.userId) {
+    if (!row.projectId) {
       return;
     }
     const dateKey = getDateKey(row.createdAt);
-    const key = `${row.project.userId}:${dateKey}`;
+    const key = `${row.projectId}:${dateKey}`;
     const existing =
       snapshotMap.get(key) ?? {
         totalRevenue: 0,
@@ -163,11 +162,11 @@ Deno.serve(async (request) => {
   });
 
   const upserts = Array.from(snapshotMap.entries()).map(([key, totals]) => {
-    const [creatorId, dateKey] = key.split(":");
+    const [projectId, dateKey] = key.split(":");
     const date = new Date(`${dateKey}T00:00:00.000Z`);
-    const mrr = mrrByCreator.get(creatorId) ?? 0;
+    const mrr = mrrByProject.get(projectId) ?? 0;
     return {
-      creatorId,
+      projectId,
       date,
       totalRevenue: totals.totalRevenue,
       affiliateRevenue: totals.affiliateRevenue,
@@ -189,7 +188,7 @@ Deno.serve(async (request) => {
 
   const { error: upsertError } = await supabase
     .from("MetricsSnapshot")
-    .upsert(upserts, { onConflict: "creatorId,date" });
+    .upsert(upserts, { onConflict: "projectId,date" });
 
   if (upsertError) {
     return new Response(upsertError.message, { status: 500 });
