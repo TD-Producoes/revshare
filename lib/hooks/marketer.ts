@@ -112,14 +112,14 @@ export function useMarketerAdjustments(userId?: string | null) {
 
 export function useMarketerProjectStats(
   projectId?: string | null,
-  userId?: string | null,
+  userId?: string | null
 ) {
   return useQuery<MarketerProjectStats>({
     queryKey: ["marketer-project-stats", projectId ?? "none", userId ?? "none"],
     enabled: Boolean(projectId && userId),
     queryFn: async () => {
       const response = await fetch(
-        `/api/marketer/projects/${projectId}/stats?userId=${userId}`,
+        `/api/marketer/projects/${projectId}/stats?userId=${userId}`
       );
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -127,6 +127,95 @@ export function useMarketerProjectStats(
       }
       const payload = await response.json();
       return payload?.data as MarketerProjectStats;
+    },
+  });
+}
+
+export type PublicMarketerProfile = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    createdAt: string;
+    metadata: unknown;
+  };
+  stats: {
+    totalEarnings: number;
+    totalRevenue: number;
+    activeProjects: number;
+    totalSales: number;
+    conversionRate: number;
+    avgCommission: number;
+    growth: string;
+  };
+  projects: Array<{
+    id: string;
+    name: string;
+    category: string | null;
+    logoUrl: string | null;
+    revenue: number;
+    earnings: number;
+    sales: number;
+    commission: number;
+    joinedDate: string;
+  }>;
+  recentCommissions: Array<{
+    id: string;
+    project: string;
+    amount: number;
+    date: string;
+    status: string;
+    sales: number;
+  }>;
+  earningsTimeline: Array<{
+    month: string;
+    earnings: number;
+    revenue: number;
+  }>;
+};
+
+export function usePublicMarketerProfile(marketerId?: string | null) {
+  return useQuery<PublicMarketerProfile>({
+    queryKey: ["public-marketer-profile", marketerId ?? "none"],
+    enabled: Boolean(marketerId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/marketers/${marketerId}/public-profile`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch marketer profile.");
+      }
+      const payload = await response.json();
+      return payload?.data as PublicMarketerProfile;
+    },
+  });
+}
+
+export type LeaderboardMarketer = {
+  id: string;
+  name: string;
+  focus: string | null;
+  revenue: number;
+  commission: number;
+  activeProjects: number;
+  trend: string;
+  image: string | null;
+};
+
+export function useMarketersLeaderboard() {
+  return useQuery<LeaderboardMarketer[]>({
+    queryKey: ["marketers-leaderboard"],
+    queryFn: async () => {
+      const response = await fetch("/api/marketers/leaderboard");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.error ?? "Failed to fetch marketers leaderboard."
+        );
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
     },
   });
 }

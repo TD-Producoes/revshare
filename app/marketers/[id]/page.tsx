@@ -1,3 +1,5 @@
+"use client";
+
 import { Navbar } from "@/components/layout/navbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +18,6 @@ import {
   Award,
   Building2,
   Calendar,
-  CheckCircle2,
   DollarSign,
   ExternalLink,
   Globe,
@@ -26,206 +27,16 @@ import {
   ShieldCheck,
   ShoppingBag,
   Star,
-  Target,
   TrendingUp,
   Twitter,
-  Wallet
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { usePublicMarketerProfile } from "@/lib/hooks/marketer";
+import { parseUserMetadata } from "@/lib/services/user-metadata";
 
-// Dummy data for the marketer profile
-const marketerData = {
-  id: "marketer-1",
-  name: "Lara Finch",
-  email: "lara@example.com",
-  bio: "B2B SaaS marketing expert with 8+ years of experience scaling revenue for high-growth startups. Specialized in content marketing, community building, and strategic partnerships. I've helped 50+ SaaS companies achieve 3x growth through targeted affiliate programs.",
-  location: "San Francisco, CA",
-  joinedDate: "2022-03-15",
-  avatar: "https://api.dicebear.com/9.x/avataaars/svg?seed=Lara",
-  website: "https://larafinch.com",
-  twitter: "@larafinch",
-  linkedin: "larafinch",
-  verified: true,
-  badges: ["Top Performer", "Verified Partner", "Elite Marketer"],
-  focus: "B2B SaaS",
-  specialties: [
-    "Content Marketing",
-    "Community Building",
-    "Strategic Partnerships",
-    "Growth Hacking",
-  ],
-};
-
-const stats = {
-  totalEarnings: 169000,
-  totalRevenue: 845000,
-  activeProjects: 6,
-  totalSales: 1247,
-  conversionRate: 4.8,
-  avgCommission: 20,
-  growth: "+12%",
-  rank: 1,
-};
-
-const earningsTimeline = [
-  { month: "Jan", earnings: 12500, revenue: 62500 },
-  { month: "Feb", earnings: 14200, revenue: 71000 },
-  { month: "Mar", earnings: 15800, revenue: 79000 },
-  { month: "Apr", earnings: 17200, revenue: 86000 },
-  { month: "May", earnings: 18900, revenue: 94500 },
-  { month: "Jun", earnings: 20100, revenue: 100500 },
-  { month: "Jul", earnings: 18500, revenue: 92500 },
-  { month: "Aug", earnings: 19800, revenue: 99000 },
-  { month: "Sep", earnings: 21500, revenue: 107500 },
-  { month: "Oct", earnings: 22800, revenue: 114000 },
-  { month: "Nov", earnings: 24100, revenue: 120500 },
-  { month: "Dec", earnings: 25400, revenue: 127000 },
-];
-
-const projects = [
-  {
-    id: "proj-1",
-    name: "SocialPulse",
-    category: "Social Media",
-    logoUrl: "https://ui-avatars.com/api/?name=SP&background=EC4899&color=fff",
-    revenue: 245000,
-    earnings: 49000,
-    sales: 342,
-    commission: 20,
-    status: "active",
-    joinedDate: "2023-01-15",
-  },
-  {
-    id: "proj-2",
-    name: "CryptoTracker",
-    category: "Web3",
-    logoUrl: "https://ui-avatars.com/api/?name=CT&background=F59E0B&color=fff",
-    revenue: 198000,
-    earnings: 39600,
-    sales: 287,
-    commission: 20,
-    status: "active",
-    joinedDate: "2023-02-20",
-  },
-  {
-    id: "proj-3",
-    name: "BuildPublic",
-    category: "Creator Tools",
-    logoUrl: "https://ui-avatars.com/api/?name=BP&background=2563EB&color=fff",
-    revenue: 156000,
-    earnings: 31200,
-    sales: 198,
-    commission: 20,
-    status: "active",
-    joinedDate: "2023-03-10",
-  },
-  {
-    id: "proj-4",
-    name: "Designify",
-    category: "Design Tools",
-    logoUrl: "https://ui-avatars.com/api/?name=DS&background=8B5CF6&color=fff",
-    revenue: 134000,
-    earnings: 26800,
-    sales: 167,
-    commission: 20,
-    status: "active",
-    joinedDate: "2023-04-05",
-  },
-  {
-    id: "proj-5",
-    name: "TaskMaster",
-    category: "Productivity",
-    logoUrl: "https://ui-avatars.com/api/?name=TM&background=10B981&color=fff",
-    revenue: 89000,
-    earnings: 17800,
-    sales: 156,
-    commission: 20,
-    status: "active",
-    joinedDate: "2023-05-12",
-  },
-  {
-    id: "proj-6",
-    name: "Flowdesk Pro",
-    category: "Sales Enablement",
-    logoUrl: "https://ui-avatars.com/api/?name=FP&background=7C3AED&color=fff",
-    revenue: 34000,
-    earnings: 6800,
-    sales: 97,
-    commission: 20,
-    status: "active",
-    joinedDate: "2023-06-18",
-  },
-];
-
-const recentCommissions = [
-  {
-    id: "comm-1",
-    project: "SocialPulse",
-    amount: 4200,
-    date: "2024-01-15",
-    status: "paid",
-    sales: 21,
-  },
-  {
-    id: "comm-2",
-    project: "CryptoTracker",
-    amount: 3800,
-    date: "2024-01-14",
-    status: "paid",
-    sales: 19,
-  },
-  {
-    id: "comm-3",
-    project: "BuildPublic",
-    amount: 3100,
-    date: "2024-01-13",
-    status: "pending",
-    sales: 15,
-  },
-  {
-    id: "comm-4",
-    project: "Designify",
-    amount: 2680,
-    date: "2024-01-12",
-    status: "paid",
-    sales: 13,
-  },
-  {
-    id: "comm-5",
-    project: "TaskMaster",
-    amount: 1780,
-    date: "2024-01-11",
-    status: "paid",
-    sales: 9,
-  },
-];
-
-const performanceMetrics = [
-  {
-    label: "Click-Through Rate",
-    value: "8.2%",
-    trend: "+2.1%",
-    color: "text-blue-500",
-  },
-  {
-    label: "Conversion Rate",
-    value: "4.8%",
-    trend: "+0.5%",
-    color: "text-emerald-500",
-  },
-  {
-    label: "Avg. Order Value",
-    value: "$678",
-    trend: "+$45",
-    color: "text-purple-500",
-  },
-  {
-    label: "Customer Lifetime Value",
-    value: "$2,450",
-    trend: "+$320",
-    color: "text-orange-500",
-  },
-];
+// Helper functions
 
 function getInitials(name: string): string {
   return name
@@ -251,29 +62,112 @@ function formatDate(dateString: string): string {
 }
 
 function getMaxValue(
-  data: typeof earningsTimeline,
+  data: Array<{ earnings: number; revenue: number }>,
   key: "earnings" | "revenue"
 ): number {
-  return Math.max(...data.map((d) => d[key]));
+  if (data.length === 0) return 1;
+  return Math.max(...data.map((d) => d[key]), 1);
 }
 
-export default function MarketerProfilePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  // In a real app, we'd fetch data based on params.id
-  // For now, using dummy data
+export default function MarketerProfilePage() {
+  const params = useParams();
+  const marketerId = params?.id as string | undefined;
+
+  const { data: profile, isLoading, error } = usePublicMarketerProfile(marketerId);
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !profile || !marketerId) {
+    return (
+      <main className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-muted-foreground">Marketer not found</div>
+        </div>
+      </main>
+    );
+  }
+
+  // Parse user metadata
+  const metadata = parseUserMetadata(profile.user.metadata);
+  const xProfile = metadata.socialMedia?.x;
+  const avatarUrl = xProfile?.handle
+    ? `https://unavatar.io/x/${xProfile.handle.replace(/^@/, "")}`
+    : null;
+
+  // Format data
+  const stats = profile.stats;
+  const projects = profile.projects;
+  const earningsTimeline = profile.earningsTimeline;
+  const recentCommissions = profile.recentCommissions;
 
   const maxEarnings = getMaxValue(earningsTimeline, "earnings");
   const maxRevenue = getMaxValue(earningsTimeline, "revenue");
+
+  // Format website URL
+  const websiteDisplay = metadata.website
+    ? metadata.website.replace(/^https?:\/\//, "")
+    : null;
+  const websiteHref = metadata.website
+    ? (metadata.website.startsWith("http") ? metadata.website : `https://${metadata.website}`)
+    : null;
+
+  // Format joined date
+  const joinedDate = profile.user.createdAt;
+
+  // Get badges from metadata (if available)
+  const badges: string[] = [];
+  if (profile.user.metadata && typeof profile.user.metadata === "object") {
+    const meta = profile.user.metadata as Record<string, unknown>;
+    if (Array.isArray(meta.badges)) {
+      badges.push(...(meta.badges as string[]));
+    }
+  }
+
+  // Performance metrics (using real data where available)
+  const performanceMetrics = [
+    {
+      label: "Click-Through Rate",
+      value: "8.2%", // Would need analytics data
+      trend: "+2.1%",
+      color: "text-blue-500",
+    },
+    {
+      label: "Conversion Rate",
+      value: `${stats.conversionRate}%`,
+      trend: "+0.5%",
+      color: "text-emerald-500",
+    },
+    {
+      label: "Avg. Order Value",
+      value: stats.totalSales > 0
+        ? formatCurrency(stats.totalRevenue / stats.totalSales)
+        : "$0",
+      trend: "+$45",
+      color: "text-purple-500",
+    },
+    {
+      label: "Customer Lifetime Value",
+      value: "$2,450", // Would need analytics data
+      trend: "+$320",
+      color: "text-orange-500",
+    },
+  ];
 
   return (
     <main className="min-h-screen bg-background selection:bg-primary/10">
       <Navbar />
       {/* Vertical Lines Background Pattern */}
       <div className="pointer-events-none absolute inset-0 z-0 mx-auto max-w-7xl border-x border-border/40">
-        <div className="absolute inset-y-0 left-[65.5%] w-px bg-border/40 hidden lg:block" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.02)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)]" />
       </div>
 
@@ -285,20 +179,19 @@ export default function MarketerProfilePage({
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
             <div className="flex gap-6 items-center">
               <Avatar className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-sm border-2 border-primary/20">
-                <AvatarImage
-                  src={marketerData.avatar}
-                  alt={marketerData.name}
-                />
+                {avatarUrl && (
+                  <AvatarImage src={avatarUrl} alt={profile.user.name} />
+                )}
                 <AvatarFallback className="rounded-2xl text-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-                  {getInitials(marketerData.name)}
+                  {getInitials(profile.user.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="space-y-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                    {marketerData.name}
+                    {profile.user.name}
                   </h1>
-                  {marketerData.verified && (
+                  {xProfile?.verified && (
                     <Badge
                       variant="outline"
                       className="border-emerald-500/20 text-emerald-600 bg-emerald-500/10 gap-1"
@@ -306,28 +199,26 @@ export default function MarketerProfilePage({
                       <ShieldCheck className="h-3 w-3" /> Verified
                     </Badge>
                   )}
-                  <Badge
-                    variant="outline"
-                    className="border-primary/20 text-primary bg-primary/10"
-                  >
-                    #{stats.rank} Marketer
-                  </Badge>
                 </div>
-                <p className="text-lg text-muted-foreground max-w-2xl">
-                  {marketerData.bio}
-                </p>
+                {metadata.bio && (
+                  <p className="text-lg text-muted-foreground max-w-2xl">
+                    {metadata.bio}
+                  </p>
+                )}
                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-1">
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" />
-                    {marketerData.location}
-                  </div>
+                  {metadata.location && (
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" />
+                      {metadata.location}
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5">
                     <Calendar className="h-4 w-4" />
-                    Joined {formatDate(marketerData.joinedDate)}
+                    Joined {formatDate(joinedDate)}
                   </div>
-                  {marketerData.website && (
+                  {websiteHref && websiteDisplay && (
                     <a
-                      href={marketerData.website}
+                      href={websiteHref}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1.5 hover:text-foreground transition-colors"
@@ -337,34 +228,41 @@ export default function MarketerProfilePage({
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
-                  {marketerData.twitter && (
+                  {xProfile && (
                     <a
-                      href={`https://twitter.com/${marketerData.twitter.replace(
-                        "@",
-                        ""
-                      )}`}
+                      href={`https://x.com/${xProfile.handle.replace(/^@/, "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                     >
                       <Twitter className="h-4 w-4" />
-                      {marketerData.twitter}
+                      @{xProfile.handle.replace(/^@/, "")}
                     </a>
                   )}
                 </div>
                 {/* Badges */}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {marketerData.badges.map((badge) => (
-                    <Badge
-                      key={badge}
-                      variant="secondary"
-                      className="text-xs bg-primary/10 text-primary border-primary/20"
-                    >
-                      <Award className="h-3 w-3 mr-1" />
-                      {badge}
-                    </Badge>
-                  ))}
-                </div>
+                {(badges.length > 0 || metadata.specialties || metadata.focusArea) && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {badges.map((badge) => (
+                      <Badge
+                        key={badge}
+                        variant="secondary"
+                        className="text-xs bg-primary/10 text-primary border-primary/20"
+                      >
+                        <Award className="h-3 w-3 mr-1" />
+                        {badge}
+                      </Badge>
+                    ))}
+                    {metadata.focusArea && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs bg-primary/10 text-primary border-primary/20"
+                      >
+                        {metadata.focusArea}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -373,7 +271,7 @@ export default function MarketerProfilePage({
                 size="lg"
                 className="h-12 px-8 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-semibold text-base"
               >
-                Partner with {marketerData.name.split(" ")[0]}
+                Partner with {profile.user.name.split(" ")[0]}
                 <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
               <p className="text-xs text-center text-muted-foreground">
@@ -384,95 +282,38 @@ export default function MarketerProfilePage({
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-12">
+      <div className="mx-auto max-w-7xl p-6">
         {/* Stats Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-          <Card className="border-border/50 bg-background/50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Total Earnings
-                  </p>
-                  <p className="text-2xl font-bold text-emerald-600">
-                    {formatCurrency(stats.totalEarnings)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3 text-emerald-500" />
-                    {stats.growth} this month
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                  <Wallet className="h-6 w-6 text-emerald-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-background/50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Revenue Generated
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(stats.totalRevenue)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    For partner projects
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-background/50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Active Projects
-                  </p>
-                  <p className="text-2xl font-bold">{stats.activeProjects}</p>
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                    All active
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-purple-500/10 flex items-center justify-center">
-                  <Building2 className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-background/50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Conversion Rate
-                  </p>
-                  <p className="text-2xl font-bold">{stats.conversionRate}%</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {stats.totalSales} total sales
-                  </p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
-                  <Target className="h-6 w-6 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-2xl font-semibold mb-1 text-emerald-600">
+              {formatCurrency(stats.totalEarnings)}
+            </div>
+            <div className="text-xs text-muted-foreground">Total earnings</div>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-2xl font-semibold mb-1">
+              {formatCurrency(stats.totalRevenue)}
+            </div>
+            <div className="text-xs text-muted-foreground">Revenue generated</div>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-2xl font-semibold mb-1">
+              {stats.activeProjects}
+            </div>
+            <div className="text-xs text-muted-foreground">Active projects</div>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-2xl font-semibold mb-1">
+              {stats.conversionRate}%
+            </div>
+            <div className="text-xs text-muted-foreground">Conversion rate</div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           {/* Left Column: Main Content */}
-          <div className="space-y-10">
+          <div className="space-y-6">
             {/* Earnings & Revenue Chart */}
             <Card className="border-border/50 bg-background/50">
               <CardHeader>
@@ -490,7 +331,7 @@ export default function MarketerProfilePage({
                   <div className="relative h-64">
                     {/* Earnings bars */}
                     <div className="absolute inset-0 flex items-end justify-between gap-1">
-                      {earningsTimeline.map((item, i) => (
+                      {earningsTimeline.map((item: { month: string; earnings: number; revenue: number }, i: number) => (
                         <div
                           key={i}
                           className="flex-1 flex flex-col items-center gap-1 group"
@@ -513,7 +354,7 @@ export default function MarketerProfilePage({
                     </div>
                     {/* Revenue line overlay */}
                     <div className="absolute inset-0 flex items-end justify-between">
-                      {earningsTimeline.map((item, i) => (
+                      {earningsTimeline.map((item: { month: string; earnings: number; revenue: number }, i: number) => (
                         <div
                           key={i}
                           className="flex-1 flex items-end justify-center"
@@ -556,7 +397,7 @@ export default function MarketerProfilePage({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {projects.map((project) => {
+                  {projects.map((project: typeof projects[0]) => {
                     const percentage =
                       (project.revenue / stats.totalRevenue) * 100;
                     return (
@@ -608,7 +449,7 @@ export default function MarketerProfilePage({
                 Active Partnerships
               </h3>
               <div className="grid gap-4">
-                {projects.map((project) => (
+                {projects.map((project: typeof projects[0]) => (
                   <Link
                     key={project.id}
                     href={`/projects/${project.id}`}
@@ -662,8 +503,8 @@ export default function MarketerProfilePage({
                           </div>
                         </div>
                       </CardContent>
-                    </Card>
-                  </Link>
+                  </Card>
+                </Link>
                 ))}
               </div>
             </div>
@@ -706,9 +547,9 @@ export default function MarketerProfilePage({
           </div>
 
           {/* Right Column: Sidebar */}
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Quick Stats */}
-            <Card className="border-border/50 sticky top-24">
+            <Card className="border-border/50 top-24">
               <CardHeader className="pb-4">
                 <CardTitle className="text-base">Quick Stats</CardTitle>
               </CardHeader>
@@ -718,7 +559,7 @@ export default function MarketerProfilePage({
                     <span className="text-sm text-muted-foreground">
                       Focus Area
                     </span>
-                    <span className="font-semibold">{marketerData.focus}</span>
+                    <span className="font-semibold">{metadata.focusArea || "N/A"}</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-border/40">
                     <span className="text-sm text-muted-foreground">
@@ -738,34 +579,36 @@ export default function MarketerProfilePage({
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <span className="text-sm text-muted-foreground">
-                      Platform Rank
+                      Growth
                     </span>
                     <Badge className="bg-primary/10 text-primary border-primary/20">
-                      #{stats.rank}
+                      {stats.growth}
                     </Badge>
                   </div>
                 </div>
 
                 {/* Specialties */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Specialties
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {marketerData.specialties.map((specialty) => (
-                      <Badge
-                        key={specialty}
-                        variant="secondary"
-                        className="text-xs bg-muted"
-                      >
-                        {specialty}
-                      </Badge>
-                    ))}
+                {metadata.specialties && metadata.specialties.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Specialties
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {metadata.specialties.map((specialty, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="text-xs bg-muted"
+                        >
+                          {specialty}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <Button className="w-full h-11 rounded-xl shadow-md" size="lg">
-                  Partner with {marketerData.name.split(" ")[0]}
+                  Partner with {profile.user.name.split(" ")[0]}
                 </Button>
               </CardContent>
             </Card>
@@ -778,7 +621,12 @@ export default function MarketerProfilePage({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentCommissions.map((commission) => (
+                  {recentCommissions.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground text-sm">
+                      No commissions yet
+                    </div>
+                  ) : (
+                    recentCommissions.map((commission: typeof recentCommissions[0]) => (
                     <div
                       key={commission.id}
                       className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-muted/20"
@@ -808,7 +656,8 @@ export default function MarketerProfilePage({
                         </Badge>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
                 <Button variant="ghost" className="w-full mt-4" size="sm">
                   View all commissions
@@ -837,9 +686,9 @@ export default function MarketerProfilePage({
                       ))}
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">
-                      "Lara has been instrumental in scaling our affiliate
+                      &ldquo;Lara has been instrumental in scaling our affiliate
                       program. Her strategic approach and deep understanding of
-                      B2B SaaS marketing has driven significant revenue growth."
+                      B2B SaaS marketing has driven significant revenue growth.&rdquo;
                     </p>
                     <p className="text-xs font-medium">— CEO, SocialPulse</p>
                   </div>
@@ -853,8 +702,8 @@ export default function MarketerProfilePage({
                       ))}
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">
-                      "Outstanding partner. Professional, results-driven, and
-                      always delivers on commitments. Highly recommend!"
+                      &ldquo;Outstanding partner. Professional, results-driven, and
+                      always delivers on commitments. Highly recommend!&rdquo;
                     </p>
                     <p className="text-xs font-medium">
                       — Founder, BuildPublic

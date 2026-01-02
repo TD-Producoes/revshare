@@ -1,15 +1,18 @@
+"use client";
+
+import { use } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ImageGallery } from "@/components/ui/image-gallery";
+import { RevenueChart } from "@/components/ui/revenue-chart";
 import { getCountryName } from "@/lib/data/countries";
+import {
+  formatFollowerCount,
+  parseUserMetadata,
+} from "@/lib/services/user-metadata";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -17,68 +20,24 @@ import {
   ShieldCheck,
   Building2,
   Calendar,
-  MapPin,
-  ExternalLink,
-  Users,
-  ShoppingBag,
-  Percent,
 } from "lucide-react";
-import { notFound } from "next/navigation";
-import type { PublicProjectStats } from "@/lib/hooks/projects";
+import Image from "next/image";
+import Link from "next/link";
+import { useProjectProfile } from "@/lib/hooks/projects";
 
-type ProjectData = {
-  id: string;
-  userId: string;
-  user?: {
-    id: string;
-    name: string | null;
-  } | null;
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  currency?: string | null;
-  marketerCommissionPercent?: string | number | null;
-  creatorStripeAccountId?: string | null;
-  country?: string | null;
-  website?: string | null;
-  foundationDate?: string | Date | null;
-  about?: string | null;
-  features?: string[] | null;
-  logoUrl?: string | null;
-  imageUrls?: string[] | null;
-  createdAt?: string | null;
-};
-
-async function getProject(id: string): Promise<ProjectData | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/projects/${id}`, {
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      return null;
-    }
-    const payload = await response.json();
-    return payload?.data ?? null;
-  } catch {
-    return null;
+function formatCurrency(value: number, currency: string = "USD"): string {
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(1)}M`;
   }
-}
-
-async function getPublicStats(id: string): Promise<PublicProjectStats | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/projects/${id}/public-stats`, {
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      return null;
-    }
-    const payload = await response.json();
-    return payload?.data ?? null;
-  } catch {
-    return null;
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(1)}k`;
   }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function getInitials(name: string): string {
@@ -90,7 +49,9 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function formatFoundedYear(date: string | Date | null | undefined): string | null {
+function formatFoundedYear(
+  date: string | Date | null | undefined
+): string | null {
   if (!date) return null;
   const d = typeof date === "string" ? new Date(date) : date;
   if (Number.isNaN(d.getTime())) return null;
@@ -122,20 +83,41 @@ function getWebsiteHref(website: string | null | undefined): string | null {
   return `https://${website}`;
 }
 
-export default async function ProjectProfilePage({
+function getCountryFlagUrl(countryCode: string): string {
+  return `https://purecatamphetamine.github.io/country-flag-icons/3x2/${countryCode.toUpperCase()}.svg`;
+}
+
+export default function ProjectProfilePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const [project, stats] = await Promise.all([
-    getProject(id),
-    getPublicStats(id),
-  ]);
+  const { id } = use(params);
+  const { data: profileData, isLoading, error } = useProjectProfile(id);
 
-  if (!project) {
-    notFound();
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex h-96 items-center justify-center text-muted-foreground">
+          Loading...
+        </div>
+      </main>
+    );
   }
+
+  if (error || !profileData) {
+    return (
+      <main className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex h-96 items-center justify-center text-muted-foreground">
+          Project not found
+        </div>
+      </main>
+    );
+  }
+
+  const { project, stats, user } = profileData;
 
   const foundedYear = formatFoundedYear(project.foundationDate);
   const countryName = project.country ? getCountryName(project.country) : null;
@@ -144,14 +126,18 @@ export default async function ProjectProfilePage({
   const commission = formatCommission(project.marketerCommissionPercent);
   const features = project.features ?? [];
   const images = project.imageUrls ?? [];
-  const hasStats = stats && (stats.activeMarketers > 0 || stats.totalPurchases > 0);
+  const hasStats =
+    stats && (stats.activeMarketers > 0 || stats.totalPurchases > 0);
+  const hasRevenueData = stats && stats.totalRevenue > 0;
+  const hasChartData =
+    stats && stats.revenueTimeline.some((d) => d.total > 0);
+  const currency = project.currency?.toUpperCase() || "USD";
 
   return (
     <main className="min-h-screen bg-background selection:bg-primary/10">
       <Navbar />
       {/* Vertical Lines Background Pattern */}
       <div className="pointer-events-none absolute inset-0 z-0 mx-auto max-w-7xl border-x border-border/40">
-        <div className="absolute inset-y-0 left-[65.5%] w-px bg-border/40 hidden lg:block" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.02)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)]" />
       </div>
 
@@ -162,7 +148,7 @@ export default async function ProjectProfilePage({
         <div className="mx-auto max-w-7xl px-6 relative z-10">
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
             <div className="flex gap-6 items-center">
-              <Avatar className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-sm">
+              <Avatar className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-sm border-2 border-primary/20">
                 {project.logoUrl && (
                   <AvatarImage src={project.logoUrl} alt={project.name} />
                 )}
@@ -196,12 +182,6 @@ export default async function ProjectProfilePage({
                       {project.category}
                     </div>
                   )}
-                  {countryName && (
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4" />
-                      {countryName}
-                    </div>
-                  )}
                   {websiteDisplay && websiteHref && (
                     <a
                       href={websiteHref}
@@ -211,13 +191,24 @@ export default async function ProjectProfilePage({
                     >
                       <Globe className="h-4 w-4" />
                       {websiteDisplay}
-                      <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                   {foundedYear && (
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-4 w-4" />
                       Launched in {foundedYear}
+                    </div>
+                  )}
+                  {project.country && countryName && (
+                    <div className="flex items-center gap-1.5">
+                      <Image
+                        src={getCountryFlagUrl(project.country)}
+                        alt={`${countryName} flag`}
+                        width={20}
+                        height={14}
+                        className="object-cover rounded-sm"
+                      />
+                      {countryName}
                     </div>
                   )}
                 </div>
@@ -240,10 +231,80 @@ export default async function ProjectProfilePage({
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-10">
+      <div className="mx-auto max-w-7xl px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           {/* Left Column: Main Content */}
           <div className="space-y-10">
+            {/* Performance Stats & Chart */}
+            {hasRevenueData && stats && (
+              <div className="space-y-5">
+                {/* Stats Grid - Clean minimal cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <div className="text-2xl font-semibold mb-1">
+                      {formatCurrency(stats.totalRevenue, currency)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Total revenue
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <div className="text-2xl font-semibold mb-1">
+                      {formatCurrency(stats.mrr, currency)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      MRR (estimated)
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <div className="text-2xl font-semibold mb-1">
+                      {formatCurrency(stats.affiliateRevenue, currency)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Affiliate revenue
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <div className="text-2xl font-semibold mb-1">
+                      {stats.avgPaidCommission != null
+                        ? formatCurrency(stats.avgPaidCommission, currency)
+                        : "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Avg commission
+                    </div>
+                  </div>
+                </div>
+                {/* Revenue Chart */}
+                {hasChartData && (
+                  <div className="rounded-lg border border-border bg-card p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-sm font-medium">
+                        Revenue (last 30 days)
+                      </p>
+                      <div className="flex items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                          <span className="text-muted-foreground">Total</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-muted-foreground">
+                            Affiliate
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="h-[200px]">
+                      <RevenueChart
+                        data={stats.revenueTimeline}
+                        currency={currency}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* About Section */}
             {project.about && (
@@ -254,7 +315,6 @@ export default async function ProjectProfilePage({
                 </p>
               </div>
             )}
-
             {/* Image Gallery */}
             {images.length > 0 && (
               <div className="space-y-4">
@@ -277,55 +337,94 @@ export default async function ProjectProfilePage({
                 </ul>
               </div>
             )}
-
-            {/* Creator Info */}
-            {project.user?.name && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Created By</h3>
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-muted text-sm">
-                      {getInitials(project.user.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">{project.user.name}</span>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right Column: Key Details & Sticky Sidebar */}
-          <div className="space-y-8">
+          <div className="space-y-6">
+            {/* Founder Info Card */}
+            {user?.name && (
+              <Card className="border-border/50">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base">Founder</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    href={`/founders/${user.id}`}
+                    className="flex items-center gap-3 group"
+                  >
+                    {(() => {
+                      const metadata = parseUserMetadata(user.metadata);
+                      const xProfile = metadata.socialMedia?.x;
+                      const avatarUrl = xProfile?.handle
+                        ? `https://unavatar.io/x/${xProfile.handle.replace(/^@/, "")}`
+                        : null;
+
+                      return (
+                        <Avatar className="h-8 w-8 shrink-0">
+                          {avatarUrl && (
+                            <AvatarImage src={avatarUrl} alt={user.name} />
+                          )}
+                          <AvatarFallback className="bg-muted text-xs">
+                            {getInitials(user.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                      );
+                    })()}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate text-sm group-hover:text-primary transition-colors">
+                        {user.name}
+                      </p>
+                      {(() => {
+                        const metadata = parseUserMetadata(user.metadata);
+                        const xProfile = metadata.socialMedia?.x;
+                        if (xProfile?.followerCount) {
+                          return (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {formatFollowerCount(xProfile.followerCount)}{" "}
+                              followers on 𝕏
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Partnership Details Card */}
             <Card className="border-border/50 sticky top-24">
               <CardHeader className="pb-4">
-                <CardTitle className="text-base">Partnership Terms</CardTitle>
+                <CardTitle className="text-base">Partnership Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
                 {/* Stats Row */}
-                {hasStats && (
-                  <div className="flex items-center justify-between gap-2 text-center">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
-                        <Users className="h-3.5 w-3.5" />
+                {hasStats && stats && (
+                  <div className="grid grid-cols-3 gap-4 pb-4 border-b border-border/40">
+                    <div>
+                      <div className="text-2xl font-semibold">
+                        {stats.activeMarketers}
                       </div>
-                      <p className="text-lg font-bold">{stats.activeMarketers}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Partners</p>
+                      <div className="text-xs text-muted-foreground">
+                        Partners
+                      </div>
                     </div>
-                    <div className="w-px h-10 bg-border/40" />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
-                        <ShoppingBag className="h-3.5 w-3.5" />
+                    <div>
+                      <div className="text-2xl font-semibold">
+                        {stats.totalPurchases}
                       </div>
-                      <p className="text-lg font-bold">{stats.totalPurchases}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sales</p>
+                      <div className="text-xs text-muted-foreground">Sales</div>
                     </div>
-                    <div className="w-px h-10 bg-border/40" />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
-                        <Percent className="h-3.5 w-3.5" />
+                    <div>
+                      <div className="text-2xl font-semibold">
+                        {stats.avgCommissionPercent != null
+                          ? `${stats.avgCommissionPercent}%`
+                          : commission}
                       </div>
-                      <p className="text-lg font-bold text-emerald-600">{stats.avgCommissionPercent != null ? `${stats.avgCommissionPercent}%` : commission}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Rate</p>
+                      <div className="text-xs text-muted-foreground">
+                        Avg rate
+                      </div>
                     </div>
                   </div>
                 )}
@@ -336,17 +435,13 @@ export default async function ProjectProfilePage({
                     <span className="text-sm text-muted-foreground">
                       Commission
                     </span>
-                    <span className="font-semibold text-emerald-600">
-                      {commission}
-                    </span>
+                    <span className="font-semibold">{commission}</span>
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <span className="text-sm text-muted-foreground">
                       Currency
                     </span>
-                    <span className="font-medium">
-                      {project.currency?.toUpperCase() || "USD"}
-                    </span>
+                    <span className="font-semibold">{currency}</span>
                   </div>
                 </div>
 

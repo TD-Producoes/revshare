@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProfileSettings } from "@/components/profile-settings";
 
 const stripePublishableKey =
   process.env.NEXT_PUBLIC_PLATFORM_STRIPE_PUBLISHABLE_KEY ?? "";
@@ -414,10 +415,10 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Profile */}
+      {/* Account Info */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Profile</CardTitle>
+          <CardTitle className="text-base">Account</CardTitle>
           <CardDescription>Your account information.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -437,6 +438,9 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Public Profile */}
+      <ProfileSettings user={currentUser} />
 
       {/* Stripe Connection */}
       {/* <Card>

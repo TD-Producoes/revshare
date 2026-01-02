@@ -84,8 +84,11 @@ export async function GET() {
       // Calculate growth percentage
       let growth = "0%";
       if (previousRevenue > 0) {
-        const growthPercent = ((currentRevenue - previousRevenue) / previousRevenue) * 100;
-        growth = `${growthPercent >= 0 ? "+" : ""}${Math.round(growthPercent)}%`;
+        const growthPercent =
+          ((currentRevenue - previousRevenue) / previousRevenue) * 100;
+        growth = `${growthPercent >= 0 ? "+" : ""}${Math.round(
+          growthPercent
+        )}%`;
       } else if (currentRevenue > 0) {
         growth = "+100%"; // New project with revenue
       }
@@ -111,4 +114,3 @@ export async function GET() {
 
   return NextResponse.json({ data: sortedProjects });
 }
-

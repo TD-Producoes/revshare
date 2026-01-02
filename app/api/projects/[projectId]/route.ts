@@ -72,6 +72,13 @@ export async function GET(
       logoUrl: true,
       imageUrls: true,
       createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          // metadata: true, // Will be enabled after migration
+        },
+      },
     },
   });
 

@@ -12,6 +12,7 @@ export type PublicProjectStats = {
   activeMarketers: number;
   totalPurchases: number;
   avgCommissionPercent: number | null;
+  avgPaidCommission: number | null;
   totalRevenue: number;
   affiliateRevenue: number;
   mrr: number;
@@ -49,6 +50,7 @@ export async function GET(
     affiliateRevenueAgg,
     last30DaysRevenue,
     purchases,
+    avgPaidCommissionAgg,
   ] = await Promise.all([
     // Count unique marketers with active coupons for this project
     prisma.coupon
@@ -111,6 +113,16 @@ export async function GET(
       },
       orderBy: { createdAt: "asc" },
     }),
+
+    // Average paid commission amount (from purchases with coupons)
+    prisma.purchase.aggregate({
+      where: {
+        projectId,
+        couponId: { not: null },
+        commissionAmount: { gt: 0 },
+      },
+      _avg: { commissionAmount: true },
+    }),
   ]);
 
   // Use average from coupons, or fall back to project default
@@ -151,10 +163,16 @@ export async function GET(
       affiliate: data.affiliate / 100,
     }));
 
+  const avgPaidCommission =
+    avgPaidCommissionAgg._avg.commissionAmount != null
+      ? avgPaidCommissionAgg._avg.commissionAmount / 100
+      : null;
+
   const stats: PublicProjectStats = {
     activeMarketers,
     totalPurchases: purchaseCount,
     avgCommissionPercent: Math.round(avgCommissionPercent),
+    avgPaidCommission,
     totalRevenue: (totalRevenueAgg._sum.amount ?? 0) / 100,
     affiliateRevenue: (affiliateRevenueAgg._sum.amount ?? 0) / 100,
     mrr: (last30DaysRevenue._sum.amount ?? 0) / 100,
