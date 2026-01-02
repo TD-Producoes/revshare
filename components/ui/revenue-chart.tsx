@@ -30,14 +30,13 @@ function formatDateLabel(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function formatYAxis(value: number): string {
-  if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(0)}k`;
-  }
-  return `$${value}`;
+function formatYAxis(value: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 export function RevenueChart({ data, currency = "USD" }: RevenueChartProps) {
@@ -76,7 +75,7 @@ export function RevenueChart({ data, currency = "USD" }: RevenueChartProps) {
           axisLine={false}
           tickLine={false}
           tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-          tickFormatter={formatYAxis}
+          tickFormatter={(value) => formatYAxis(value, currency)}
           width={45}
         />
         <Tooltip

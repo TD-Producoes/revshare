@@ -19,6 +19,7 @@ interface RevenueChartProps {
   }>;
   title?: string;
   showAffiliate?: boolean;
+  currency?: string;
 }
 
 const chartConfig = {
@@ -36,7 +37,15 @@ export function RevenueChart({
   data,
   title = "Revenue Over Time",
   showAffiliate = true,
+  currency = "USD",
 }: RevenueChartProps) {
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+
   // Format date for display
   const formattedData = data.map((item) => ({
     ...item,
@@ -71,12 +80,12 @@ export function RevenueChart({
               axisLine={false}
               tickMargin={8}
               fontSize={12}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(value) => formatter.format(Number(value))}
             />
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  formatter={(value) => `$${Number(value).toLocaleString()}`}
+                  formatter={(value) => formatter.format(Number(value))}
                 />
               }
             />

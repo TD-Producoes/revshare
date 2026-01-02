@@ -112,6 +112,7 @@ export function ProjectOverviewTab({
         data={revenueData}
         title="Revenue (Last 30 Days)"
         showAffiliate={true}
+        currency={currency}
       />
     </div>
   );
