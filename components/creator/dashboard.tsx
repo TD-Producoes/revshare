@@ -108,6 +108,7 @@ export function CreatorDashboard() {
         data={creatorRevenueData}
         title="Revenue (Last 30 Days)"
         showAffiliate={true}
+        currency="USD"
       />
 
       {/* Projects Table */}

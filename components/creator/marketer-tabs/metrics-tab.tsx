@@ -232,6 +232,7 @@ export function MarketerMetricsTab({
           }))}
           title="Affiliate vs Project Revenue"
           showAffiliate={true}
+          currency={currency}
         />
         <MetricAreaChart
           title="Purchases (Last 30 Days)"

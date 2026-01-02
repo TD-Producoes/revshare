@@ -289,6 +289,7 @@ export function ProjectMetricsTab({
           }))}
           title="Revenue (Last 30 Days)"
           showAffiliate={true}
+          currency={currency}
         />
         <MetricAreaChart
           title="Purchases (Last 30 Days)"
