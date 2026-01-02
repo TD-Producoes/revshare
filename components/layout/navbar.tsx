@@ -20,7 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, ChartPie, Sparkles, Github, LayoutDashboard } from "lucide-react";
+import { Menu, ChartPie, Sparkles, LayoutDashboard } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 
@@ -54,9 +54,9 @@ export function Navbar() {
                     <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                       <li className="row-span-3">
                         <NavigationMenuLink asChild>
-                          <a
-                            className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
+                          <Link
                             href="/"
+                            className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
                           >
                             <Sparkles className="h-6 w-6 text-primary" />
                             <div className="mb-2 mt-4 text-lg font-medium">
@@ -66,17 +66,14 @@ export function Navbar() {
                               The #1 marketplace for creators and marketers to
                               collaborate.
                             </p>
-                          </a>
+                          </Link>
                         </NavigationMenuLink>
                       </li>
-                      <ListItem href="/creators" title="For Creators">
-                        Find marketers to promote your products.
+                      <ListItem href="/projects" title="Projects Directory">
+                        Browse all available projects and find partnerships.
                       </ListItem>
-                      <ListItem href="/marketers" title="For Marketers">
-                        Discover high-converting products to sell.
-                      </ListItem>
-                      <ListItem href="/enterprise" title="Enterprise">
-                        Custom contracts and volume pricing.
+                      <ListItem href="/marketers" title="Marketers Directory">
+                        Discover talented marketers to promote your products.
                       </ListItem>
                     </ul>
                   </NavigationMenuContent>
@@ -98,16 +95,16 @@ export function Navbar() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/pricing" legacyBehavior passHref>
+                  <Link href="/projects" legacyBehavior passHref>
                     <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                      Pricing
+                      Projects
                     </NavigationMenuLink>
                   </Link>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/docs" legacyBehavior passHref>
+                  <Link href="/marketers" legacyBehavior passHref>
                     <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                      Docs
+                      Marketers
                     </NavigationMenuLink>
                   </Link>
                 </NavigationMenuItem>
@@ -143,17 +140,11 @@ export function Navbar() {
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
               <div className="grid gap-4 py-6">
-                <Link href="/product" className="text-sm font-medium">
-                  Product
+                <Link href="/projects" className="text-sm font-medium">
+                  Projects
                 </Link>
-                <Link href="/solutions" className="text-sm font-medium">
-                  Solutions
-                </Link>
-                <Link href="/pricing" className="text-sm font-medium">
-                  Pricing
-                </Link>
-                <Link href="/docs" className="text-sm font-medium">
-                  Docs
+                <Link href="/marketers" className="text-sm font-medium">
+                  Marketers
                 </Link>
                 <div className="my-2 h-px bg-border" />
                 {!isAuthed && !isLoadingUser ? (
@@ -178,24 +169,14 @@ export function Navbar() {
 
 const components: { title: string; href: string; description: string }[] = [
   {
-    title: "Analytics",
-    href: "/solutions/analytics",
-    description: "Deep insights into your revenue streams and affiliate performance.",
+    title: "Projects",
+    href: "/projects",
+    description: "Browse all available projects and find partnerships.",
   },
   {
-    title: "Automations",
-    href: "/solutions/automations",
-    description: "Trigger payouts and emails based on custom events.",
-  },
-  {
-    title: "Stripe Connect",
-    href: "/solutions/stripe",
-    description: "Seamless global payouts handled automatically.",
-  },
-  {
-    title: "Audit Logs",
-    href: "/solutions/audit",
-    description: "Track every commission and click with enterprise-grade logging.",
+    title: "Marketers",
+    href: "/marketers",
+    description: "Discover talented marketers to promote your products.",
   },
 ];
 
