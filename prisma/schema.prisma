@@ -33,6 +33,7 @@ model User {
   creatorPayments          CreatorPayment[]
   creatorAdjustments       CommissionAdjustment[]  @relation("CreatorAdjustments")
   marketerAdjustments      CommissionAdjustment[]  @relation("MarketerAdjustments")
+  marketerMetricsSnapshots MarketerMetricsSnapshot[]
   events                   Event[]                 @relation("ActorEvents")
   notifications            Notification[]
   notificationPreference   NotificationPreference?
@@ -70,6 +71,7 @@ model Project {
   events                    Event[]
   commissionAdjustments     CommissionAdjustment[]
   metricsSnapshots          MetricsSnapshot[]
+  marketerMetricsSnapshots  MarketerMetricsSnapshot[]
   testimonials              Testimonial[]
   createdAt                 DateTime               @default(now())
   updatedAt                 DateTime               @updatedAt
@@ -446,6 +448,28 @@ model MetricsSnapshot {
 
   @@unique([projectId, date])
   @@index([projectId])
+  @@index([date])
+}
+
+model MarketerMetricsSnapshot {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()"))
+  projectId          String
+  marketerId         String
+  date               DateTime
+  projectRevenueDay  Int      @default(0)
+  affiliateRevenueDay Int     @default(0)
+  commissionOwedDay  Int      @default(0)
+  purchasesCountDay  Int      @default(0)
+  customersCountDay  Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  marketer User    @relation(fields: [marketerId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, marketerId, date])
+  @@index([projectId])
+  @@index([marketerId])
   @@index([date])
 }
 

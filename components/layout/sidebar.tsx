@@ -16,12 +16,14 @@ import {
 import {
   LayoutDashboard,
   FolderKanban,
+  Users,
   FileText,
   Search,
   Settings,
   CreditCard,
   Bell,
   History,
+  TrendingUp,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
@@ -35,6 +37,7 @@ interface NavItem {
 const creatorNavItems: NavItem[] = [
   { title: "Dashboard", href: "/creator", icon: LayoutDashboard },
   { title: "Projects", href: "/creator/projects", icon: FolderKanban },
+  { title: "Marketers", href: "/creator/marketers", icon: Users },
   { title: "Offers", href: "/creator/offers", icon: FileText },
   { title: "Payouts", href: "/creator/payouts", icon: CreditCard },
   { title: "Notifications", href: "/creator/notifications", icon: Bell },
@@ -45,6 +48,7 @@ const marketerNavItems: NavItem[] = [
   { title: "Dashboard", href: "/marketer", icon: LayoutDashboard },
   { title: "My Offers", href: "/marketer/offers", icon: FileText },
   { title: "Browse", href: "/marketer/browse", icon: Search },
+  { title: "Metrics", href: "/marketer/metrics", icon: TrendingUp },
   { title: "Earnings", href: "/marketer/earnings", icon: CreditCard },
   { title: "Notifications", href: "/marketer/notifications", icon: Bell },
   { title: "Audit Log", href: "/marketer/events", icon: History },
