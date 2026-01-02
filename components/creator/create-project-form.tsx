@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -28,20 +28,10 @@ import { MultiImageUpload } from "@/components/ui/multi-image-upload";
 import { FeaturesInput } from "@/components/ui/features-input";
 import { PricingModel } from "@/lib/data/types";
 import { countries } from "@/lib/data/countries";
+import { projectCategories } from "@/lib/data/categories";
 import { Info, Plus, Loader2, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
-
-const categories = [
-  "Productivity",
-  "Developer Tools",
-  "Data",
-  "Marketing",
-  "Design",
-  "Finance",
-  "Education",
-  "Other",
-];
 
 // Helper function to map scraped category to form category
 function mapCategoryToFormCategory(scrapedCategory: string | null): string {
@@ -49,7 +39,7 @@ function mapCategoryToFormCategory(scrapedCategory: string | null): string {
   
   const lowerCategory = scrapedCategory.toLowerCase();
   
-  // Map common categories
+  // Map common categories to our project categories
   if (lowerCategory.includes("developer") || lowerCategory.includes("dev tool")) {
     return "Developer Tools";
   }
@@ -63,17 +53,35 @@ function mapCategoryToFormCategory(scrapedCategory: string | null): string {
     return "Design";
   }
   if (lowerCategory.includes("finance") || lowerCategory.includes("fintech") || lowerCategory.includes("payment")) {
-    return "Finance";
+    return "Finance & FinTech";
   }
   if (lowerCategory.includes("education") || lowerCategory.includes("edtech") || lowerCategory.includes("learning")) {
-    return "Education";
+    return "Education & EdTech";
   }
   if (lowerCategory.includes("data") || lowerCategory.includes("analytics")) {
-    return "Data";
+    return "Data & Analytics";
+  }
+  if (lowerCategory.includes("saas") || lowerCategory.includes("software as a service")) {
+    return "SaaS";
+  }
+  if (lowerCategory.includes("ecommerce") || lowerCategory.includes("e-commerce") || lowerCategory.includes("online store")) {
+    return "E-commerce";
+  }
+  if (lowerCategory.includes("health") && !lowerCategory.includes("healthcare")) {
+    return "Health & Fitness";
+  }
+  if (lowerCategory.includes("healthcare") || lowerCategory.includes("healthtech")) {
+    return "Healthcare & HealthTech";
+  }
+  if (lowerCategory.includes("ai") || lowerCategory.includes("artificial intelligence") || lowerCategory.includes("machine learning")) {
+    return "AI & Machine Learning";
+  }
+  if (lowerCategory.includes("blockchain") || lowerCategory.includes("crypto") || lowerCategory.includes("cryptocurrency")) {
+    return "Blockchain & Crypto";
   }
   
   // Check if it matches any existing category exactly
-  const matchedCategory = categories.find(
+  const matchedCategory = projectCategories.find(
     (cat) => cat.toLowerCase() === lowerCategory
   );
   if (matchedCategory) return matchedCategory;
@@ -184,17 +192,7 @@ export function CreateProjectForm() {
     fetchUser();
   }, []);
 
-  // Reset form and step when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setStep(1);
-      setUrlInput("");
-      resetForm();
-      setError("");
-    }
-  }, [open]);
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       name: "",
       description: "",
@@ -211,6 +209,17 @@ export function CreateProjectForm() {
       logoUrl: null,
       imageUrls: [],
     });
+  }, []);
+
+  // Reset form and step when dialog closes
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      setStep(1);
+      setUrlInput("");
+      resetForm();
+      setError("");
+    }
   };
 
   // Mutation to scrape website
@@ -345,14 +354,16 @@ export function CreateProjectForm() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
           New Project
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className={`sm:max-w-[600px] flex flex-col p-0 overflow-hidden ${
+        step === 1 ? "max-h-[400px]" : "h-[90vh]"
+      }`}>
         {/* Header - Fixed */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <DialogTitle>
@@ -366,8 +377,8 @@ export function CreateProjectForm() {
         </DialogHeader>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full px-6">
+        <div className={step === 1 ? "max-h-[200px] overflow-hidden" : "flex-1 min-h-0 overflow-hidden"}>
+          <ScrollArea className={step === 1 ? "max-h-[200px] px-6" : "h-full px-6"}>
             <div className="py-4">
             {step === 1 ? (
               // Step 1: URL Input
@@ -392,7 +403,7 @@ export function CreateProjectForm() {
                     disabled={scrapeWebsite.isPending}
                   />
                   <p className="text-sm text-muted-foreground">
-                    We'll analyze your website and automatically fill in project details.
+                    We&apos;ll analyze your website and automatically fill in project details.
                   </p>
                 </div>
 
@@ -451,7 +462,7 @@ export function CreateProjectForm() {
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((cat) => (
+                            {projectCategories.map((cat) => (
                               <SelectItem key={cat} value={cat}>
                                 {cat}
                               </SelectItem>
