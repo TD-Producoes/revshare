@@ -24,6 +24,14 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useProjectProfile } from "@/lib/hooks/projects";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 function formatCurrency(value: number, currency: string = "USD"): string {
   if (value >= 1000000) {
@@ -142,10 +150,30 @@ export default function ProjectProfilePage({
       </div>
 
       {/* Header / Hero Section */}
-      <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-32 lg:pb-16 overflow-hidden">
+      <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-24 lg:pb-16 overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.02)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)] pointer-events-none" />
 
-        <div className="mx-auto max-w-7xl px-6 relative z-10">
+        <div className="mx-auto max-w-7xl px-6 pt-0 relative z-10">
+          {/* Breadcrumb */}
+          <Breadcrumb className="mb-6">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/">Home</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/projects">Projects</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{project.name}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
             <div className="flex gap-6 items-center">
               <Avatar className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-sm border-2 border-primary/20">
