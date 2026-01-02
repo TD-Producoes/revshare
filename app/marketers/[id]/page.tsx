@@ -200,6 +200,12 @@ export default function MarketerProfilePage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/marketers">Marketers</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
                 <BreadcrumbPage>{profile.user.name}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
