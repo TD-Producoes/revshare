@@ -8,6 +8,7 @@
 
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import { projectCategories } from "@/lib/data/categories";
 
 // Initialize AI provider (supports OpenAI, Groq, or other OpenAI-compatible APIs)
 // Uses GROQ by default (as shown in example), but can be configured for OpenAI
@@ -263,7 +264,9 @@ async function analyzeWebsiteContent(
 
 Rules:
 - Extract the project/product name (use the website title if available)
-- Identify the category (e.g., SaaS, E-commerce, FinTech, HealthTech, EdTech, Developer Tools, etc.)
+- Identify the category - MUST be one of the following valid categories only:
+  ${projectCategories.join(", ")}
+  Choose the category that best matches the project. If none match closely, use "Other".
 - Try to identify the country/region if mentioned (use 2-letter ISO country code)
 - Create a short description (under 200 characters)
 - Extract the founding year/date if available (format as YYYY or YYYY-MM-DD)
@@ -273,7 +276,7 @@ Rules:
 Return ONLY valid JSON with this exact structure:
 {
   "projectName": "Project name or null",
-  "category": "Category name or null",
+  "category": "One of the valid categories listed above, or Other if truly unknown or not found",
   "country": "Country 2-letter ISO code or null",
   "shortDescription": "Brief description under 200 characters or null",
   "foundedAt": "YYYY or YYYY-MM-DD or null",
@@ -283,6 +286,7 @@ Return ONLY valid JSON with this exact structure:
 
 Important:
 - If information is not available, use null (not empty string)
+- category MUST be exactly one of the valid categories listed above, or Other if truly unknown or not found
 - keyFeatures should always be an array (even if empty)
 - about should contain as much detail as possible from the website content
 - Be accurate and only extract information that is actually present in the content`,
@@ -299,7 +303,6 @@ ${limitedTextContent}`,
         },
       ],
       temperature: 0.3,
-      maxTokens: 2000,
     });
 
     const aiResponse = result.text.trim();

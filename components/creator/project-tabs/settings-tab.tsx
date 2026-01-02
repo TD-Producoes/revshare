@@ -19,6 +19,7 @@ import { ImageUpload } from "@/components/ui/image-upload";
 import { MultiImageUpload } from "@/components/ui/multi-image-upload";
 import { FeaturesInput } from "@/components/ui/features-input";
 import { countries } from "@/lib/data/countries";
+import { projectCategories } from "@/lib/data/categories";
 
 function formatDateInput(value: string | Date | null | undefined): string {
   if (!value) return "";
@@ -220,14 +221,23 @@ export function ProjectSettingsTab({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="projectCategory">Category</Label>
-              <Input
-                id="projectCategory"
+              <Select
                 value={form.category}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, category: event.target.value }))
+                onValueChange={(value) =>
+                  setForm((prev) => ({ ...prev, category: value }))
                 }
-                placeholder="e.g. Productivity"
-              />
+              >
+                <SelectTrigger id="projectCategory">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projectCategories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
