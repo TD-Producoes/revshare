@@ -339,62 +339,11 @@ export default function ProjectProfilePage({
             )}
           </div>
 
-          {/* Right Column: Key Details & Sticky Sidebar */}
+          {/* Right Column: Key Details & Sidebar */}
           <div className="space-y-6">
             {/* Founder Info Card */}
-            {user?.name && (
-              <Card className="border-border/50">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-base">Founder</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Link
-                    href={`/founders/${user.id}`}
-                    className="flex items-center gap-3 group"
-                  >
-                    {(() => {
-                      const metadata = parseUserMetadata(user.metadata);
-                      const xProfile = metadata.socialMedia?.x;
-                      const avatarUrl = xProfile?.handle
-                        ? `https://unavatar.io/x/${xProfile.handle.replace(/^@/, "")}`
-                        : null;
-
-                      return (
-                        <Avatar className="h-8 w-8 shrink-0">
-                          {avatarUrl && (
-                            <AvatarImage src={avatarUrl} alt={user.name} />
-                          )}
-                          <AvatarFallback className="bg-muted text-xs">
-                            {getInitials(user.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                      );
-                    })()}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate text-sm group-hover:text-primary transition-colors">
-                        {user.name}
-                      </p>
-                      {(() => {
-                        const metadata = parseUserMetadata(user.metadata);
-                        const xProfile = metadata.socialMedia?.x;
-                        if (xProfile?.followerCount) {
-                          return (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {formatFollowerCount(xProfile.followerCount)}{" "}
-                              followers on 𝕏
-                            </p>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Partnership Details Card */}
-            <Card className="border-border/50 sticky top-24">
+            <Card className="border-border/50 top-24">
               <CardHeader className="pb-4">
                 <CardTitle className="text-base">Partnership Details</CardTitle>
               </CardHeader>
@@ -471,6 +420,59 @@ export default function ProjectProfilePage({
                 </Button>
               </CardContent>
             </Card>
+
+
+            {user?.name && (
+              <Card className="border-border/50">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base">Founder</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    href={`/founders/${user.id}`}
+                    className="flex items-center gap-3 group"
+                  >
+                    {(() => {
+                      const metadata = parseUserMetadata(user.metadata);
+                      const xProfile = metadata.socialMedia?.x;
+                      const avatarUrl = xProfile?.handle
+                        ? `https://unavatar.io/x/${xProfile.handle.replace(/^@/, "")}`
+                        : null;
+
+                      return (
+                        <Avatar className="h-8 w-8 shrink-0">
+                          {avatarUrl && (
+                            <AvatarImage src={avatarUrl} alt={user.name} />
+                          )}
+                          <AvatarFallback className="bg-muted text-xs">
+                            {getInitials(user.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                      );
+                    })()}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate text-sm group-hover:text-primary transition-colors">
+                        {user.name}
+                      </p>
+                      {(() => {
+                        const metadata = parseUserMetadata(user.metadata);
+                        const xProfile = metadata.socialMedia?.x;
+                        if (xProfile?.followerCount) {
+                          return (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {formatFollowerCount(xProfile.followerCount)}{" "}
+                              followers on 𝕏
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
           </div>
         </div>
       </div>

@@ -482,11 +482,9 @@ export default function MarketerProfilePage() {
                               </div>
                               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1">
-                                  <DollarSign className="h-3.5 w-3.5" />
                                   {formatCurrency(project.revenue)} generated
                                 </span>
                                 <span className="flex items-center gap-1">
-                                  <Wallet className="h-3.5 w-3.5" />
                                   {formatCurrency(project.earnings)} earned
                                 </span>
                                 <span className="flex items-center gap-1">
@@ -513,7 +511,7 @@ export default function MarketerProfilePage() {
             </div>
 
             {/* Performance Metrics */}
-            <Card className="border-border/50 bg-background/50">
+            {/* <Card className="border-border/50 bg-background/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="h-5 w-5 text-primary" />
@@ -546,7 +544,7 @@ export default function MarketerProfilePage() {
                   ))}
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
 
           {/* Right Column: Sidebar */}

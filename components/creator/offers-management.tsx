@@ -14,14 +14,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, X, Clock, CheckCircle, XCircle, MoreVertical, Star } from "lucide-react";
+import { Clock, CheckCircle, XCircle, MoreVertical, Star } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import {
   Contract,
   ContractStatus,
   useContractsForCreator,
   useUpdateContractStatus,
-  useCreateTestimonial,
 } from "@/lib/hooks/contracts";
 import { useMarketerStats } from "@/lib/hooks/marketer";
 import { formatCurrency, formatNumber } from "@/lib/data/metrics";
@@ -39,18 +38,114 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { TestimonialDialog } from "./testimonial-dialog";
+
+type ContractsTableProps = {
+  contractsList: Contract[];
+  showActions?: boolean;
+  onReview: (contractId: string) => void;
+  onOpenTestimonial: (contractId: string) => void;
+  getStatusBadge: (status: ContractStatus) => React.ReactNode;
+};
+
+function ContractsTable({
+  contractsList,
+  showActions = false,
+  onReview,
+  onOpenTestimonial,
+  getStatusBadge,
+}: ContractsTableProps) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Marketer</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Project</TableHead>
+          <TableHead className="text-right">Commission</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Applied</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {contractsList.length === 0 ? (
+          <TableRow>
+            <TableCell
+              colSpan={7}
+              className="text-center py-8 text-muted-foreground"
+            >
+              No contracts found
+            </TableCell>
+          </TableRow>
+        ) : (
+          contractsList.map((contract) => {
+            const isApproved = contract.status === "approved";
+            return (
+              <TableRow key={contract.id}>
+                <TableCell className="font-medium">
+                  {contract.userName}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {contract.userEmail}
+                </TableCell>
+                <TableCell>{contract.projectName}</TableCell>
+                <TableCell className="text-right">
+                  {contract.commissionPercent * 100}%
+                </TableCell>
+                <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {new Date(contract.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {showActions && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => onReview(contract.id)}
+                      >
+                        Review
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onOpenTestimonial(contract.id)}
+                          disabled={!isApproved}
+                        >
+                          <Star className="mr-2 h-4 w-4" />
+                          Write testimonial
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })
+        )}
+      </TableBody>
+    </Table>
+  );
+}
 
 export function OffersManagement() {
   const { data: creatorId } = useAuthUserId();
   const { data: contracts = [] } = useContractsForCreator(creatorId);
   const updateStatus = useUpdateContractStatus();
-  const createTestimonial = useCreateTestimonial();
   const [reviewContractId, setReviewContractId] = useState<string | null>(null);
   const [testimonialContractId, setTestimonialContractId] = useState<string | null>(null);
-  const [testimonialText, setTestimonialText] = useState("");
-  const [testimonialRating, setTestimonialRating] = useState<number>(5);
   const selectedContract =
     contracts.find((contract) => contract.id === reviewContractId) ?? null;
   const testimonialContract =
@@ -120,119 +215,7 @@ export function OffersManagement() {
 
   const handleOpenTestimonial = (contractId: string) => {
     setTestimonialContractId(contractId);
-    setTestimonialText("");
-    setTestimonialRating(5);
   };
-
-  const handleSubmitTestimonial = async () => {
-    if (!testimonialContractId || !creatorId || !testimonialText.trim()) {
-      return;
-    }
-
-    try {
-      await createTestimonial.mutateAsync({
-        contractId: testimonialContractId,
-        creatorId,
-        rating: testimonialRating,
-        text: testimonialText.trim(),
-      });
-      // Close dialog after successful submission
-      setTestimonialContractId(null);
-      setTestimonialText("");
-      setTestimonialRating(5);
-    } catch (error) {
-      // Error is handled by React Query, but we can show a toast here if needed
-      console.error("Failed to submit testimonial:", error);
-    }
-  };
-
-  const ContractsTable = ({
-    contractsList,
-    showActions = false,
-    showTestimonial = false,
-  }: {
-    contractsList: Contract[];
-    showActions?: boolean;
-    showTestimonial?: boolean;
-  }) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Marketer</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Project</TableHead>
-          <TableHead className="text-right">Commission</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Applied</TableHead>
-          {(showActions || showTestimonial) && <TableHead className="text-right">Actions</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {contractsList.length === 0 ? (
-          <TableRow>
-            <TableCell
-              colSpan={(showActions || showTestimonial) ? 7 : 6}
-              className="text-center py-8 text-muted-foreground"
-            >
-              No contracts found
-            </TableCell>
-          </TableRow>
-        ) : (
-          contractsList.map((contract) => (
-            <TableRow key={contract.id}>
-              <TableCell className="font-medium">
-                {contract.userName}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {contract.userEmail}
-              </TableCell>
-              <TableCell>{contract.projectName}</TableCell>
-              <TableCell className="text-right">
-                {contract.commissionPercent * 100}%
-              </TableCell>
-              <TableCell>{getStatusBadge(contract.status)}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {new Date(contract.createdAt).toLocaleDateString()}
-              </TableCell>
-              {(showActions || showTestimonial) && (
-                <TableCell className="text-right">
-                  {showActions && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8"
-                      onClick={() => setReviewContractId(contract.id)}
-                    >
-                      Review
-                    </Button>
-                  )}
-                  {showTestimonial && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenTestimonial(contract.id)}>
-                          <Star className="mr-2 h-4 w-4" />
-                          Write testimonial
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </TableCell>
-              )}
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  );
 
   return (
     <div className="space-y-6">
@@ -283,7 +266,13 @@ export function OffersManagement() {
               <CardTitle className="text-base">Pending Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={pendingContracts} showActions={true} />
+              <ContractsTable
+                contractsList={pendingContracts}
+                showActions={true}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -294,7 +283,13 @@ export function OffersManagement() {
               <CardTitle className="text-base">Approved Affiliates</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={approvedContracts} showTestimonial={true} />
+              <ContractsTable
+                contractsList={approvedContracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -305,7 +300,13 @@ export function OffersManagement() {
               <CardTitle className="text-base">Rejected Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={rejectedContracts} />
+              <ContractsTable
+                contractsList={rejectedContracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -316,7 +317,13 @@ export function OffersManagement() {
               <CardTitle className="text-base">All Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={contracts} />
+              <ContractsTable
+                contractsList={contracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -483,98 +490,16 @@ export function OffersManagement() {
       </Dialog>
 
       {/* Testimonial Dialog */}
-      <Dialog
+      <TestimonialDialog
+        contract={testimonialContract}
         open={Boolean(testimonialContract)}
         onOpenChange={(open) => {
           if (!open) {
             setTestimonialContractId(null);
-            setTestimonialText("");
-            setTestimonialRating(5);
           }
         }}
-      >
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Write Testimonial</DialogTitle>
-            <DialogDescription>
-              {testimonialContract
-                ? `Share your experience working with ${testimonialContract.userName} on ${testimonialContract.projectName}`
-                : "Write a testimonial for this marketer."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {testimonialContract && (
-            <div className="space-y-4">
-              {/* Rating */}
-              <div className="space-y-2">
-                <Label htmlFor="rating">Rating</Label>
-                <div className="flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <button
-                      key={rating}
-                      type="button"
-                      onClick={() => setTestimonialRating(rating)}
-                      className="focus:outline-none"
-                    >
-                      <Star
-                        className={`h-6 w-6 transition-colors ${
-                          rating <= testimonialRating
-                            ? "fill-yellow-400 text-yellow-400"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Testimonial Text */}
-              <div className="space-y-2">
-                <Label htmlFor="testimonial">Testimonial</Label>
-                <Textarea
-                  id="testimonial"
-                  placeholder="Share your experience working with this marketer..."
-                  value={testimonialText}
-                  onChange={(e) => setTestimonialText(e.target.value)}
-                  rows={6}
-                  maxLength={500}
-                  className="resize-none"
-                />
-                <p className="text-xs text-muted-foreground text-right">
-                  {testimonialText.length}/500
-                </p>
-              </div>
-            </div>
-          )}
-
-          {testimonialContract && (
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setTestimonialContractId(null);
-                  setTestimonialText("");
-                  setTestimonialRating(5);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSubmitTestimonial}
-                disabled={
-                  !testimonialText.trim() ||
-                  testimonialText.trim().length < 10 ||
-                  createTestimonial.isPending
-                }
-              >
-                {createTestimonial.isPending ? "Submitting..." : "Submit Testimonial"}
-              </Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
+        creatorId={creatorId}
+      />
     </div>
   );
 }
