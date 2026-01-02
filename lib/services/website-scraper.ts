@@ -274,7 +274,7 @@ Return ONLY valid JSON with this exact structure:
 {
   "projectName": "Project name or null",
   "category": "Category name or null",
-  "country": "Country name or null",
+  "country": "Country 2-letter ISO code or null",
   "shortDescription": "Brief description under 200 characters or null",
   "foundedAt": "YYYY or YYYY-MM-DD or null",
   "keyFeatures": ["feature1", "feature2", "feature3"],
