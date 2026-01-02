@@ -165,6 +165,7 @@ Deno.serve(async (request) => {
     const [projectId, dateKey] = key.split(":");
     const date = new Date(`${dateKey}T00:00:00.000Z`);
     const mrr = mrrByProject.get(projectId) ?? 0;
+    const now = new Date();
     return {
       projectId,
       date,
@@ -177,6 +178,7 @@ Deno.serve(async (request) => {
       affiliatePurchasesCount: totals.affiliatePurchasesCount,
       directPurchasesCount: totals.directPurchasesCount,
       uniqueCustomers: totals.customerEmails.size,
+      updatedAt: now,
     };
   });
 
