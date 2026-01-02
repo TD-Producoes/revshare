@@ -74,6 +74,35 @@ export type RevenueDataPoint = {
   affiliate: number;
 };
 
+export type ProjectMetricsSnapshot = {
+  summary: {
+    totalRevenue: number;
+    affiliateRevenue: number;
+    affiliateShareOwed?: number;
+    platformFee?: number;
+    mrr: number;
+    activeSubscribers: number;
+    affiliateMrr: number;
+    affiliateSubscribers: number;
+    customers: number;
+    affiliateCustomers: number;
+    affiliatePurchases?: number;
+    directPurchases?: number;
+  };
+  timeline: Array<{
+    date: string;
+    totalRevenue: number;
+    affiliateRevenue: number;
+    affiliateShareOwed?: number;
+    platformFee?: number;
+    purchasesCount?: number;
+    affiliatePurchasesCount?: number;
+    directPurchasesCount?: number;
+    uniqueCustomers?: number;
+    affiliateCustomers?: number;
+  }>;
+};
+
 export type PublicProjectStats = {
   activeMarketers: number;
   totalPurchases: number;
@@ -158,6 +187,42 @@ export function useProjectStats(id: string) {
         throw new Error(payload?.error ?? "Failed to fetch project stats.");
       }
       return payload?.data as ProjectStats;
+    },
+  });
+}
+
+export function useProjectMetrics(id?: string | null, days = 30) {
+  return useQuery<ProjectMetricsSnapshot>({
+    queryKey: ["project-metrics", id ?? "none", days],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      if (!id) {
+        return {
+          summary: {
+            totalRevenue: 0,
+            affiliateRevenue: 0,
+            affiliateShareOwed: 0,
+            platformFee: 0,
+            mrr: 0,
+            activeSubscribers: 0,
+            affiliateMrr: 0,
+            affiliateSubscribers: 0,
+            customers: 0,
+            affiliateCustomers: 0,
+            affiliatePurchases: 0,
+            directPurchases: 0,
+          },
+          timeline: [],
+        };
+      }
+      const response = await fetch(
+        `/api/projects/${id}/metrics?days=${days}`,
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch project metrics.");
+      }
+      return payload?.data as ProjectMetricsSnapshot;
     },
   });
 }

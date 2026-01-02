@@ -428,6 +428,17 @@ model MetricsSnapshot {
   affiliatePurchasesCount Int
   directPurchasesCount    Int
   uniqueCustomers         Int
+  affiliateCustomers      Int          @default(0)
+  totalRevenueDay         Int          @default(0)
+  affiliateRevenueDay     Int          @default(0)
+  affiliateShareOwedDay   Int          @default(0)
+  platformFeeDay          Int          @default(0)
+  mrrDay                  Int          @default(0)
+  purchasesCountDay       Int          @default(0)
+  affiliatePurchasesCountDay Int        @default(0)
+  directPurchasesCountDay    Int        @default(0)
+  uniqueCustomersDay         Int        @default(0)
+  affiliateCustomersDay      Int        @default(0)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 

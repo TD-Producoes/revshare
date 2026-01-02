@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useProjects, useEvents } from "@/lib/data/store";
-import { getProjectMetrics, getRevenueTimeline } from "@/lib/data/metrics";
+import { getRevenueTimeline } from "@/lib/data/metrics";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -17,7 +17,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Project } from "@/lib/data/types";
-import { useProject, useProjectPurchases, useProjectStats } from "@/lib/hooks/projects";
+import {
+  useProject,
+  useProjectMetrics,
+  useProjectPurchases,
+} from "@/lib/hooks/projects";
 import { useProjectCoupons, useProjectCouponTemplates } from "@/lib/hooks/coupons";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
@@ -44,6 +48,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check, ChevronsUpDown, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-tab";
+import { ProjectMetricsTab } from "@/components/creator/project-tabs/metrics-tab";
 import { ProjectCouponsTab } from "@/components/creator/project-tabs/coupons-tab";
 import { ProjectMarketersTab } from "@/components/creator/project-tabs/marketers-tab";
 import { ProjectActivityTab } from "@/components/creator/project-tabs/activity-tab";
@@ -160,11 +165,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   });
 
   const { data: apiProject, isLoading } = useProject(projectId);
-  const {
-    data: projectStats,
-    isLoading: isStatsLoading,
-    error: projectStatsError,
-  } = useProjectStats(projectId);
+  const { data: projectMetrics } = useProjectMetrics(projectId, 30);
   const {
     data: projectPurchases = [],
     isLoading: isPurchasesLoading,
@@ -280,7 +281,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 ? Math.round(Number(apiProject.marketerCommissionPercent))
                 : Math.round(Number(apiProject.marketerCommissionPercent) * 100)
               : 0,
-          cookieWindowDays: 0,
+          cookieWindowDays:
+            typeof apiProject.refundWindowDays === "number"
+              ? apiProject.refundWindowDays
+              : 0,
           createdAt: apiProject.createdAt
             ? new Date(apiProject.createdAt)
             : new Date(),
@@ -306,13 +310,22 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     );
   }
 
-  const metrics = getProjectMetrics(events, resolvedProject);
-  const revenueData = getRevenueTimeline(
-    events,
-    resolvedProject.id,
-    undefined,
-    30
-  );
+  const metrics = projectMetrics?.summary ?? {
+    totalRevenue: 0,
+    affiliateRevenue: 0,
+    mrr: 0,
+    activeSubscribers: 0,
+    affiliateMrr: 0,
+    affiliateSubscribers: 0,
+    customers: 0,
+    affiliateCustomers: 0,
+  };
+  const revenueData =
+    projectMetrics?.timeline?.map((entry) => ({
+      date: entry.date,
+      revenue: entry.totalRevenue / 100,
+      affiliateRevenue: entry.affiliateRevenue / 100,
+    })) ?? getRevenueTimeline(events, resolvedProject.id, undefined, 30);
 
   const affiliateRows = buildAffiliateRows(projectCoupons, projectPurchases);
 
@@ -499,6 +512,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <TabsTrigger className="px-3 py-2 text-sm" value="overview">
               Overview
             </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="metrics">
+              Metrics
+            </TabsTrigger>
             <TabsTrigger className="px-3 py-2 text-sm" value="coupons">
               Coupons
             </TabsTrigger>
@@ -524,10 +540,16 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             }}
             metrics={metrics}
             currency={projectCurrency}
-            projectStats={projectStats ?? null}
-            isStatsLoading={isStatsLoading}
-            projectStatsError={projectStatsError as Error | null}
             revenueData={revenueData}
+          />
+        </TabsContent>
+
+        <TabsContent value="metrics">
+          <ProjectMetricsTab
+            metrics={metrics}
+            timeline={projectMetrics?.timeline ?? []}
+            currency={projectCurrency}
+            affiliateRows={affiliateRows}
           />
         </TabsContent>
 

@@ -13,31 +13,10 @@ type ProjectSummary = {
   cookieWindowDays: number;
 };
 
-type ProjectStats = {
-  stripe: {
-    totalRevenue: number;
-    charges: number;
-    newCustomers: number;
-  };
-  platform: {
-    totalTrackedRevenue: number;
-    totalCommission: number;
-    purchases: number;
-  };
-  coupons: {
-    revenue: number;
-    commission: number;
-    purchases: number;
-  };
-};
-
 export function ProjectOverviewTab({
   project,
   metrics,
   currency,
-  projectStats,
-  isStatsLoading,
-  projectStatsError,
   revenueData,
 }: {
   project: ProjectSummary;
@@ -46,11 +25,12 @@ export function ProjectOverviewTab({
     mrr: number;
     activeSubscribers: number;
     affiliateRevenue: number;
+    affiliateMrr?: number;
+    affiliateSubscribers?: number;
+    customers?: number;
+    affiliateCustomers?: number;
   };
   currency: string;
-  projectStats?: ProjectStats | null;
-  isStatsLoading: boolean;
-  projectStatsError?: Error | null;
   revenueData: Array<{
     date: string;
     revenue: number;
@@ -81,14 +61,14 @@ export function ProjectOverviewTab({
               <p className="font-medium">{project.revSharePercent}%</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Cookie Window</p>
+              <p className="text-sm text-muted-foreground">Refund Window</p>
               <p className="font-medium">{project.cookieWindowDays} days</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Revenue"
           value={formatCurrency(metrics.totalRevenue, currency)}
@@ -100,11 +80,6 @@ export function ProjectOverviewTab({
           icon={TrendingUp}
         />
         <StatCard
-          title="Active Subscribers"
-          value={formatNumber(metrics.activeSubscribers)}
-          icon={Users}
-        />
-        <StatCard
           title="Affiliate Revenue"
           value={formatCurrency(metrics.affiliateRevenue, currency)}
           description={`${Math.round(
@@ -112,71 +87,26 @@ export function ProjectOverviewTab({
           )}% of total revenue`}
           icon={CalendarDays}
         />
+        <StatCard
+          title="Affiliate MRR"
+          value={formatCurrency(metrics.affiliateMrr ?? 0, currency)}
+          icon={TrendingUp}
+        />
+        <StatCard
+          title="Customers"
+          value={formatNumber(metrics.customers ?? 0)}
+          icon={Users}
+        />
+        <StatCard
+          title="Affiliate Customers"
+          value={formatNumber(metrics.affiliateCustomers ?? 0)}
+          description={`${Math.round(
+            ((metrics.affiliateCustomers ?? 0) / ((metrics.customers ?? 0) || 1)) *
+              100,
+          )}% of total customers`}
+          icon={CalendarDays}
+        />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Live Stripe & Platform Stats</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isStatsLoading ? (
-            <p className="text-muted-foreground">Loading live stats...</p>
-          ) : projectStats ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Stripe Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(projectStats.stripe.totalRevenue, currency)}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>Charges: {formatNumber(projectStats.stripe.charges)}</p>
-                  <p>
-                    New Customers: {formatNumber(projectStats.stripe.newCustomers)}
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Platform Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(
-                    projectStats.platform.totalTrackedRevenue,
-                    currency,
-                  )}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    Commission:{" "}
-                    {formatCurrency(
-                      projectStats.platform.totalCommission,
-                      currency,
-                    )}
-                  </p>
-                  <p>Purchases: {formatNumber(projectStats.platform.purchases)}</p>
-                </div>
-              </div>
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Coupon Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(projectStats.coupons.revenue, currency)}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    Commission:{" "}
-                    {formatCurrency(projectStats.coupons.commission, currency)}
-                  </p>
-                  <p>Purchases: {formatNumber(projectStats.coupons.purchases)}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">
-              {projectStatsError instanceof Error
-                ? projectStatsError.message
-                : "Connect Stripe to view live stats."}
-            </p>
-          )}
-        </CardContent>
-      </Card>
 
       <RevenueChart
         data={revenueData}
