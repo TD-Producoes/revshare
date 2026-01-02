@@ -16,7 +16,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Award,
-  Building2,
   Calendar,
   DollarSign,
   ExternalLink,
@@ -33,7 +32,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { usePublicMarketerProfile } from "@/lib/hooks/marketer";
+import {
+  usePublicMarketerProfile,
+  useMarketerTestimonials,
+} from "@/lib/hooks/marketer";
 import { parseUserMetadata } from "@/lib/services/user-metadata";
 
 // Helper functions
@@ -74,6 +76,8 @@ export default function MarketerProfilePage() {
   const marketerId = params?.id as string | undefined;
 
   const { data: profile, isLoading, error } = usePublicMarketerProfile(marketerId);
+  const { data: testimonials = [], isLoading: isLoadingTestimonials } =
+    useMarketerTestimonials(marketerId);
 
   if (isLoading) {
     return (
@@ -445,7 +449,6 @@ export default function MarketerProfilePage() {
             {/* Active Projects */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
                 Active Partnerships
               </h3>
               <div className="grid gap-4">
@@ -479,11 +482,9 @@ export default function MarketerProfilePage() {
                               </div>
                               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1">
-                                  <DollarSign className="h-3.5 w-3.5" />
                                   {formatCurrency(project.revenue)} generated
                                 </span>
                                 <span className="flex items-center gap-1">
-                                  <Wallet className="h-3.5 w-3.5" />
                                   {formatCurrency(project.earnings)} earned
                                 </span>
                                 <span className="flex items-center gap-1">
@@ -510,7 +511,7 @@ export default function MarketerProfilePage() {
             </div>
 
             {/* Performance Metrics */}
-            <Card className="border-border/50 bg-background/50">
+            {/* <Card className="border-border/50 bg-background/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="h-5 w-5 text-primary" />
@@ -543,7 +544,7 @@ export default function MarketerProfilePage() {
                   ))}
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
 
           {/* Right Column: Sidebar */}
@@ -670,46 +671,52 @@ export default function MarketerProfilePage() {
             <Card className="border-border/50 bg-background/50">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                   Testimonials
+                  {testimonials.length > 0 && (
+                    <span className="text-sm font-normal text-muted-foreground">
+                      ({testimonials.length})
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="p-4 rounded-lg border border-border/40 bg-muted/10">
-                    <div className="flex items-center gap-2 mb-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className="h-3 w-3 text-yellow-500 fill-yellow-500"
-                        />
-                      ))}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      &ldquo;Lara has been instrumental in scaling our affiliate
-                      program. Her strategic approach and deep understanding of
-                      B2B SaaS marketing has driven significant revenue growth.&rdquo;
-                    </p>
-                    <p className="text-xs font-medium">— CEO, SocialPulse</p>
+                {isLoadingTestimonials ? (
+                  <div className="text-sm text-muted-foreground py-4">
+                    Loading testimonials...
                   </div>
-                  <div className="p-4 rounded-lg border border-border/40 bg-muted/10">
-                    <div className="flex items-center gap-2 mb-2">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className="h-3 w-3 text-yellow-500 fill-yellow-500"
-                        />
-                      ))}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      &ldquo;Outstanding partner. Professional, results-driven, and
-                      always delivers on commitments. Highly recommend!&rdquo;
-                    </p>
-                    <p className="text-xs font-medium">
-                      — Founder, BuildPublic
-                    </p>
+                ) : testimonials.length === 0 ? (
+                  <div className="text-sm text-muted-foreground py-4">
+                    No testimonials yet.
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-3">
+                    {testimonials.map((testimonial) => (
+                      <div
+                        key={testimonial.id}
+                        className="p-4 rounded-lg border border-border/40 bg-muted/10"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3 w-3 ${
+                                i < testimonial.rating
+                                  ? "text-yellow-500 fill-yellow-500"
+                                  : "text-muted-foreground"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          &ldquo;{testimonial.text}&rdquo;
+                        </p>
+                        <p className="text-xs font-medium">
+                          — {testimonial.creatorName}, {testimonial.projectName}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

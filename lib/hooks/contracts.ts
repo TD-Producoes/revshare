@@ -114,3 +114,48 @@ export function useCreateContract() {
     },
   });
 }
+
+export type Testimonial = {
+  id: string;
+  contractId: string;
+  creatorId: string;
+  creatorName: string;
+  marketerId: string;
+  marketerName: string;
+  projectId: string;
+  projectName: string;
+  rating: number;
+  text: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+export function useCreateTestimonial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      contractId: string;
+      creatorId: string;
+      rating: number;
+      text: string;
+    }) => {
+      const response = await fetch("/api/testimonials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to create testimonial.");
+      }
+      return data?.data as Testimonial;
+    },
+    onSuccess: async () => {
+      // Invalidate contracts queries to refresh the data
+      await queryClient.invalidateQueries({
+        queryKey: ["contracts"],
+      });
+    },
+  });
+}

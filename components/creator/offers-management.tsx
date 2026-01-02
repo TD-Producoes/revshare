@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, X, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Clock, CheckCircle, XCircle, MoreVertical, Star } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import {
   Contract,
@@ -32,14 +32,124 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { TestimonialDialog } from "./testimonial-dialog";
+
+type ContractsTableProps = {
+  contractsList: Contract[];
+  showActions?: boolean;
+  onReview: (contractId: string) => void;
+  onOpenTestimonial: (contractId: string) => void;
+  getStatusBadge: (status: ContractStatus) => React.ReactNode;
+};
+
+function ContractsTable({
+  contractsList,
+  showActions = false,
+  onReview,
+  onOpenTestimonial,
+  getStatusBadge,
+}: ContractsTableProps) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Marketer</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Project</TableHead>
+          <TableHead className="text-right">Commission</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Applied</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {contractsList.length === 0 ? (
+          <TableRow>
+            <TableCell
+              colSpan={7}
+              className="text-center py-8 text-muted-foreground"
+            >
+              No contracts found
+            </TableCell>
+          </TableRow>
+        ) : (
+          contractsList.map((contract) => {
+            const isApproved = contract.status === "approved";
+            return (
+              <TableRow key={contract.id}>
+                <TableCell className="font-medium">
+                  {contract.userName}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {contract.userEmail}
+                </TableCell>
+                <TableCell>{contract.projectName}</TableCell>
+                <TableCell className="text-right">
+                  {contract.commissionPercent * 100}%
+                </TableCell>
+                <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {new Date(contract.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {showActions && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => onReview(contract.id)}
+                      >
+                        Review
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onOpenTestimonial(contract.id)}
+                          disabled={!isApproved}
+                        >
+                          <Star className="mr-2 h-4 w-4" />
+                          Write testimonial
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })
+        )}
+      </TableBody>
+    </Table>
+  );
+}
 
 export function OffersManagement() {
   const { data: creatorId } = useAuthUserId();
   const { data: contracts = [] } = useContractsForCreator(creatorId);
   const updateStatus = useUpdateContractStatus();
   const [reviewContractId, setReviewContractId] = useState<string | null>(null);
+  const [testimonialContractId, setTestimonialContractId] = useState<string | null>(null);
   const selectedContract =
     contracts.find((contract) => contract.id === reviewContractId) ?? null;
+  const testimonialContract =
+    contracts.find((contract) => contract.id === testimonialContractId) ?? null;
   const { data: marketerStats, isLoading: isStatsLoading } = useMarketerStats(
     selectedContract?.userId,
   );
@@ -103,70 +213,9 @@ export function OffersManagement() {
     }
   };
 
-  const ContractsTable = ({
-    contractsList,
-    showActions = false,
-  }: {
-    contractsList: Contract[];
-    showActions?: boolean;
-  }) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Marketer</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Project</TableHead>
-          <TableHead className="text-right">Commission</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Applied</TableHead>
-          {showActions && <TableHead className="text-right">Actions</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {contractsList.length === 0 ? (
-          <TableRow>
-            <TableCell
-              colSpan={showActions ? 7 : 6}
-              className="text-center py-8 text-muted-foreground"
-            >
-              No contracts found
-            </TableCell>
-          </TableRow>
-        ) : (
-          contractsList.map((contract) => (
-            <TableRow key={contract.id}>
-              <TableCell className="font-medium">
-                {contract.userName}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {contract.userEmail}
-              </TableCell>
-              <TableCell>{contract.projectName}</TableCell>
-              <TableCell className="text-right">
-                {contract.commissionPercent * 100}%
-              </TableCell>
-              <TableCell>{getStatusBadge(contract.status)}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {new Date(contract.createdAt).toLocaleDateString()}
-              </TableCell>
-              {showActions && (
-                <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8"
-                    onClick={() => setReviewContractId(contract.id)}
-                  >
-                    Review
-                  </Button>
-                </TableCell>
-              )}
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  );
+  const handleOpenTestimonial = (contractId: string) => {
+    setTestimonialContractId(contractId);
+  };
 
   return (
     <div className="space-y-6">
@@ -217,7 +266,13 @@ export function OffersManagement() {
               <CardTitle className="text-base">Pending Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={pendingContracts} showActions={true} />
+              <ContractsTable
+                contractsList={pendingContracts}
+                showActions={true}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -228,7 +283,13 @@ export function OffersManagement() {
               <CardTitle className="text-base">Approved Affiliates</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={approvedContracts} />
+              <ContractsTable
+                contractsList={approvedContracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -239,7 +300,13 @@ export function OffersManagement() {
               <CardTitle className="text-base">Rejected Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={rejectedContracts} />
+              <ContractsTable
+                contractsList={rejectedContracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -250,7 +317,13 @@ export function OffersManagement() {
               <CardTitle className="text-base">All Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={contracts} />
+              <ContractsTable
+                contractsList={contracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -415,6 +488,18 @@ export function OffersManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Testimonial Dialog */}
+      <TestimonialDialog
+        contract={testimonialContract}
+        open={Boolean(testimonialContract)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTestimonialContractId(null);
+          }
+        }}
+        creatorId={creatorId}
+      />
     </div>
   );
 }

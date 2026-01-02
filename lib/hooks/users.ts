@@ -161,7 +161,9 @@ export function useFounderProfile(userId?: string | null) {
               category: projectDetails?.category || "Other",
               logoUrl:
                 projectDetails?.logoUrl ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(project.name.substring(0, 2))}&background=6366F1&color=fff`,
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  project.name.substring(0, 2)
+                )}&background=6366F1&color=fff`,
               revenue: project.metrics?.totalRevenue
                 ? project.metrics.totalRevenue / 100
                 : 0,
@@ -176,6 +178,9 @@ export function useFounderProfile(userId?: string | null) {
           }
         )
       );
+
+      // Sort projects by revenue descending (in case API didn't sort properly)
+      projectsWithStats.sort((a, b) => b.revenue - a.revenue);
 
       // Calculate overall stats
       const totalRevenue = dashboard.totals.totalRevenue / 100;
@@ -205,7 +210,9 @@ export function useFounderProfile(userId?: string | null) {
           .reduce((sum: number, d: { revenue: number }) => sum + d.revenue, 0);
         if (previous > 0) {
           const growthPercent = ((recent - previous) / previous) * 100;
-          growth = `${growthPercent >= 0 ? "+" : ""}${Math.round(growthPercent)}%`;
+          growth = `${growthPercent >= 0 ? "+" : ""}${Math.round(
+            growthPercent
+          )}%`;
         }
       }
 

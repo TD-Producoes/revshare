@@ -96,7 +96,9 @@ export function useMarketerAdjustments(userId?: string | null) {
     queryKey: ["marketer-adjustments", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const response = await fetch(`/api/marketer/adjustments?userId=${userId}`);
+      const response = await fetch(
+        `/api/marketer/adjustments?userId=${userId}`
+      );
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch adjustments.");
@@ -104,7 +106,8 @@ export function useMarketerAdjustments(userId?: string | null) {
       const payload = await response.json();
       return {
         data: Array.isArray(payload?.data) ? payload.data : [],
-        pendingTotal: typeof payload?.pendingTotal === "number" ? payload.pendingTotal : 0,
+        pendingTotal:
+          typeof payload?.pendingTotal === "number" ? payload.pendingTotal : 0,
       };
     },
   });
@@ -213,6 +216,34 @@ export function useMarketersLeaderboard() {
         throw new Error(
           payload?.error ?? "Failed to fetch marketers leaderboard."
         );
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export type MarketerTestimonial = {
+  id: string;
+  contractId: string;
+  creatorId: string;
+  creatorName: string;
+  projectId: string;
+  projectName: string;
+  rating: number;
+  text: string;
+  createdAt: string | Date;
+};
+
+export function useMarketerTestimonials(marketerId?: string | null) {
+  return useQuery<MarketerTestimonial[]>({
+    queryKey: ["marketer-testimonials", marketerId ?? "none"],
+    enabled: Boolean(marketerId),
+    queryFn: async () => {
+      const response = await fetch(`/api/marketers/${marketerId}/testimonials`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch testimonials.");
       }
       const payload = await response.json();
       return Array.isArray(payload?.data) ? payload.data : [];
