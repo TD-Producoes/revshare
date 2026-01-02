@@ -251,3 +251,77 @@ export function useProjectProfile(id?: string | null) {
     },
   });
 }
+
+export type SearchProject = {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  logoUrl: string | null;
+  country: string | null;
+  website: string | null;
+  revenue: number;
+  marketers: number;
+  commission: number;
+};
+
+export type ProjectsSearchFilters = {
+  search?: string;
+  categories?: string[];
+  revenueRanges?: string[];
+  commissionRanges?: string[];
+  countries?: string[];
+};
+
+export function useProjectsSearch(filters: ProjectsSearchFilters = {}) {
+  return useQuery<SearchProject[]>({
+    queryKey: ["projects-search", filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+
+      if (filters.search) {
+        params.append("search", filters.search);
+      }
+      if (filters.categories && filters.categories.length > 0) {
+        params.append("categories", filters.categories.join(","));
+      }
+      if (filters.revenueRanges && filters.revenueRanges.length > 0) {
+        params.append("revenueRanges", filters.revenueRanges.join(","));
+      }
+      if (filters.commissionRanges && filters.commissionRanges.length > 0) {
+        params.append("commissionRanges", filters.commissionRanges.join(","));
+      }
+      if (filters.countries && filters.countries.length > 0) {
+        params.append("countries", filters.countries.join(","));
+      }
+
+      const response = await fetch(`/api/projects/search?${params.toString()}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to search projects.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export type FilterOptions = {
+  categories: string[];
+  countries: string[];
+};
+
+export function useProjectsFilterOptions() {
+  return useQuery<FilterOptions>({
+    queryKey: ["projects-filter-options"],
+    queryFn: async () => {
+      const response = await fetch("/api/projects/filter-options");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch filter options.");
+      }
+      const payload = await response.json();
+      return payload?.data ?? { categories: [], countries: [] };
+    },
+  });
+}
