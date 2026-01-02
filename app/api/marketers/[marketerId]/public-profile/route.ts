@@ -43,6 +43,35 @@ export type PublicMarketerProfile = {
     earnings: number;
     revenue: number;
   }>;
+  metrics: {
+    // Summary totals from all snapshots
+    summary: {
+      totalProjectRevenue: number;
+      totalAffiliateRevenue: number;
+      totalCommissionOwed: number;
+      totalPurchases: number;
+      totalCustomers: number;
+    };
+    // Daily timeline (last 30 days)
+    dailyTimeline: Array<{
+      date: string;
+      projectRevenue: number;
+      affiliateRevenue: number;
+      commissionOwed: number;
+      purchases: number;
+      customers: number;
+    }>;
+    // Per-project metrics breakdown
+    projectMetrics: Array<{
+      projectId: string;
+      projectName: string;
+      totalProjectRevenue: number;
+      totalAffiliateRevenue: number;
+      totalCommissionOwed: number;
+      totalPurchases: number;
+      totalCustomers: number;
+    }>;
+  };
 };
 
 export async function GET(
@@ -111,6 +140,17 @@ export async function GET(
         projects: [],
         recentCommissions: [],
         earningsTimeline: [],
+        metrics: {
+          summary: {
+            totalProjectRevenue: 0,
+            totalAffiliateRevenue: 0,
+            totalCommissionOwed: 0,
+            totalPurchases: 0,
+            totalCustomers: 0,
+          },
+          dailyTimeline: [],
+          projectMetrics: [],
+        },
       },
     });
   }
@@ -288,6 +328,159 @@ export async function GET(
     };
   });
 
+  // Fetch MarketerMetricsSnapshot data
+  const metricsSnapshots = await prisma.marketerMetricsSnapshot.findMany({
+    where: {
+      marketerId,
+      projectId: { in: projectIds },
+    },
+    select: {
+      id: true,
+      projectId: true,
+      date: true,
+      projectRevenueDay: true,
+      affiliateRevenueDay: true,
+      commissionOwedDay: true,
+      purchasesCountDay: true,
+      customersCountDay: true,
+    },
+    orderBy: { date: "desc" },
+  });
+
+  // Calculate metrics summary (totals from all snapshots)
+  const metricsSummary = {
+    totalProjectRevenue: 0,
+    totalAffiliateRevenue: 0,
+    totalCommissionOwed: 0,
+    totalPurchases: 0,
+    totalCustomers: 0,
+  };
+
+  for (const snapshot of metricsSnapshots) {
+    metricsSummary.totalProjectRevenue += snapshot.projectRevenueDay;
+    metricsSummary.totalAffiliateRevenue += snapshot.affiliateRevenueDay;
+    metricsSummary.totalCommissionOwed += snapshot.commissionOwedDay;
+    metricsSummary.totalPurchases += snapshot.purchasesCountDay;
+    // Note: customersCountDay is already a count, not individual IDs
+    // We'll use the max value per day to avoid double counting
+  }
+
+  // Convert from cents to dollars for revenue/commission
+  metricsSummary.totalProjectRevenue = metricsSummary.totalProjectRevenue / 100;
+  metricsSummary.totalAffiliateRevenue =
+    metricsSummary.totalAffiliateRevenue / 100;
+  metricsSummary.totalCommissionOwed = metricsSummary.totalCommissionOwed / 100;
+
+  // Build daily timeline (last 30 days)
+  const dailyTimeline: Array<{
+    date: string;
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchases: number;
+    customers: number;
+  }> = [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Group snapshots by date
+  const snapshotsByDate = new Map<string, typeof metricsSnapshots>();
+  for (const snapshot of metricsSnapshots) {
+    const dateKey = snapshot.date.toISOString().split("T")[0];
+    if (!snapshotsByDate.has(dateKey)) {
+      snapshotsByDate.set(dateKey, []);
+    }
+    snapshotsByDate.get(dateKey)!.push(snapshot);
+  }
+
+  // Build timeline for last 30 days
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateKey = date.toISOString().split("T")[0];
+
+    const daySnapshots = snapshotsByDate.get(dateKey) ?? [];
+
+    // Aggregate all projects for this day
+    const dayMetrics = {
+      projectRevenue: 0,
+      affiliateRevenue: 0,
+      commissionOwed: 0,
+      purchases: 0,
+      customers: 0,
+    };
+
+    for (const snapshot of daySnapshots) {
+      dayMetrics.projectRevenue += snapshot.projectRevenueDay;
+      dayMetrics.affiliateRevenue += snapshot.affiliateRevenueDay;
+      dayMetrics.commissionOwed += snapshot.commissionOwedDay;
+      dayMetrics.purchases += snapshot.purchasesCountDay;
+      // For customers, use the max value across projects for the day
+      // (assuming customersCountDay represents unique customers per project per day)
+      dayMetrics.customers = Math.max(
+        dayMetrics.customers,
+        snapshot.customersCountDay
+      );
+    }
+
+    // Convert from cents to dollars
+    dayMetrics.projectRevenue = dayMetrics.projectRevenue / 100;
+    dayMetrics.affiliateRevenue = dayMetrics.affiliateRevenue / 100;
+    dayMetrics.commissionOwed = dayMetrics.commissionOwed / 100;
+
+    dailyTimeline.push({
+      date: dateKey,
+      ...dayMetrics,
+    });
+  }
+
+  // Build per-project metrics breakdown
+  const projectMetricsMap = new Map<
+    string,
+    {
+      projectId: string;
+      projectName: string;
+      totalProjectRevenue: number;
+      totalAffiliateRevenue: number;
+      totalCommissionOwed: number;
+      totalPurchases: number;
+      totalCustomers: number;
+    }
+  >();
+
+  for (const snapshot of metricsSnapshots) {
+    const existing = projectMetricsMap.get(snapshot.projectId) ?? {
+      projectId: snapshot.projectId,
+      projectName:
+        projects.find((p) => p.id === snapshot.projectId)?.name ?? "Unknown",
+      totalProjectRevenue: 0,
+      totalAffiliateRevenue: 0,
+      totalCommissionOwed: 0,
+      totalPurchases: 0,
+      totalCustomers: 0,
+    };
+
+    existing.totalProjectRevenue += snapshot.projectRevenueDay;
+    existing.totalAffiliateRevenue += snapshot.affiliateRevenueDay;
+    existing.totalCommissionOwed += snapshot.commissionOwedDay;
+    existing.totalPurchases += snapshot.purchasesCountDay;
+    existing.totalCustomers = Math.max(
+      existing.totalCustomers,
+      snapshot.customersCountDay
+    );
+
+    projectMetricsMap.set(snapshot.projectId, existing);
+  }
+
+  // Convert from cents to dollars and build array
+  const projectMetrics = Array.from(projectMetricsMap.values()).map((pm) => ({
+    ...pm,
+    totalProjectRevenue: pm.totalProjectRevenue / 100,
+    totalAffiliateRevenue: pm.totalAffiliateRevenue / 100,
+    totalCommissionOwed: pm.totalCommissionOwed / 100,
+  }));
+
   const profile: PublicMarketerProfile = {
     user: {
       id: user.id,
@@ -308,6 +501,11 @@ export async function GET(
     projects: projectsList,
     recentCommissions,
     earningsTimeline: timeline,
+    metrics: {
+      summary: metricsSummary,
+      dailyTimeline,
+      projectMetrics,
+    },
   };
 
   return NextResponse.json({ data: profile });

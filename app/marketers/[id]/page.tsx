@@ -31,7 +31,6 @@ import {
   Calendar,
   ExternalLink,
   Globe,
-  LineChart,
   MapPin,
   PieChart,
   ShieldCheck,
@@ -41,6 +40,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { RevenueChart } from "@/components/shared/revenue-chart";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { formatNumber } from "@/lib/data/metrics";
 
 // Helper functions
 
@@ -62,17 +72,111 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+function sumField(
+  data: Array<{
+    projectRevenue?: number;
+    affiliateRevenue?: number;
+    commissionOwed?: number;
+    purchases?: number;
+    customers?: number;
+  }>,
+  key:
+    | "projectRevenue"
+    | "affiliateRevenue"
+    | "commissionOwed"
+    | "purchases"
+    | "customers"
+): number {
+  return data.reduce((acc, entry) => {
+    const value = typeof entry[key] === "number" ? Number(entry[key]) : 0;
+    return acc + value;
+  }, 0);
+}
+
+function MetricAreaChart({
+  title,
+  data,
+  config,
+  valueFormatter,
+}: {
+  title: string;
+  data: Array<Record<string, number | string>>;
+  config: ChartConfig;
+  valueFormatter: (value: number) => string;
+}) {
+  const formattedData = data.map((item) => ({
+    ...item,
+    dateLabel: new Date(String(item.date)).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+  }));
+
+  const [firstKey, secondKey] = Object.keys(config);
+
+  return (
+    <Card className="border-border/50 bg-background/50">
+      <CardHeader>
+        <CardTitle className="text-base font-medium">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer config={config} className="h-[260px] w-full">
+          <AreaChart
+            data={formattedData}
+            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis
+              dataKey="dateLabel"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              fontSize={12}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              fontSize={12}
+              tickFormatter={(value) => valueFormatter(Number(value))}
+            />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  formatter={(value) => valueFormatter(Number(value))}
+                />
+              }
+            />
+            <Area
+              type="monotone"
+              dataKey={firstKey}
+              stroke={`var(--color-${firstKey})`}
+              fill={`var(--color-${firstKey})`}
+              fillOpacity={0.2}
+              strokeWidth={2}
+            />
+            {secondKey ? (
+              <Area
+                type="monotone"
+                dataKey={secondKey}
+                stroke={`var(--color-${secondKey})`}
+                fill={`var(--color-${secondKey})`}
+                fillOpacity={0.2}
+                strokeWidth={2}
+              />
+            ) : null}
+            <ChartLegend content={<ChartLegendContent />} />
+          </AreaChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
-function getMaxValue(
-  data: Array<{ earnings: number; revenue: number }>,
-  key: "earnings" | "revenue"
-): number {
-  if (data.length === 0) return 1;
-  return Math.max(...data.map((d) => d[key]), 1);
 }
 
 export default function MarketerProfilePage() {
@@ -119,11 +223,8 @@ export default function MarketerProfilePage() {
   // Format data
   const stats = profile.stats;
   const projects = profile.projects;
-  const earningsTimeline = profile.earningsTimeline;
   const recentCommissions = profile.recentCommissions;
-
-  const maxEarnings = getMaxValue(earningsTimeline, "earnings");
-  const maxRevenue = getMaxValue(earningsTimeline, "revenue");
+  const metrics = profile.metrics;
 
   // Format website URL
   const websiteDisplay = metadata.website
@@ -323,128 +424,94 @@ export default function MarketerProfilePage() {
       </div>
 
       <div className="mx-auto max-w-7xl p-6">
-        {/* Stats Overview Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-2xl font-semibold mb-1 text-emerald-600">
               {formatCurrency(stats.totalEarnings)}
             </div>
-            <div className="text-xs text-muted-foreground">Total earnings</div>
+            <div className="text-xs text-muted-foreground">Total Earnings</div>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-2xl font-semibold mb-1">
               {formatCurrency(stats.totalRevenue)}
             </div>
             <div className="text-xs text-muted-foreground">
-              Revenue generated
+              Revenue Generated
             </div>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-2xl font-semibold mb-1">
               {stats.activeProjects}
             </div>
-            <div className="text-xs text-muted-foreground">Active projects</div>
+            <div className="text-xs text-muted-foreground">Active Projects</div>
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-2xl font-semibold mb-1">
-              {stats.conversionRate}%
+              {metrics
+                ? metrics.summary.totalPurchases.toLocaleString()
+                : stats.totalSales.toLocaleString()}
             </div>
-            <div className="text-xs text-muted-foreground">Conversion rate</div>
+            <div className="text-xs text-muted-foreground">Total Purchases</div>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-2xl font-semibold mb-1 text-purple-600">
+              {metrics
+                ? formatCurrency(metrics.summary.totalCommissionOwed)
+                : formatCurrency(0)}
+            </div>
+            <div className="text-xs text-muted-foreground">Commission Owed</div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           {/* Left Column: Main Content */}
           <div className="space-y-6">
-            {/* Earnings & Revenue Chart */}
-            <Card className="border-border/50 bg-background/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <LineChart className="h-5 w-5 text-primary" />
-                  Earnings & Revenue Trend
-                </CardTitle>
-                <CardDescription>
-                  Monthly performance over the last 12 months
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* Chart */}
-                  <div className="relative h-64">
-                    {/* Earnings bars */}
-                    <div className="absolute inset-0 flex items-end justify-between gap-1">
-                      {earningsTimeline.map(
-                        (
-                          item: {
-                            month: string;
-                            earnings: number;
-                            revenue: number;
-                          },
-                          i: number
-                        ) => (
-                          <div
-                            key={i}
-                            className="flex-1 flex flex-col items-center gap-1 group"
-                          >
-                            <div
-                              className="w-full bg-emerald-500/20 rounded-t hover:bg-emerald-500/30 transition-colors relative group-hover:bg-emerald-500/40"
-                              style={{
-                                height: `${
-                                  (item.earnings / maxEarnings) * 100
-                                }%`,
-                              }}
-                            >
-                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">
-                                {formatCurrency(item.earnings)}
-                              </div>
-                            </div>
-                            <span className="text-[10px] text-muted-foreground">
-                              {item.month}
-                            </span>
-                          </div>
-                        )
-                      )}
-                    </div>
-                    {/* Revenue line overlay */}
-                    <div className="absolute inset-0 flex items-end justify-between">
-                      {earningsTimeline.map(
-                        (
-                          item: {
-                            month: string;
-                            earnings: number;
-                            revenue: number;
-                          },
-                          i: number
-                        ) => (
-                          <div
-                            key={i}
-                            className="flex-1 flex items-end justify-center"
-                            style={{
-                              height: `${(item.revenue / maxRevenue) * 100}%`,
-                            }}
-                          >
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mb-0.5" />
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                  {/* Legend */}
-                  <div className="flex items-center justify-center gap-6 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded bg-emerald-500/20" />
-                      <span className="text-muted-foreground">Earnings</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                      <span className="text-muted-foreground">
-                        Revenue Generated
-                      </span>
-                    </div>
-                  </div>
+            {/* Metrics Charts */}
+            {metrics && metrics.dailyTimeline.length > 0 && (
+              <>
+                <RevenueChart
+                  data={metrics.dailyTimeline.map((entry) => ({
+                    date: entry.date,
+                    revenue: entry.projectRevenue,
+                    affiliateRevenue: entry.affiliateRevenue,
+                  }))}
+                  title="Affiliate vs Project Revenue"
+                  showAffiliate={true}
+                />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <MetricAreaChart
+                    title="Purchases (Last 30 Days)"
+                    data={metrics.dailyTimeline.map((entry) => ({
+                      date: entry.date,
+                      purchases: entry.purchases,
+                    }))}
+                    config={{
+                      purchases: {
+                        label: "Purchases",
+                        color: "hsl(var(--chart-1))",
+                      },
+                    }}
+                    valueFormatter={(value) => formatNumber(value)}
+                  />
+
+                  <MetricAreaChart
+                    title="Customers (Last 30 Days)"
+                    data={metrics.dailyTimeline.map((entry) => ({
+                      date: entry.date,
+                      customers: entry.customers,
+                    }))}
+                    config={{
+                      customers: {
+                        label: "Customers",
+                        color: "hsl(var(--chart-3))",
+                      },
+                    }}
+                    valueFormatter={(value) => formatNumber(value)}
+                  />
                 </div>
-              </CardContent>
-            </Card>
+              </>
+            )}
 
             {/* Revenue by Project Chart */}
             <Card className="border-border/50 bg-background/50">
@@ -468,7 +535,7 @@ export default function MarketerProfilePage() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8 rounded-lg">
                               <AvatarImage
-                                src={project.logoUrl}
+                                src={project.logoUrl ?? undefined}
                                 alt={project.name}
                               />
                               <AvatarFallback className="rounded-lg text-xs">
@@ -504,6 +571,101 @@ export default function MarketerProfilePage() {
               </CardContent>
             </Card>
 
+            {/* Per-Project Metrics Breakdown */}
+            {metrics && metrics.projectMetrics.length > 0 && (
+              <Card className="border-border/50 bg-background/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="h-5 w-5 text-primary" />
+                    Project Metrics Breakdown
+                  </CardTitle>
+                  <CardDescription>
+                    Detailed metrics per project from snapshots
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {metrics.projectMetrics.map((projectMetric) => {
+                      const project = projects.find(
+                        (p) => p.id === projectMetric.projectId
+                      );
+                      return (
+                        <div
+                          key={projectMetric.projectId}
+                          className="space-y-3 p-4 rounded-lg border border-border/40 bg-muted/10"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <Avatar className="h-8 w-8 rounded-lg">
+                              <AvatarImage
+                                src={project?.logoUrl ?? undefined}
+                                alt={projectMetric.projectName}
+                              />
+                              <AvatarFallback className="rounded-lg text-xs">
+                                {projectMetric.projectName.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold">
+                                {projectMetric.projectName}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                Project Revenue
+                              </p>
+                              <p className="font-semibold">
+                                {formatCurrency(
+                                  projectMetric.totalProjectRevenue
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                Affiliate Revenue
+                              </p>
+                              <p className="font-semibold text-blue-600">
+                                {formatCurrency(
+                                  projectMetric.totalAffiliateRevenue
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                Commission Owed
+                              </p>
+                              <p className="font-semibold text-purple-600">
+                                {formatCurrency(
+                                  projectMetric.totalCommissionOwed
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                Purchases
+                              </p>
+                              <p className="font-semibold">
+                                {projectMetric.totalPurchases.toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                Customers
+                              </p>
+                              <p className="font-semibold">
+                                {projectMetric.totalCustomers.toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Active Projects */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -517,12 +679,12 @@ export default function MarketerProfilePage() {
                     className="group"
                   >
                     <Card className="border-border/50 bg-background/50 hover:border-primary/50 transition-colors">
-                      <CardContent className="p-6">
+                      <CardContent className="px-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-center gap-4 flex-1">
                             <Avatar className="h-12 w-12 rounded-xl">
                               <AvatarImage
-                                src={project.logoUrl}
+                                src={project.logoUrl ?? undefined}
                                 alt={project.name}
                               />
                               <AvatarFallback className="rounded-xl">
@@ -632,10 +794,10 @@ export default function MarketerProfilePage() {
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-border/40">
                     <span className="text-sm text-muted-foreground">
-                      Total Sales
+                      Customers
                     </span>
                     <span className="font-semibold">
-                      {stats.totalSales.toLocaleString()}
+                    {formatNumber(sumField(metrics.dailyTimeline, "customers"))}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-2">
@@ -722,10 +884,6 @@ export default function MarketerProfilePage() {
                     )
                   )}
                 </div>
-                <Button variant="ghost" className="w-full mt-4" size="sm">
-                  View all commissions
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
               </CardContent>
             </Card>
 

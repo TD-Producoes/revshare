@@ -112,7 +112,7 @@ export type MarketerMetrics = {
 export function useMarketerMetrics(
   userId?: string | null,
   projectId?: string | null,
-  days = 30,
+  days = 30
 ) {
   return useQuery<MarketerMetrics>({
     queryKey: ["marketer-metrics", userId ?? "none", projectId ?? "all", days],
@@ -125,7 +125,9 @@ export function useMarketerMetrics(
       if (projectId) {
         params.set("projectId", projectId);
       }
-      const response = await fetch(`/api/marketer/metrics?${params.toString()}`);
+      const response = await fetch(
+        `/api/marketer/metrics?${params.toString()}`
+      );
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to fetch marketer metrics.");
@@ -219,6 +221,35 @@ export type PublicMarketerProfile = {
     earnings: number;
     revenue: number;
   }>;
+  metrics: {
+    // Summary totals from all snapshots
+    summary: {
+      totalProjectRevenue: number;
+      totalAffiliateRevenue: number;
+      totalCommissionOwed: number;
+      totalPurchases: number;
+      totalCustomers: number;
+    };
+    // Daily timeline (last 30 days)
+    dailyTimeline: Array<{
+      date: string;
+      projectRevenue: number;
+      affiliateRevenue: number;
+      commissionOwed: number;
+      purchases: number;
+      customers: number;
+    }>;
+    // Per-project metrics breakdown
+    projectMetrics: Array<{
+      projectId: string;
+      projectName: string;
+      totalProjectRevenue: number;
+      totalAffiliateRevenue: number;
+      totalCommissionOwed: number;
+      totalPurchases: number;
+      totalCustomers: number;
+    }>;
+  };
 };
 
 export function usePublicMarketerProfile(marketerId?: string | null) {
