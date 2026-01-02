@@ -91,6 +91,50 @@ export function useMarketerStats(userId?: string | null) {
   });
 }
 
+export type MarketerMetrics = {
+  summary: {
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchasesCount: number;
+    customersCount: number;
+  };
+  timeline: Array<{
+    date: string;
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchasesCount: number;
+    customersCount: number;
+  }>;
+};
+
+export function useMarketerMetrics(
+  userId?: string | null,
+  projectId?: string | null,
+  days = 30,
+) {
+  return useQuery<MarketerMetrics>({
+    queryKey: ["marketer-metrics", userId ?? "none", projectId ?? "all", days],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      if (!userId) {
+        throw new Error("Missing userId");
+      }
+      const params = new URLSearchParams({ userId, days: String(days) });
+      if (projectId) {
+        params.set("projectId", projectId);
+      }
+      const response = await fetch(`/api/marketer/metrics?${params.toString()}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch marketer metrics.");
+      }
+      return payload?.data as MarketerMetrics;
+    },
+  });
+}
+
 export function useMarketerAdjustments(userId?: string | null) {
   return useQuery<MarketerAdjustmentsResponse>({
     queryKey: ["marketer-adjustments", userId ?? "none"],

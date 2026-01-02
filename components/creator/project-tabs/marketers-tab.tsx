@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -64,7 +66,12 @@ export function ProjectMarketersTab({
               {affiliateRows.map((row) => (
                 <TableRow key={row.marketerId}>
                   <TableCell className="font-medium">
-                    {row.marketerName}
+                    <Link
+                      className="hover:underline"
+                      href={`/creator/marketers/${row.marketerId}`}
+                    >
+                      {row.marketerName}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     <code className="bg-muted px-2 py-1 rounded text-xs">

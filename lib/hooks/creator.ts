@@ -109,6 +109,34 @@ export type CreatorPaymentHistory = {
   stripeCheckoutSessionId: string | null;
 };
 
+export type CreatorMarketerMetrics = {
+  marketer: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  projects: Array<{
+    id: string;
+    name: string;
+  }>;
+  summary: {
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchasesCount: number;
+    customersCount: number;
+  };
+  timeline: Array<{
+    date: string;
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchasesCount: number;
+    customersCount: number;
+  }>;
+};
+
 export type CreatorAdjustment = {
   id: string;
   marketerId: string;
@@ -296,6 +324,33 @@ export function useCreatorDashboard(userId?: string | null) {
   });
 }
 
+export type CreatorMarketerSummary = {
+  id: string;
+  name: string;
+  email: string;
+  projectCount: number;
+  affiliateRevenue: number;
+  commissionOwed: number;
+  purchasesCount: number;
+  customersCount: number;
+};
+
+export function useCreatorMarketers(creatorId?: string | null) {
+  return useQuery<CreatorMarketerSummary[]>({
+    queryKey: ["creator-marketers", creatorId ?? "none"],
+    enabled: Boolean(creatorId),
+    queryFn: async () => {
+      if (!creatorId) return [];
+      const response = await fetch(`/api/creator/marketers?creatorId=${creatorId}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch marketers.");
+      }
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
 export function usePayCreatorPayouts() {
   return useMutation({
     mutationFn: async (payload: { userId: string }) => {
@@ -309,6 +364,39 @@ export function usePayCreatorPayouts() {
         throw new Error(data?.error ?? "Failed to send payouts.");
       }
       return data?.data ?? null;
+    },
+  });
+}
+
+export function useCreatorMarketerMetrics(
+  marketerId?: string | null,
+  projectId?: string | null,
+  days = 30,
+) {
+  return useQuery<CreatorMarketerMetrics>({
+    queryKey: [
+      "creator-marketer-metrics",
+      marketerId ?? "none",
+      projectId ?? "all",
+      days,
+    ],
+    enabled: Boolean(marketerId),
+    queryFn: async () => {
+      if (!marketerId) {
+        throw new Error("Missing marketerId");
+      }
+      const params = new URLSearchParams({ days: String(days) });
+      if (projectId) {
+        params.set("projectId", projectId);
+      }
+      const response = await fetch(
+        `/api/creator/marketers/${marketerId}/metrics?${params.toString()}`,
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch marketer metrics.");
+      }
+      return payload?.data as CreatorMarketerMetrics;
     },
   });
 }

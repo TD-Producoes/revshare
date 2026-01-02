@@ -3,11 +3,17 @@
 import { formatCurrency, formatNumber } from "@/lib/data/metrics";
 import { StatCard } from "@/components/shared/stat-card";
 import { MyOffersTable } from "./my-offers-table";
-import { MousePointerClick, Users, TrendingUp, DollarSign, AlertCircle } from "lucide-react";
+import {
+  DollarSign,
+  AlertCircle,
+  ShoppingCart,
+  Users,
+  BadgePercent,
+} from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useContractsForMarketer } from "@/lib/hooks/contracts";
-import { useMarketerPurchases, useMarketerStats } from "@/lib/hooks/marketer";
+import { useMarketerPurchases, useMarketerMetrics } from "@/lib/hooks/marketer";
 import { PurchasesTable } from "./purchases-table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
@@ -20,15 +26,15 @@ export function MarketerDashboard() {
     useContractsForMarketer(currentUser?.id);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useMarketerPurchases(currentUser?.id);
-  const { data: stats, isLoading: isStatsLoading } =
-    useMarketerStats(currentUser?.id);
+  const { data: metrics, isLoading: isMetricsLoading } =
+    useMarketerMetrics(currentUser?.id);
 
   if (
     isAuthLoading ||
     isUserLoading ||
     isContractsLoading ||
     isPurchasesLoading ||
-    isStatsLoading
+    isMetricsLoading
   ) {
     return (
       <div className="flex h-40 items-center justify-center text-muted-foreground">
@@ -45,10 +51,15 @@ export function MarketerDashboard() {
     );
   }
 
-  const totalRevenue = stats?.totalRevenue ?? 0;
-  const totalEarnings = stats?.totalEarnings ?? 0;
-  const totalConversions = stats?.totalPurchases ?? 0;
-  const pendingEarnings = stats?.pendingEarnings ?? 0;
+  const totalRevenue = metrics?.summary.affiliateRevenue ?? 0;
+  const totalEarnings = metrics?.summary.commissionOwed ?? 0;
+  const totalPurchases = metrics?.summary.purchasesCount ?? 0;
+  const totalCustomers = metrics?.summary.customersCount ?? 0;
+  const projectRevenue = metrics?.summary.projectRevenue ?? 0;
+  const affiliateShare =
+    projectRevenue > 0
+      ? Math.round((totalRevenue / projectRevenue) * 100)
+      : 0;
   const approvedContracts = contracts.filter((c) => c.status === "approved");
 
   return (
@@ -81,30 +92,28 @@ export function MarketerDashboard() {
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Clicks"
-          value={formatNumber(0)}
-          description="Tracked clicks"
-          icon={MousePointerClick}
-          trend={{ value: 15.3, label: "from last month" }}
-        />
-        <StatCard
-          title="Conversions"
-          value={formatNumber(totalConversions)}
-          description="Tracked purchases"
-          icon={Users}
-          trend={{ value: 8.7, label: "from last month" }}
-        />
-        <StatCard
-          title="MRR Attributed"
+          title="Affiliate Revenue"
           value={formatCurrency(totalRevenue)}
-          description="Coupon-attributed revenue"
-          icon={TrendingUp}
+          description={`${affiliateShare}% of project revenue`}
+          icon={DollarSign}
         />
         <StatCard
-          title="Total Earnings"
+          title="Commission Owed"
           value={formatCurrency(totalEarnings)}
-          description={`Pending: ${formatCurrency(pendingEarnings)}`}
-          icon={DollarSign}
+          description="Awaiting payout"
+          icon={BadgePercent}
+        />
+        <StatCard
+          title="Purchases"
+          value={formatNumber(totalPurchases)}
+          description="Affiliate-attributed"
+          icon={ShoppingCart}
+        />
+        <StatCard
+          title="Customers"
+          value={formatNumber(totalCustomers)}
+          description="Affiliate-attributed"
+          icon={Users}
         />
       </div>
 
