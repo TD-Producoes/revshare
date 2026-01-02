@@ -288,7 +288,7 @@ export default function MarketerProfilePage() {
 
       <div className="mx-auto max-w-7xl p-6">
         {/* Stats Overview Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="text-2xl font-semibold mb-1 text-emerald-600">
               {formatCurrency(stats.totalEarnings)}
