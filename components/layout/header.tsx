@@ -34,6 +34,8 @@ export function Header() {
   const displayName = useMemo(() => user?.name ?? "User", [user?.name]);
   const notifications = notificationsPayload?.data ?? [];
   const unreadCount = notificationsPayload?.unreadCount ?? 0;
+  const notificationsPath =
+    user?.role === "creator" ? "/creator/notifications" : "/marketer/notifications";
 
   if (!authUserId || !user) return null;
 
@@ -185,6 +187,10 @@ export function Header() {
                   ))
                 )}
               </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push(notificationsPath)}>
+                View all notifications
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
