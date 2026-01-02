@@ -24,11 +24,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { MultiImageUpload } from "@/components/ui/multi-image-upload";
 import { FeaturesInput } from "@/components/ui/features-input";
 import { PricingModel } from "@/lib/data/types";
 import { countries } from "@/lib/data/countries";
-import { Info, Plus } from "lucide-react";
+import { Info, Plus, Loader2, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 
 const categories = [
   "Productivity",
@@ -41,8 +43,114 @@ const categories = [
   "Other",
 ];
 
+// Helper function to map scraped category to form category
+function mapCategoryToFormCategory(scrapedCategory: string | null): string {
+  if (!scrapedCategory) return "";
+  
+  const lowerCategory = scrapedCategory.toLowerCase();
+  
+  // Map common categories
+  if (lowerCategory.includes("developer") || lowerCategory.includes("dev tool")) {
+    return "Developer Tools";
+  }
+  if (lowerCategory.includes("productivity")) {
+    return "Productivity";
+  }
+  if (lowerCategory.includes("marketing") || lowerCategory.includes("advertising")) {
+    return "Marketing";
+  }
+  if (lowerCategory.includes("design") || lowerCategory.includes("creative")) {
+    return "Design";
+  }
+  if (lowerCategory.includes("finance") || lowerCategory.includes("fintech") || lowerCategory.includes("payment")) {
+    return "Finance";
+  }
+  if (lowerCategory.includes("education") || lowerCategory.includes("edtech") || lowerCategory.includes("learning")) {
+    return "Education";
+  }
+  if (lowerCategory.includes("data") || lowerCategory.includes("analytics")) {
+    return "Data";
+  }
+  
+  // Check if it matches any existing category exactly
+  const matchedCategory = categories.find(
+    (cat) => cat.toLowerCase() === lowerCategory
+  );
+  if (matchedCategory) return matchedCategory;
+  
+  return "";
+}
+
+// Helper function to map country name to country code
+function mapCountryNameToCode(countryName: string | null): string {
+  if (!countryName) return "";
+  
+  // Try exact match first
+  const exactMatch = countries.find(
+    (c) => c.name.toLowerCase() === countryName.toLowerCase()
+  );
+  if (exactMatch) return exactMatch.code;
+  
+  // Try partial match
+  const partialMatch = countries.find((c) =>
+    countryName.toLowerCase().includes(c.name.toLowerCase()) ||
+    c.name.toLowerCase().includes(countryName.toLowerCase())
+  );
+  if (partialMatch) return partialMatch.code;
+  
+  // Try common country name variations
+  const variations: Record<string, string> = {
+    "usa": "US",
+    "united states": "US",
+    "uk": "GB",
+    "united kingdom": "GB",
+    "canada": "CA",
+    "australia": "AU",
+    "germany": "DE",
+    "france": "FR",
+    "netherlands": "NL",
+    "sweden": "SE",
+    "switzerland": "CH",
+    "singapore": "SG",
+  };
+  
+  const lowerName = countryName.toLowerCase();
+  for (const [key, code] of Object.entries(variations)) {
+    if (lowerName.includes(key)) {
+      return code;
+    }
+  }
+  
+  return "";
+}
+
+// Helper function to format date from various formats to YYYY-MM-DD
+function formatDateForInput(dateStr: string | null): string {
+  if (!dateStr) return "";
+  
+  // If already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  
+  // If in YYYY format, use January 1st
+  if (/^\d{4}$/.test(dateStr)) {
+    return `${dateStr}-01-01`;
+  }
+  
+  // Try to parse other formats
+  const date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    return date.toISOString().split("T")[0];
+  }
+  
+  return "";
+}
+
 export function CreateProjectForm() {
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1); // Step 1: URL input, Step 2: Form
+  const [urlInput, setUrlInput] = useState("");
   const [error, setError] = useState("");
   const queryClient = useQueryClient();
   const [tempProjectId] = useState(() => `temp-${Date.now()}`);
@@ -62,6 +170,7 @@ export function CreateProjectForm() {
     about: "",
     features: [] as string[],
     logoUrl: null as string | null,
+    imageUrls: [] as string[],
   });
 
   useEffect(() => {
@@ -74,6 +183,16 @@ export function CreateProjectForm() {
     };
     fetchUser();
   }, []);
+
+  // Reset form and step when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setStep(1);
+      setUrlInput("");
+      resetForm();
+      setError("");
+    }
+  }, [open]);
 
   const resetForm = () => {
     setFormData({
@@ -90,7 +209,73 @@ export function CreateProjectForm() {
       about: "",
       features: [],
       logoUrl: null,
+      imageUrls: [],
     });
+  };
+
+  // Mutation to scrape website
+  const scrapeWebsite = useMutation({
+    mutationFn: async (url: string) => {
+      const response = await fetch("/api/projects/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to scrape website");
+      }
+
+      const result = await response.json();
+      return result.data;
+    },
+    onSuccess: (scrapedData) => {
+      // Populate form with scraped data
+      setFormData((prev) => ({
+        ...prev,
+        name: scrapedData.projectName || prev.name,
+        description: scrapedData.shortDescription || prev.description,
+        category: mapCategoryToFormCategory(scrapedData.category) || prev.category,
+        country: mapCountryNameToCode(scrapedData.country) || prev.country,
+        website: scrapedData.websiteUrl || prev.website,
+        foundationDate: formatDateForInput(scrapedData.foundedAt) || prev.foundationDate,
+        about: scrapedData.about || prev.about,
+        features: scrapedData.keyFeatures || prev.features,
+        logoUrl: scrapedData.logoUrl || prev.logoUrl,
+        // Add scraped images (og:image, etc.) to imageUrls
+        imageUrls: scrapedData.images || prev.imageUrls,
+      }));
+      
+      // Move to step 2
+      setStep(2);
+      setError("");
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : "Failed to scrape website");
+    },
+  });
+
+  const handleGenerate = async () => {
+    if (!urlInput.trim()) {
+      setError("Please enter a website URL");
+      return;
+    }
+
+    setError("");
+    await scrapeWebsite.mutateAsync(urlInput.trim());
+  };
+
+  const handleSkip = () => {
+    // Set the URL if provided, then move to step 2
+    if (urlInput.trim()) {
+      setFormData((prev) => ({
+        ...prev,
+        website: urlInput.trim(),
+      }));
+    }
+    setStep(2);
+    setError("");
   };
 
   const createProject = useMutation({
@@ -121,6 +306,7 @@ export function CreateProjectForm() {
         ...(formData.about.trim() ? { about: formData.about.trim() } : {}),
         ...(formData.features.length > 0 ? { features: formData.features } : {}),
         ...(formData.logoUrl ? { logoUrl: formData.logoUrl } : {}),
+        ...(formData.imageUrls.length > 0 ? { imageUrls: formData.imageUrls } : {}),
       };
 
       const response = await fetch("/api/projects", {
@@ -166,297 +352,408 @@ export function CreateProjectForm() {
           New Project
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+      <DialogContent className="sm:max-w-[600px] h-[90vh] flex flex-col p-0 overflow-hidden">
+        {/* Header - Fixed */}
+        <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
+          <DialogTitle>
+            {step === 1 ? "Enter Website URL" : "Create New Project"}
+          </DialogTitle>
           <DialogDescription>
-            Add a new project and set up revenue sharing terms for affiliates.
+            {step === 1
+              ? "Provide your project's website URL to automatically fill in the form, or skip to fill it manually."
+              : "Add a new project and set up revenue sharing terms for affiliates."}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 pr-4">
-          <form onSubmit={handleSubmit} className="space-y-6 pb-4">
-            {/* Basic Info Section */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Basic Information
-              </h3>
 
-              <div className="grid grid-cols-[96px_1fr] gap-4 items-start">
+        {/* Content - Scrollable */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full px-6">
+            <div className="py-4">
+            {step === 1 ? (
+              // Step 1: URL Input
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Logo</Label>
-                  {userId && (
-                    <ImageUpload
-                      value={formData.logoUrl}
-                      onChange={(url) =>
-                        setFormData({ ...formData, logoUrl: url })
-                      }
-                      userId={userId}
-                      projectId={tempProjectId}
-                      type="logo"
-                      placeholder="Logo"
-                    />
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Project Name *</Label>
-                    <Input
-                      id="name"
-                      placeholder="My Awesome SaaS"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select
-                        value={formData.category}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, category: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat} value={cat}>
-                              {cat}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="country">Country *</Label>
-                      <Select
-                        value={formData.country}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, country: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {countries.map((c) => (
-                            <SelectItem key={c.code} value={c.code}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Short Description *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="A brief tagline for your product..."
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  rows={2}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
+                  <Label htmlFor="website-url">Website URL</Label>
                   <Input
-                    id="website"
+                    id="website-url"
                     type="url"
                     placeholder="https://myproduct.com"
-                    value={formData.website}
-                    onChange={(e) =>
-                      setFormData({ ...formData, website: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="foundationDate">Founded</Label>
-                  <Input
-                    id="foundationDate"
-                    type="date"
-                    value={formData.foundationDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, foundationDate: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Revenue Sharing Section */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Revenue Sharing
-              </h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pricingModel">Pricing Model</Label>
-                  <Select
-                    value={formData.pricingModel}
-                    onValueChange={(value: PricingModel) =>
-                      setFormData({ ...formData, pricingModel: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="subscription">Subscription</SelectItem>
-                      <SelectItem value="one-time">One-time</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="price">
-                    Price ({formData.pricingModel === "subscription" ? "/mo" : ""})
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="29.00"
-                      className="pl-7"
-                      value={formData.price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, price: e.target.value })
+                    value={urlInput}
+                    onChange={(e) => {
+                      setUrlInput(e.target.value);
+                      setError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleGenerate();
                       }
-                      required
-                    />
+                    }}
+                    disabled={scrapeWebsite.isPending}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    We'll analyze your website and automatically fill in project details.
+                  </p>
+                </div>
+
+                {error && <p className="text-sm text-destructive">{error}</p>}
+              </div>
+            ) : (
+              // Step 2: Form
+              <form onSubmit={handleSubmit} id="create-project-form" className="space-y-6">
+              {/* Basic Info Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Basic Information
+                </h3>
+
+                <div className="grid grid-cols-[96px_1fr] gap-4 items-start">
+                  <div className="space-y-2">
+                    <Label>Logo</Label>
+                    {userId && (
+                      <ImageUpload
+                        value={formData.logoUrl}
+                        onChange={(url) =>
+                          setFormData({ ...formData, logoUrl: url })
+                        }
+                        userId={userId}
+                        projectId={tempProjectId}
+                        type="logo"
+                        placeholder="Logo"
+                      />
+                    )}
                   </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="revShare" className="flex items-center gap-2">
-                    Revenue Share (%)
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
-                          aria-label="Revenue share default info"
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Project Name *</Label>
+                      <Input
+                        id="name"
+                        placeholder="My Awesome SaaS"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="category">Category</Label>
+                        <Select
+                          value={formData.category}
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, category: value })
+                          }
                         >
-                          <Info className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        Default commission for new contracts. You can override it per
-                        contract when reviewing applications.
-                      </TooltipContent>
-                    </Tooltip>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="revShare"
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={formData.revSharePercent}
-                      onChange={(e) =>
-                        setFormData({ ...formData, revSharePercent: e.target.value })
-                      }
-                      required
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      %
-                    </span>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="country">Country *</Label>
+                        <Select
+                          value={formData.country}
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, country: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {countries.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="refundWindow" className="flex items-center gap-2">
-                    Refund Window (days)
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
-                          aria-label="Refund window default info"
-                        >
-                          <Info className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        Default refund window for new contracts. Commissions become
-                        payable only after this period passes without a refund. Each
-                        contract can override it without changing existing purchases.
-                      </TooltipContent>
-                    </Tooltip>
-                  </Label>
-                  <Input
-                    id="refundWindow"
-                    type="number"
-                    min="1"
-                    max="365"
-                    value={formData.refundWindowDays}
+                  <Label htmlFor="description">Short Description *</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="A brief tagline for your product..."
+                    value={formData.description}
                     onChange={(e) =>
-                      setFormData({ ...formData, refundWindowDays: e.target.value })
+                      setFormData({ ...formData, description: e.target.value })
                     }
+                    rows={2}
                     required
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      type="url"
+                      placeholder="https://myproduct.com"
+                      value={formData.website}
+                      onChange={(e) =>
+                        setFormData({ ...formData, website: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="foundationDate">Founded</Label>
+                    <Input
+                      id="foundationDate"
+                      type="date"
+                      value={formData.foundationDate}
+                      onChange={(e) =>
+                        setFormData({ ...formData, foundationDate: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Revenue Sharing Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Revenue Sharing
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pricingModel">Pricing Model</Label>
+                    <Select
+                      value={formData.pricingModel}
+                      onValueChange={(value: PricingModel) =>
+                        setFormData({ ...formData, pricingModel: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="subscription">Subscription</SelectItem>
+                        <SelectItem value="one-time">One-time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="price">
+                      Price ({formData.pricingModel === "subscription" ? "/mo" : ""})
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="29.00"
+                        className="pl-7"
+                        value={formData.price}
+                        onChange={(e) =>
+                          setFormData({ ...formData, price: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="revShare" className="flex items-center gap-2">
+                      Revenue Share (%)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
+                            aria-label="Revenue share default info"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          Default commission for new contracts. You can override it per
+                          contract when reviewing applications.
+                        </TooltipContent>
+                      </Tooltip>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="revShare"
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={formData.revSharePercent}
+                        onChange={(e) =>
+                          setFormData({ ...formData, revSharePercent: e.target.value })
+                        }
+                        required
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        %
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="refundWindow" className="flex items-center gap-2">
+                      Refund Window (days)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
+                            aria-label="Refund window default info"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          Default refund window for new contracts. Commissions become
+                          payable only after this period passes without a refund. Each
+                          contract can override it without changing existing purchases.
+                        </TooltipContent>
+                      </Tooltip>
+                    </Label>
+                    <Input
+                      id="refundWindow"
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={formData.refundWindowDays}
+                      onChange={(e) =>
+                        setFormData({ ...formData, refundWindowDays: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Details Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Additional Details (Optional)
+                </h3>
+
+                <div className="space-y-2">
+                  <Label htmlFor="about">About</Label>
+                  <Textarea
+                    id="about"
+                    placeholder="Detailed description of your project, ideal customer, and what makes it unique..."
+                    value={formData.about}
+                    onChange={(e) =>
+                      setFormData({ ...formData, about: e.target.value })
+                    }
+                    rows={4}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Key Features</Label>
+                  <FeaturesInput
+                    value={formData.features}
+                    onChange={(features) =>
+                      setFormData({ ...formData, features })
+                    }
+                    placeholder="e.g., Real-time analytics"
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label>Gallery Images</Label>
+                  {userId && (
+                    <MultiImageUpload
+                      value={formData.imageUrls}
+                      onChange={(urls) =>
+                        setFormData({ ...formData, imageUrls: urls })
+                      }
+                      userId={userId}
+                      projectId={tempProjectId}
+                      maxImages={6}
+                    />
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Add up to 6 images to showcase your project. The first image from your website (og:image) has been automatically added.
+                  </p>
+                </div>
+              </div>
+
+                {error && <p className="text-sm text-destructive">{error}</p>}
+              </form>
+            )}
             </div>
+          </ScrollArea>
+        </div>
 
-            {/* Additional Details Section */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Additional Details (Optional)
-              </h3>
-
-              <div className="space-y-2">
-                <Label htmlFor="about">About</Label>
-                <Textarea
-                  id="about"
-                  placeholder="Detailed description of your project, ideal customer, and what makes it unique..."
-                  value={formData.about}
-                  onChange={(e) =>
-                    setFormData({ ...formData, about: e.target.value })
-                  }
-                  rows={4}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Key Features</Label>
-                <FeaturesInput
-                  value={formData.features}
-                  onChange={(features) =>
-                    setFormData({ ...formData, features })
-                  }
-                  placeholder="e.g., Real-time analytics"
-                />
-              </div>
-            </div>
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-
-            <div className="flex justify-end gap-2 pt-4">
+        {/* Footer - Fixed */}
+        <div className="px-6 py-4 border-t flex justify-end gap-2 flex-shrink-0">
+          {step === 1 ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={scrapeWebsite.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSkip}
+                disabled={scrapeWebsite.isPending}
+              >
+                Skip
+              </Button>
+              <Button
+                type="button"
+                onClick={handleGenerate}
+                disabled={scrapeWebsite.isPending || !urlInput.trim()}
+              >
+                {scrapeWebsite.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate
+                  </>
+                )}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(1)}
+              >
+                Back
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -464,12 +761,16 @@ export function CreateProjectForm() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createProject.isPending}>
+              <Button
+                type="submit"
+                form="create-project-form"
+                disabled={createProject.isPending}
+              >
                 {createProject.isPending ? "Creating..." : "Create Project"}
               </Button>
-            </div>
-          </form>
-        </ScrollArea>
+            </>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
