@@ -198,7 +198,7 @@ export function useCreatorPaymentCheckout() {
 
 export function useCreatorPaymentCharge() {
   return useMutation({
-    mutationFn: async (payload: { userId: string }) => {
+    mutationFn: async (payload: { userId: string; paymentMethodId?: string }) => {
       const response = await fetch("/api/creator/payouts/charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

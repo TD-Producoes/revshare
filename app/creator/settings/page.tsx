@@ -21,6 +21,7 @@ import { NotificationPreferencesCard } from "@/components/shared/notification-pr
 import { CheckCircle, CreditCard, ExternalLink, Plus } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   loadStripe,
   type Stripe,
@@ -30,6 +31,7 @@ import {
 import {
   usePaymentMethods,
   useSetDefaultPaymentMethod,
+  useRemovePaymentMethod,
 } from "@/lib/hooks/payment-methods";
 import { useProjects } from "@/lib/hooks/projects";
 import {
@@ -52,6 +54,7 @@ export default function SettingsPage() {
     authUserId,
   );
   const setDefaultPaymentMethod = useSetDefaultPaymentMethod(authUserId);
+  const removePaymentMethod = useRemovePaymentMethod(authUserId);
   const queryClient = useQueryClient();
   const [connectError, setConnectError] = useState<string | null>(null);
   const [paymentMethodError, setPaymentMethodError] = useState<string | null>(
@@ -371,6 +374,37 @@ export default function SettingsPage() {
     return `${brand} ${last4} ${exp}`.trim();
   };
 
+  const handleRemovePaymentMethod = (methodId: string) => {
+    setPaymentMethodError(null);
+    removePaymentMethod.mutate(methodId, {
+      onError: (error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to remove payment method.";
+        setPaymentMethodError(message);
+      },
+    });
+  };
+
+  const confirmRemovePaymentMethod = (
+    method: (typeof paymentMethods)[number],
+  ) => {
+    toast("Remove payment method?", {
+      description: paymentDetailsLabel(method),
+      duration: Infinity,
+      action: {
+        label: "Remove",
+        onClick: () => handleRemovePaymentMethod(method.id),
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+      position: "top-center",
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
@@ -522,6 +556,15 @@ export default function SettingsPage() {
                         Make default
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      disabled={removePaymentMethod.isPending}
+                      onClick={() => confirmRemovePaymentMethod(method)}
+                    >
+                      Remove
+                    </Button>
                   </div>
                 </div>
               ))}

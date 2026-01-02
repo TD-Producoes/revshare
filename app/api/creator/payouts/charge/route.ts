@@ -6,6 +6,7 @@ import { platformStripe } from "@/lib/stripe";
 
 const chargeInput = z.object({
   userId: z.string().min(1),
+  paymentMethodId: z.string().min(1).optional(),
 });
 
 function calculateProcessingFee(amountOwed: number) {
@@ -80,13 +81,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const defaultMethod = await prisma.paymentMethod.findFirst({
-    where: { userId: creator.id, isDefault: true },
-    select: { stripePaymentMethodId: true },
-  });
-  if (!defaultMethod) {
+  const chosenMethod = payload.paymentMethodId
+    ? await prisma.paymentMethod.findFirst({
+        where: { id: payload.paymentMethodId, userId: creator.id },
+        select: { stripePaymentMethodId: true },
+      })
+    : await prisma.paymentMethod.findFirst({
+        where: { userId: creator.id, isDefault: true },
+        select: { stripePaymentMethodId: true },
+      });
+
+  if (!chosenMethod) {
     return NextResponse.json(
-      { error: "No default payment method found." },
+      { error: "No payment method found for this creator." },
       { status: 400 },
     );
   }
@@ -148,7 +155,7 @@ export async function POST(request: Request) {
       amount: totalWithFee,
       currency: "usd",
       customer: creator.stripeCustomerId,
-      payment_method: defaultMethod.stripePaymentMethodId,
+      payment_method: chosenMethod.stripePaymentMethodId,
       off_session: true,
       confirm: true,
       metadata: {
