@@ -18,17 +18,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import type { CouponTemplate } from "@/lib/hooks/coupons";
 
-type Template = {
-  id: string;
-  name: string;
-  description?: string | null;
-  percentOff: number;
-  startAt?: string | Date | null;
-  endAt?: string | Date | null;
-  maxRedemptions?: number | null;
-  status: string;
-};
+type Template = CouponTemplate;
 
 export function ProjectCouponsTab({
   couponTemplates,

@@ -51,7 +51,11 @@ export function ProjectOverviewTab({
   projectStats?: ProjectStats | null;
   isStatsLoading: boolean;
   projectStatsError?: Error | null;
-  revenueData: Array<{ date: Date; total: number; affiliate: number }>;
+  revenueData: Array<{
+    date: string;
+    revenue: number;
+    affiliateRevenue: number;
+  }>;
 }) {
   return (
     <div className="space-y-6">

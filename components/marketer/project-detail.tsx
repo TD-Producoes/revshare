@@ -60,8 +60,9 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
     useContractsForMarketer(currentUser?.id);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useMarketerPurchases(currentUser?.id);
-  const { data: adjustments = [], isLoading: isAdjustmentsLoading } =
+  const { data: adjustmentsPayload, isLoading: isAdjustmentsLoading } =
     useMarketerAdjustments(currentUser?.id);
+  const adjustments = adjustmentsPayload?.data ?? [];
   const { data: coupons = [], isLoading: isCouponsLoading } =
     useCouponsForMarketer(currentUser?.id);
   const { data: stats, isLoading: isStatsLoading, error: statsError } =

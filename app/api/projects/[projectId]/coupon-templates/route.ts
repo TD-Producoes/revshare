@@ -102,7 +102,7 @@ export async function POST(
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, userId: true, creatorStripeAccountId: true },
+    select: { id: true, name: true, userId: true, creatorStripeAccountId: true },
   });
 
   if (!project) {
@@ -197,7 +197,9 @@ export async function POST(
     });
 
     const allowed = Array.isArray(createdTemplate.allowedMarketerIds)
-      ? createdTemplate.allowedMarketerIds
+      ? createdTemplate.allowedMarketerIds.filter(
+          (value): value is string => typeof value === "string",
+        )
       : [];
     if (allowed.length > 0) {
       await tx.notification.createMany({

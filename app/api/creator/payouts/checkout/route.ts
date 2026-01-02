@@ -120,7 +120,7 @@ export async function POST(request: Request) {
   const processingFee = calculateProcessingFee(totals.grandTotal);
   const totalWithFee = totals.grandTotal + processingFee;
 
-  let creatorPayment = payment;
+  let creatorPayment = payment ? { id: payment.id } : null;
   let createdNewPayment = false;
   if (!creatorPayment) {
     creatorPayment = await prisma.$transaction(async (tx) => {
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
         },
       });
 
-      return created;
+      return { id: created.id };
     });
     createdNewPayment = true;
   }

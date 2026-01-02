@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { CommissionStatus } from "@prisma/client";
 
 export async function GET(
   request: Request,
@@ -87,7 +88,9 @@ export async function GET(
   const purchaseWhere = {
     projectId,
     coupon: { marketerId: userId },
-    commissionStatus: { notIn: ["REFUNDED", "CHARGEBACK"] },
+    commissionStatus: {
+      notIn: [CommissionStatus.REFUNDED, CommissionStatus.CHARGEBACK],
+    },
   };
 
   const [purchaseTotals, commissionGroups] = await Promise.all([

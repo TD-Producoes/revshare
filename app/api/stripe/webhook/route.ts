@@ -85,6 +85,8 @@ async function findPurchaseForCharge(params: {
       commissionStatus: true,
       refundedAmount: true,
       refundEligibleAt: true,
+      disputeId: true,
+      disputeStatus: true,
       creatorPaymentId: true,
       status: true,
       project: { select: { name: true, userId: true } },
@@ -181,6 +183,8 @@ function parseEventDetails(event: Stripe.Event) {
 
   return null;
 }
+
+type EventDetails = NonNullable<ReturnType<typeof parseEventDetails>>;
 
 function extractProjectId(event: Stripe.Event) {
   if (event.type === "checkout.session.completed") {
@@ -371,21 +375,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
+  const eventType = event.type as string;
   if (
-    event.type === "charge.refunded" ||
-    event.type === "charge.refund.created" ||
-    event.type === "charge.refund.updated"
+    eventType === "charge.refunded" ||
+    eventType === "charge.refund.created" ||
+    eventType === "charge.refund.updated"
   ) {
     const eventCreatedAt = new Date(event.created * 1000);
     const charge =
-      event.type === "charge.refunded"
+      eventType === "charge.refunded"
         ? (event.data.object as Stripe.Charge)
         : null;
     const refund =
-      event.type === "charge.refunded"
+      eventType === "charge.refunded"
         ? null
         : (event.data.object as Stripe.Refund);
-    const chargeId = charge?.id ?? refund?.charge ?? null;
+    const chargeId =
+      typeof charge?.id === "string"
+        ? charge.id
+        : typeof refund?.charge === "string"
+          ? refund.charge
+          : null;
 
     if (!chargeId) {
       return NextResponse.json({ received: true });
@@ -398,7 +408,9 @@ export async function POST(request: Request) {
           ? charge.payment_intent
           : null,
       invoiceId:
-        charge && typeof charge.invoice === "string" ? charge.invoice : null,
+        charge && typeof (charge as Stripe.Charge & { invoice?: string }).invoice === "string"
+          ? (charge as Stripe.Charge & { invoice?: string }).invoice
+          : null,
     });
 
     if (!purchase) {
@@ -702,7 +714,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
-  let details = parseEventDetails(event);
+  let details = parseEventDetails(event) as EventDetails | null;
   const accountId = event.account ?? null;
   if (details && !details.promotionCodeId && accountId) {
     const stripe = platformStripe();
@@ -714,7 +726,10 @@ export async function POST(request: Request) {
         { stripeAccount: accountId },
       );
       const promo = promotionCodeIdFromAny(refreshed.discounts ?? undefined);
-      details = { ...details, promotionCodeId: promo ?? details.promotionCodeId };
+      details = {
+        ...details,
+        promotionCodeId: promo ?? details.promotionCodeId ?? null,
+      } as EventDetails;
     } else if (event.type === "invoice.payment_succeeded") {
       const invoice = event.data.object as Stripe.Invoice;
       const refreshed = await stripe.invoices.retrieve(
@@ -725,7 +740,10 @@ export async function POST(request: Request) {
       const promo = promotionCodeIdFromAny(
         (refreshed.discounts as Stripe.Discount[] | null) ?? undefined,
       );
-      details = { ...details, promotionCodeId: promo ?? details.promotionCodeId };
+      details = {
+        ...details,
+        promotionCodeId: promo ?? details.promotionCodeId ?? null,
+      } as EventDetails;
     }
   }
   let projectMatch = accountId

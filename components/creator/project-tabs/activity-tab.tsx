@@ -44,15 +44,21 @@ function formatEventDetails(event: {
 }) {
   const data = (event.data ?? {}) as Record<string, unknown>;
   if (event.type === "PURCHASE_CREATED") {
+    if (typeof data.amount !== "number") {
+      return null;
+    }
     const amount = formatCurrency(
-      typeof data.amount === "number" ? data.amount : undefined,
+      data.amount,
       typeof data.currency === "string" ? data.currency : undefined,
     );
     return amount ? `Amount · ${amount}` : null;
   }
   if (event.type === "PURCHASE_REFUNDED") {
+    if (typeof data.refundAmount !== "number") {
+      return null;
+    }
     const amount = formatCurrency(
-      typeof data.refundAmount === "number" ? data.refundAmount : undefined,
+      data.refundAmount,
       typeof data.currency === "string" ? data.currency : undefined,
     );
     return amount ? `Refund · ${amount}` : null;
@@ -61,8 +67,11 @@ function formatEventDetails(event: {
     event.type === "PURCHASE_CHARGEBACK" ||
     event.type === "PURCHASE_CHARGEBACK_RESOLVED"
   ) {
+    if (typeof data.amount !== "number") {
+      return null;
+    }
     const amount = formatCurrency(
-      typeof data.amount === "number" ? data.amount : undefined,
+      data.amount,
       typeof data.currency === "string" ? data.currency : undefined,
     );
     return amount ? `Amount · ${amount}` : null;
@@ -73,13 +82,14 @@ function formatEventDetails(event: {
     }
   }
   if (event.type === "TRANSFER_COMPLETED" || event.type === "TRANSFER_FAILED") {
+    if (typeof data.amount !== "number") {
+      return null;
+    }
     const amount = formatCurrency(
-      typeof data.amount === "number" ? data.amount : undefined,
+      data.amount,
       typeof data.currency === "string" ? data.currency : undefined,
     );
-    if (amount) {
-      return `Amount · ${amount}`;
-    }
+    return amount ? `Amount · ${amount}` : null;
   }
   if (
     event.type === "CREATOR_PAYMENT_CREATED" ||
