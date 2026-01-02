@@ -87,6 +87,7 @@ export async function GET(
   const purchaseWhere = {
     projectId,
     coupon: { marketerId: userId },
+    commissionStatus: { notIn: ["REFUNDED", "CHARGEBACK"] },
   };
 
   const [purchaseTotals, commissionGroups] = await Promise.all([

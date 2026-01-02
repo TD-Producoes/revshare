@@ -31,6 +31,21 @@ export function PurchasesTable({ purchases, limit }: PurchasesTableProps) {
 
   const displayPurchases = limit ? purchases.slice(0, limit) : purchases;
 
+  const getStatusBadge = (purchase: MarketerPurchase) => {
+    const status = purchase.commissionStatus?.toLowerCase();
+    if (status === "refunded") {
+      return <Badge variant="destructive">Refunded</Badge>;
+    }
+    if (status === "chargeback") {
+      return <Badge variant="destructive">Chargeback</Badge>;
+    }
+    return (
+      <Badge variant="outline" className="capitalize">
+        {purchase.status}
+      </Badge>
+    );
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -65,9 +80,7 @@ export function PurchasesTable({ purchases, limit }: PurchasesTableProps) {
                 {formatCurrency(purchase.commissionAmount)}
               </TableCell>
               <TableCell>
-                <Badge variant="outline" className="capitalize">
-                  {purchase.status}
-                </Badge>
+                {getStatusBadge(purchase)}
               </TableCell>
               <TableCell className="text-right text-muted-foreground">
                 {purchase.refundEligibleAt

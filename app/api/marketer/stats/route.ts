@@ -20,7 +20,10 @@ export async function GET(request: Request) {
 
   const [totals, pendingTotals] = await Promise.all([
     prisma.purchase.aggregate({
-      where: { coupon: { marketerId: userId } },
+      where: {
+        coupon: { marketerId: userId },
+        commissionStatus: { notIn: ["REFUNDED", "CHARGEBACK"] },
+      },
       _sum: {
         amount: true,
         commissionAmount: true,
@@ -28,7 +31,11 @@ export async function GET(request: Request) {
       _count: true,
     }),
     prisma.purchase.aggregate({
-      where: { coupon: { marketerId: userId }, status: "PENDING" },
+      where: {
+        coupon: { marketerId: userId },
+        status: "PENDING",
+        commissionStatus: { notIn: ["REFUNDED", "CHARGEBACK"] },
+      },
       _sum: { commissionAmount: true },
     }),
   ]);

@@ -3,6 +3,18 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProjectEvents } from "@/lib/hooks/events";
+import { useCreatorAdjustments } from "@/lib/hooks/creator";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatCurrency } from "@/lib/data/metrics";
 
 const eventLabels: Record<string, string> = {
   CONTRACT_CREATED: "Contract created",
@@ -12,6 +24,9 @@ const eventLabels: Record<string, string> = {
   COUPON_TEMPLATE_CREATED: "Template created",
   COUPON_TEMPLATE_UPDATED: "Template updated",
   PURCHASE_CREATED: "Purchase recorded",
+  PURCHASE_REFUNDED: "Purchase refunded",
+  PURCHASE_CHARGEBACK: "Chargeback opened",
+  PURCHASE_CHARGEBACK_RESOLVED: "Chargeback resolved",
   CREATOR_PAYMENT_CREATED: "Payment created",
   CREATOR_PAYMENT_COMPLETED: "Payment completed",
   TRANSFER_INITIATED: "Transfer initiated",
@@ -23,18 +38,29 @@ function formatEventTitle(type: string) {
   return eventLabels[type] ?? type.replace(/_/g, " ").toLowerCase();
 }
 
-function formatCurrency(amount?: number | null, currency?: string | null) {
-  if (typeof amount !== "number") return null;
-  const normalized = (amount / 100).toFixed(2);
-  return `${normalized} ${(currency ?? "usd").toUpperCase()}`;
-}
-
 function formatEventDetails(event: {
   type: string;
   data?: Record<string, unknown> | null;
 }) {
   const data = (event.data ?? {}) as Record<string, unknown>;
   if (event.type === "PURCHASE_CREATED") {
+    const amount = formatCurrency(
+      typeof data.amount === "number" ? data.amount : undefined,
+      typeof data.currency === "string" ? data.currency : undefined,
+    );
+    return amount ? `Amount · ${amount}` : null;
+  }
+  if (event.type === "PURCHASE_REFUNDED") {
+    const amount = formatCurrency(
+      typeof data.refundAmount === "number" ? data.refundAmount : undefined,
+      typeof data.currency === "string" ? data.currency : undefined,
+    );
+    return amount ? `Refund · ${amount}` : null;
+  }
+  if (
+    event.type === "PURCHASE_CHARGEBACK" ||
+    event.type === "PURCHASE_CHARGEBACK_RESOLVED"
+  ) {
     const amount = formatCurrency(
       typeof data.amount === "number" ? data.amount : undefined,
       typeof data.currency === "string" ? data.currency : undefined,
@@ -72,6 +98,13 @@ export function ProjectActivityTab({
   projectId: string;
 }) {
   const { data: events = [], isLoading, error } = useProjectEvents(projectId, 40);
+  const { data: authUserId } = useAuthUserId();
+  const { data: currentUser } = useUser(authUserId);
+  const { data: adjustments = [], isLoading: isAdjustmentsLoading } =
+    useCreatorAdjustments(currentUser?.id);
+  const projectAdjustments = adjustments.filter(
+    (adjustment) => adjustment.projectId === projectId,
+  );
 
   return (
     <Card>
@@ -123,6 +156,57 @@ export function ProjectActivityTab({
             })}
           </div>
         )}
+        <div className="mt-6 border-t pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Commission Adjustments</p>
+          </div>
+          {isAdjustmentsLoading ? (
+            <p className="text-muted-foreground text-sm mt-3">
+              Loading adjustments...
+            </p>
+          ) : projectAdjustments.length === 0 ? (
+            <p className="text-muted-foreground text-sm mt-3">
+              No adjustments recorded yet.
+            </p>
+          ) : (
+            <div className="rounded-md border mt-3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Marketer</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {projectAdjustments.map((adjustment) => (
+                    <TableRow key={adjustment.id}>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(adjustment.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {adjustment.marketerName}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {adjustment.reason.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600">
+                        {formatCurrency(adjustment.amount, adjustment.currency)}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">
+                          {adjustment.status.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
         {error ? (
           <p className="text-sm text-destructive mt-3">
             {error instanceof Error ? error.message : "Unable to load activity."}

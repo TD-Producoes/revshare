@@ -37,7 +37,11 @@ import {
   useCouponsForMarketer,
   useProjectCouponTemplates,
 } from "@/lib/hooks/coupons";
-import { useMarketerProjectStats, useMarketerPurchases } from "@/lib/hooks/marketer";
+import {
+  useMarketerAdjustments,
+  useMarketerProjectStats,
+  useMarketerPurchases,
+} from "@/lib/hooks/marketer";
 
 interface MarketerProjectDetailProps {
   projectId: string;
@@ -56,6 +60,8 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
     useContractsForMarketer(currentUser?.id);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useMarketerPurchases(currentUser?.id);
+  const { data: adjustments = [], isLoading: isAdjustmentsLoading } =
+    useMarketerAdjustments(currentUser?.id);
   const { data: coupons = [], isLoading: isCouponsLoading } =
     useCouponsForMarketer(currentUser?.id);
   const { data: stats, isLoading: isStatsLoading, error: statsError } =
@@ -76,7 +82,8 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
     isPurchasesLoading ||
     isCouponsLoading ||
     isStatsLoading ||
-    isTemplatesLoading;
+    isTemplatesLoading ||
+    isAdjustmentsLoading;
 
   const projectPurchases = useMemo(
     () =>
@@ -92,6 +99,14 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
         ? coupons.filter((coupon) => coupon.projectId === resolvedProjectId)
         : [],
     [coupons, resolvedProjectId],
+  );
+
+  const projectAdjustments = useMemo(
+    () =>
+      resolvedProjectId
+        ? adjustments.filter((adjustment) => adjustment.projectId === resolvedProjectId)
+        : [],
+    [adjustments, resolvedProjectId],
   );
 
   const contract = contracts.find(
@@ -125,6 +140,20 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
         error instanceof Error ? error.message : "Failed to generate promo code.";
       setPromoError(message);
     }
+  };
+
+  const getPurchaseStatusBadge = (status: string, commissionStatus: string) => {
+    if (commissionStatus === "refunded") {
+      return <Badge variant="destructive">Refunded</Badge>;
+    }
+    if (commissionStatus === "chargeback") {
+      return <Badge variant="destructive">Chargeback</Badge>;
+    }
+    return (
+      <Badge variant="outline" className="capitalize">
+        {status}
+      </Badge>
+    );
   };
 
   if (isLoading) {
@@ -458,9 +487,10 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {purchase.status}
-                        </Badge>
+                        {getPurchaseStatusBadge(
+                          purchase.status,
+                          purchase.commissionStatus,
+                        )}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {purchase.refundEligibleAt
@@ -469,6 +499,52 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {new Date(purchase.createdAt).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Commission Adjustments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {projectAdjustments.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No adjustments recorded yet.
+            </p>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {projectAdjustments.map((adjustment) => (
+                    <TableRow key={adjustment.id}>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(adjustment.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {adjustment.reason.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600">
+                        {formatCurrency(adjustment.amount, adjustment.currency)}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">
+                          {adjustment.status.replace(/_/g, " ")}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -31,6 +31,8 @@ model User {
   creatorTransfers          Transfer[] @relation("CreatorTransfers")
   marketerTransfers         Transfer[] @relation("MarketerTransfers")
   creatorPayments           CreatorPayment[]
+  creatorAdjustments        CommissionAdjustment[] @relation("CreatorAdjustments")
+  marketerAdjustments       CommissionAdjustment[] @relation("MarketerAdjustments")
   events                    Event[] @relation("ActorEvents")
   notifications             Notification[]
   createdAt                 DateTime @default(now())
@@ -63,6 +65,7 @@ model Project {
   purchases             Purchase[]
   contracts             Contract[]
   events                Event[]
+  commissionAdjustments CommissionAdjustment[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -149,6 +152,12 @@ model Purchase {
   currency              String
   customerEmail         String?
   commissionAmount      Int
+  commissionAmountOriginal Int?
+  refundedAmount        Int          @default(0)
+  refundedAt            DateTime?
+  disputeId             String?
+  disputeStatus         String?
+  chargebackAt          DateTime?
   refundWindowDays      Int?
   refundEligibleAt      DateTime?
   transferId            String?
@@ -162,6 +171,7 @@ model Purchase {
   coupon  Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
   transferRecord Transfer? @relation(fields: [transferRecordId], references: [id], onDelete: SetNull)
   creatorPayment CreatorPayment? @relation(fields: [creatorPaymentId], references: [id], onDelete: SetNull)
+  commissionAdjustments CommissionAdjustment[]
 
   @@index([projectId])
   @@index([couponId])
@@ -229,6 +239,9 @@ enum EventType {
   COUPON_TEMPLATE_UPDATED
   COUPON_CLAIMED
   PURCHASE_CREATED
+  PURCHASE_REFUNDED
+  PURCHASE_CHARGEBACK
+  PURCHASE_CHARGEBACK_RESOLVED
   CREATOR_PAYMENT_CREATED
   CREATOR_PAYMENT_COMPLETED
   TRANSFER_INITIATED
@@ -244,6 +257,8 @@ enum NotificationType {
   SALE
   COMMISSION_DUE
   COMMISSION_READY
+  REFUND
+  CHARGEBACK
   PAYOUT_SENT
   PAYOUT_FAILED
   CONTRACT_APPROVED
@@ -268,6 +283,20 @@ enum CommissionStatus {
   AWAITING_REFUND_WINDOW
   READY_FOR_PAYOUT
   PAID
+  REFUNDED
+  CHARGEBACK
+}
+
+enum AdjustmentReason {
+  REFUND
+  CHARGEBACK
+  CHARGEBACK_REVERSAL
+}
+
+enum AdjustmentStatus {
+  PENDING
+  APPLIED
+  REVERSED
 }
 
 enum PaymentStatus {
@@ -320,6 +349,31 @@ model Transfer {
   @@index([creatorId])
   @@index([marketerId])
   @@index([stripeTransferId])
+}
+
+model CommissionAdjustment {
+  id         String           @id @default(cuid())
+  creatorId  String
+  marketerId String
+  projectId  String
+  purchaseId String?
+  amount     Int
+  currency   String
+  reason     AdjustmentReason
+  status     AdjustmentStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  creator  User     @relation("CreatorAdjustments", fields: [creatorId], references: [id], onDelete: Cascade)
+  marketer User     @relation("MarketerAdjustments", fields: [marketerId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([creatorId])
+  @@index([marketerId])
+  @@index([projectId])
+  @@index([purchaseId])
+  @@index([status])
 }
 
 model PaymentMethod {

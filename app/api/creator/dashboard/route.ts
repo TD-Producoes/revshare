@@ -39,7 +39,10 @@ export async function GET(request: Request) {
   const projectIds = projects.map((project) => project.id);
 
   const purchases = await prisma.purchase.findMany({
-    where: { projectId: { in: projectIds } },
+    where: {
+      projectId: { in: projectIds },
+      commissionStatus: { notIn: ["REFUNDED", "CHARGEBACK"] },
+    },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

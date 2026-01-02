@@ -12,6 +12,7 @@ export type CreatorPayoutTotals = {
   failedCommissions: number;
   platformFee: number;
   platformCommissionPercent?: number | null;
+  adjustmentsTotal?: number;
 };
 
 export type CreatorPayout = {
@@ -26,6 +27,8 @@ export type CreatorPayout = {
   awaitingRefundEarnings: number;
   failedEarnings: number;
   readyEarnings: number;
+  adjustmentsTotal?: number;
+  netReadyEarnings?: number;
   failureReason?: string | null;
 };
 
@@ -104,6 +107,21 @@ export type CreatorPaymentHistory = {
   createdAt: string | Date;
   purchaseCount: number;
   stripeCheckoutSessionId: string | null;
+};
+
+export type CreatorAdjustment = {
+  id: string;
+  marketerId: string;
+  marketerName: string;
+  marketerEmail: string | null;
+  projectId: string;
+  projectName: string;
+  purchaseId: string | null;
+  amount: number;
+  currency: string;
+  reason: string;
+  status: string;
+  createdAt: string | Date;
 };
 
 export type CreatorPurchase = {
@@ -191,6 +209,22 @@ export function useCreatorPaymentCharge() {
         throw new Error(data?.error ?? "Failed to charge payment method.");
       }
       return data?.data as { id: string; status: string };
+    },
+  });
+}
+
+export function useCreatorAdjustments(userId?: string | null) {
+  return useQuery<CreatorAdjustment[]>({
+    queryKey: ["creator-adjustments", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(`/api/creator/adjustments?userId=${userId}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch adjustments.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
     },
   });
 }

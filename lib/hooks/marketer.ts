@@ -25,6 +25,23 @@ export type MarketerStats = {
   pendingEarnings: number;
 };
 
+export type MarketerAdjustment = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  purchaseId: string | null;
+  amount: number;
+  currency: string;
+  reason: string;
+  status: string;
+  createdAt: string | Date;
+};
+
+export type MarketerAdjustmentsResponse = {
+  data: MarketerAdjustment[];
+  pendingTotal: number;
+};
+
 export type MarketerProjectStats = {
   projectId: string;
   projectName: string;
@@ -70,6 +87,25 @@ export function useMarketerStats(userId?: string | null) {
       }
       const payload = await response.json();
       return payload?.data as MarketerStats;
+    },
+  });
+}
+
+export function useMarketerAdjustments(userId?: string | null) {
+  return useQuery<MarketerAdjustmentsResponse>({
+    queryKey: ["marketer-adjustments", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(`/api/marketer/adjustments?userId=${userId}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch adjustments.");
+      }
+      const payload = await response.json();
+      return {
+        data: Array.isArray(payload?.data) ? payload.data : [],
+        pendingTotal: typeof payload?.pendingTotal === "number" ? payload.pendingTotal : 0,
+      };
     },
   });
 }

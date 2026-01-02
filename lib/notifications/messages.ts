@@ -48,6 +48,23 @@ export const notificationMessages = {
     title: "New sale",
     message: `Sale ${Math.round(amount) / 100} ${currency.toUpperCase()} for ${projectName}.`,
   }),
+  refundRecorded: (
+    projectName: string,
+    refundedAmount: number,
+    commissionAmount: number,
+    currency: string,
+  ) => ({
+    title: "Refund recorded",
+    message: `Refund ${Math.round(refundedAmount) / 100} ${currency.toUpperCase()} for ${projectName}. Commission now ${Math.round(commissionAmount) / 100} ${currency.toUpperCase()}.`,
+  }),
+  chargebackCreated: (projectName: string, amount: number, currency: string) => ({
+    title: "Chargeback opened",
+    message: `Chargeback opened for ${projectName} (${Math.round(amount) / 100} ${currency.toUpperCase()}). Commission is on hold.`,
+  }),
+  chargebackResolved: (projectName: string, amount: number, currency: string) => ({
+    title: "Chargeback resolved",
+    message: `Chargeback resolved for ${projectName} (${Math.round(amount) / 100} ${currency.toUpperCase()}).`,
+  }),
   couponTemplateCreated: (templateName: string, projectName: string) => ({
     title: "New coupon template",
     message: `${templateName} is now available for ${projectName}.`,

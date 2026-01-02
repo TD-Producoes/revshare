@@ -12,17 +12,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Clock, CheckCircle, TrendingUp, Timer } from "lucide-react";
+import { DollarSign, Clock, CheckCircle, TrendingUp, Timer, Info } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useContractsForMarketer } from "@/lib/hooks/contracts";
-import { useMarketerPurchases } from "@/lib/hooks/marketer";
+import { useMarketerAdjustments, useMarketerPurchases } from "@/lib/hooks/marketer";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function EarningsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useMarketerPurchases(currentUser?.id);
+  const {
+    data: adjustmentsPayload,
+    isLoading: isAdjustmentsLoading,
+  } = useMarketerAdjustments(currentUser?.id);
+  const adjustments = adjustmentsPayload?.data ?? [];
+  const pendingAdjustmentsTotal = adjustmentsPayload?.pendingTotal ?? 0;
   const { data: contracts = [], isLoading: isContractsLoading } =
     useContractsForMarketer(currentUser?.id);
 
@@ -30,7 +41,8 @@ export default function EarningsPage() {
     isAuthLoading ||
     isUserLoading ||
     isPurchasesLoading ||
-    isContractsLoading
+    isContractsLoading ||
+    isAdjustmentsLoading
   ) {
     return (
       <div className="flex h-40 items-center justify-center text-muted-foreground">
@@ -65,9 +77,12 @@ export default function EarningsPage() {
 
   const totals = purchases.reduce(
     (acc, purchase) => {
+      const effectiveStatus = getEffectiveCommissionStatus(purchase);
+      if (effectiveStatus === "refunded" || effectiveStatus === "chargeback") {
+        return acc;
+      }
       acc.totalRevenue += purchase.amount;
       acc.totalEarnings += purchase.commissionAmount;
-      const effectiveStatus = getEffectiveCommissionStatus(purchase);
       switch (effectiveStatus) {
         case "paid":
           acc.paid += purchase.commissionAmount;
@@ -102,6 +117,10 @@ export default function EarningsPage() {
 
   const projectEarnings = purchases.reduce(
     (acc, purchase) => {
+      const effectiveStatus = getEffectiveCommissionStatus(purchase);
+      if (effectiveStatus === "refunded" || effectiveStatus === "chargeback") {
+        return acc;
+      }
       const existing = acc.get(purchase.projectId) ?? {
         projectId: purchase.projectId,
         projectName: purchase.projectName,
@@ -118,7 +137,6 @@ export default function EarningsPage() {
       existing.purchaseCount += 1;
       existing.totalRevenue += purchase.amount;
       existing.totalEarnings += purchase.commissionAmount;
-      const effectiveStatus = getEffectiveCommissionStatus(purchase);
       if (effectiveStatus === "paid") {
         existing.paidEarnings += purchase.commissionAmount;
       } else if (effectiveStatus === "ready_for_payout") {
@@ -161,6 +179,38 @@ export default function EarningsPage() {
   const projectEarningsList = Array.from(projectEarnings.values()).sort(
     (a, b) => b.totalEarnings - a.totalEarnings,
   );
+  const totalAdjustments = adjustments.reduce(
+    (sum, adjustment) => sum + adjustment.amount,
+    0,
+  );
+  const netEarnings = totals.totalEarnings + totalAdjustments;
+  const netReady = Math.max(0, totals.ready + pendingAdjustmentsTotal);
+
+  const InfoLabel = ({
+    label,
+    help,
+  }: {
+    label: string;
+    help: string;
+  }) => (
+    <span className="inline-flex items-center gap-2">
+      <span>{label}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
+            aria-label={`${label} info`}
+          >
+            <Info className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          {help}
+        </TooltipContent>
+      </Tooltip>
+    </span>
+  );
 
   return (
     <div className="space-y-6">
@@ -180,25 +230,62 @@ export default function EarningsPage() {
           icon={DollarSign}
         />
         <StatCard
+          title={
+            <InfoLabel
+              label="Adjustments"
+              help="Outstanding refunds or chargebacks that reduce your next payout."
+            />
+          }
+          value={formatCurrency(pendingAdjustmentsTotal)}
+          description="Outstanding balance"
+          icon={Clock}
+        />
+        <StatCard
+          title={
+            <InfoLabel
+              label="Net Earnings"
+              help="Total earnings after adjustments."
+            />
+          }
+          value={formatCurrency(netEarnings)}
+          description="After adjustments"
+          icon={DollarSign}
+        />
+        <StatCard
           title="Received"
           value={formatCurrency(totals.paid)}
           description="Paid out to you"
           icon={CheckCircle}
         />
         <StatCard
-          title="Ready to receive"
-          value={formatCurrency(totals.ready)}
+          title={
+            <InfoLabel
+              label="Ready to receive"
+              help="Available for payout after adjustments are applied."
+            />
+          }
+          value={formatCurrency(netReady)}
           description="Creator paid"
           icon={CheckCircle}
         />
         <StatCard
-          title="Refund window"
+          title={
+            <InfoLabel
+              label="Refund window"
+              help="Commissions held until the refund window ends."
+            />
+          }
           value={formatCurrency(totals.awaitingRefund)}
           description="Waiting period"
           icon={Timer}
         />
         <StatCard
-          title="Awaiting creator"
+          title={
+            <InfoLabel
+              label="Awaiting creator"
+              help="Commissions pending creator payment."
+            />
+          }
           value={formatCurrency(totals.awaitingCreator)}
           description="Creator payment pending"
           icon={Clock}
@@ -300,6 +387,56 @@ export default function EarningsPage() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Commission Adjustments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {adjustments.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No adjustments recorded yet.
+            </p>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adjustments.map((adjustment) => (
+                    <TableRow key={adjustment.id}>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(adjustment.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {adjustment.projectName}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {adjustment.reason.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600">
+                        {formatCurrency(adjustment.amount, adjustment.currency)}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">
+                          {adjustment.status.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

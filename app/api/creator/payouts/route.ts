@@ -116,6 +116,13 @@ export async function GET(request: Request) {
     },
     orderBy: { updatedAt: "desc" },
   });
+  const adjustments = await prisma.commissionAdjustment.findMany({
+    where: { creatorId: userId, status: "PENDING" },
+    select: {
+      marketerId: true,
+      amount: true,
+    },
+  });
 
   let totalCommissions = 0;
   let paidCommissions = 0;
@@ -125,6 +132,7 @@ export async function GET(request: Request) {
   let readyCommissions = 0;
   let failedCommissions = 0;
   let platformFee = 0;
+  let adjustmentsTotal = 0;
 
   const marketerMap = new Map<
     string,
@@ -140,11 +148,18 @@ export async function GET(request: Request) {
       awaitingRefundEarnings: number;
       failedEarnings: number;
       readyEarnings: number;
+      adjustmentsTotal: number;
     }
   >();
 
   for (const purchase of purchases) {
     if (!purchase.coupon?.marketerId) {
+      continue;
+    }
+    if (
+      purchase.commissionStatus === "REFUNDED" ||
+      purchase.commissionStatus === "CHARGEBACK"
+    ) {
       continue;
     }
     const marketerId = purchase.coupon.marketerId;
@@ -163,6 +178,7 @@ export async function GET(request: Request) {
         awaitingRefundEarnings: 0,
         failedEarnings: 0,
         readyEarnings: 0,
+        adjustmentsTotal: 0,
       };
 
     existing.projectIds.add(purchase.projectId);
@@ -198,6 +214,16 @@ export async function GET(request: Request) {
     marketerMap.set(marketerId, existing);
   }
 
+  for (const adjustment of adjustments) {
+    const existing = marketerMap.get(adjustment.marketerId);
+    if (!existing) {
+      continue;
+    }
+    existing.adjustmentsTotal += adjustment.amount;
+    adjustmentsTotal += adjustment.amount;
+    marketerMap.set(adjustment.marketerId, existing);
+  }
+
   const payouts = Array.from(marketerMap.values())
     .map((entry) => {
       const latestFailure = transfers.find(
@@ -218,6 +244,8 @@ export async function GET(request: Request) {
         awaitingRefundEarnings: entry.awaitingRefundEarnings,
         failedEarnings: entry.failedEarnings,
         readyEarnings: entry.readyEarnings,
+        adjustmentsTotal: entry.adjustmentsTotal,
+        netReadyEarnings: entry.readyEarnings + entry.adjustmentsTotal,
         failureReason: latestFailure?.failureReason ?? null,
       };
     })
@@ -235,6 +263,7 @@ export async function GET(request: Request) {
         failedCommissions,
         platformFee,
         platformCommissionPercent,
+        adjustmentsTotal,
       },
       payouts,
     },

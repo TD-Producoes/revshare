@@ -23,6 +23,7 @@ import {
   useCreatorPaymentPreview,
   useCreatorPayments,
   useCreatorPurchaseDetails,
+  useCreatorAdjustments,
   useProcessMarketerTransfers,
 } from "@/lib/hooks/creator";
 import { usePaymentMethods } from "@/lib/hooks/payment-methods";
@@ -78,6 +79,15 @@ export default function PayoutsPage() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [chargeError, setChargeError] = useState<string | null>(null);
+  const [transferResults, setTransferResults] = useState<
+    Array<{
+      marketerId: string;
+      marketerAccountId: string;
+      purchaseCount: number;
+      status: string;
+      error?: string;
+    }>
+  >([]);
   const {
     data: preview,
     isLoading: isPreviewLoading,
@@ -87,6 +97,8 @@ export default function PayoutsPage() {
     useCreatorPayments(currentUser?.id);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useCreatorPurchaseDetails(currentUser?.id);
+  const { data: adjustments = [], isLoading: isAdjustmentsLoading } =
+    useCreatorAdjustments(currentUser?.id);
   const { data: paymentMethods = [] } = usePaymentMethods(currentUser?.id);
   const commissionPurchases = purchases.filter(
     (purchase) => purchase.commissionAmount > 0,
@@ -112,7 +124,8 @@ export default function PayoutsPage() {
     isUserLoading ||
     isPayoutsLoading ||
     isPaymentsLoading ||
-    isPurchasesLoading
+    isPurchasesLoading ||
+    isAdjustmentsLoading
   ) {
     return (
       <div className="flex h-40 items-center justify-center text-muted-foreground">
@@ -143,8 +156,15 @@ export default function PayoutsPage() {
   };
   const outstandingCommissions =
     totals.pendingCommissions + totals.failedCommissions;
+  const totalAdjustments = adjustments.reduce(
+    (sum, adjustment) => sum + adjustment.amount,
+    0,
+  );
   const hasPending = totals.pendingCreatorCommissions > 0;
-  const readyTotal = payouts.reduce((sum, payout) => sum + payout.readyEarnings, 0);
+  const readyTotal = payouts.reduce(
+    (sum, payout) => sum + (payout.netReadyEarnings ?? payout.readyEarnings),
+    0,
+  );
   const hasReady = readyTotal > 0;
   const defaultPaymentMethod = paymentMethods.find((method) => method.isDefault);
 
@@ -203,7 +223,23 @@ export default function PayoutsPage() {
   const handleProcessTransfers = async () => {
     if (!currentUser) return;
     try {
-      await processTransfers.mutateAsync({ creatorId: currentUser.id });
+      const result = await processTransfers.mutateAsync({
+        creatorId: currentUser.id,
+      });
+      const results = Array.isArray(result?.results) ? result.results : [];
+      setTransferResults(results);
+      const skipped = results.filter(
+        (item: { status?: string }) => item.status === "SKIPPED",
+      );
+      if (skipped.length > 0) {
+        toast.message(
+          "No transfers processed for some marketers because adjustments offset the payout.",
+        );
+      } else if (results.length === 0) {
+        toast.message("No transfers to process yet.");
+      } else {
+        toast.success("Transfers processed.");
+      }
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["creator-payouts", currentUser.id],
@@ -258,6 +294,51 @@ export default function PayoutsPage() {
           Track and manage affiliate commission payouts.
         </p>
       </div>
+
+      {transferResults.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Latest Transfer Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Marketer</TableHead>
+                    <TableHead className="text-right">Purchases</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Details</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transferResults.map((item) => {
+                    const marketer = payouts.find(
+                      (entry) => entry.marketerId === item.marketerId,
+                    );
+                    return (
+                      <TableRow key={`${item.marketerId}-${item.marketerAccountId}`}>
+                        <TableCell className="font-medium">
+                          {marketer?.marketerName ?? "Marketer"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.purchaseCount}
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          <Badge variant="outline">{item.status.toLowerCase()}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {item.error ?? "-"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -333,6 +414,12 @@ export default function PayoutsPage() {
                   </TableHead>
                   <TableHead className="text-right">
                     <HeaderWithInfo
+                      label="Net Ready"
+                      help="Ready minus adjustments."
+                    />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <HeaderWithInfo
                       label="Refund window"
                       help="Awaiting refund window before payout is ready."
                     />
@@ -353,6 +440,7 @@ export default function PayoutsPage() {
                   const awaitingRefund = payout.awaitingRefundEarnings;
                   const failed = payout.failedEarnings;
                   const ready = payout.readyEarnings;
+                  const netReady = payout.netReadyEarnings ?? payout.readyEarnings;
 
                   return (
                     <TableRow key={payout.marketerId}>
@@ -373,6 +461,9 @@ export default function PayoutsPage() {
                       </TableCell>
                       <TableCell className="text-right text-sky-400">
                         {formatCurrency(ready)}
+                      </TableCell>
+                      <TableCell className="text-right text-sky-400">
+                        {formatCurrency(netReady)}
                       </TableCell>
                       <TableCell className="text-right text-amber-500">
                         {formatCurrency(awaitingRefund)}
@@ -469,9 +560,11 @@ export default function PayoutsPage() {
                     <div>
                       <p className="font-medium">{payout.marketerName}</p>
                       <p className="text-xs text-muted-foreground">
-                        Ready: {formatCurrency(payout.readyEarnings)} · Awaiting
-                        Creator: {formatCurrency(awaitingCreator)} · Refund
-                        window: {formatCurrency(awaitingRefund)}
+                        Ready:{" "}
+                        {formatCurrency(payout.netReadyEarnings ?? payout.readyEarnings)}{" "}
+                        · Awaiting Creator: {formatCurrency(awaitingCreator)} ·
+                        Refund window: {formatCurrency(awaitingRefund)} ·
+                        Adjustments: {formatCurrency(payout.adjustmentsTotal ?? 0)}
                       </p>
                     </div>
                     <Badge variant="outline" className="capitalize">
@@ -551,6 +644,12 @@ export default function PayoutsPage() {
                               ) : getEffectiveCommissionStatus(purchase) ===
                                 "pending_creator_payment" ? (
                                 <Badge variant="secondary">Awaiting Creator</Badge>
+                              ) : getEffectiveCommissionStatus(purchase) ===
+                                "refunded" ? (
+                                <Badge variant="destructive">Refunded</Badge>
+                              ) : getEffectiveCommissionStatus(purchase) ===
+                                "chargeback" ? (
+                                <Badge variant="destructive">Chargeback</Badge>
                               ) : (
                                 <Badge className="bg-green-600 text-white">Paid</Badge>
                               )}
@@ -571,6 +670,68 @@ export default function PayoutsPage() {
                 </div>
               );
             })
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Commission Adjustments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {adjustments.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No adjustments recorded yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Net adjustments: {formatCurrency(totalAdjustments)}
+              </p>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Marketer</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {adjustments.map((adjustment) => (
+                      <TableRow key={adjustment.id}>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(adjustment.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {adjustment.marketerName}
+                          {adjustment.marketerEmail ? (
+                            <p className="text-xs text-muted-foreground">
+                              {adjustment.marketerEmail}
+                            </p>
+                          ) : null}
+                        </TableCell>
+                        <TableCell>{adjustment.projectName}</TableCell>
+                        <TableCell className="capitalize">
+                          {adjustment.reason.replace(/_/g, " ")}
+                        </TableCell>
+                        <TableCell className="text-right text-red-600">
+                          {formatCurrency(adjustment.amount, adjustment.currency)}
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          <Badge variant="outline">
+                            {adjustment.status.replace(/_/g, " ")}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

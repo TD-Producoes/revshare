@@ -34,6 +34,65 @@ function promotionCodeIdFromAny(
   return promotionCodeIdFromDiscount(discounts[0]);
 }
 
+function resolvePurchaseStatusAfterDispute(
+  purchase: {
+    commissionAmount: number;
+    couponId: string | null;
+    refundEligibleAt: Date | null;
+    creatorPaymentId: string | null;
+    status: "PENDING" | "PAID" | "FAILED";
+  },
+  now: Date,
+) {
+  if (!purchase.couponId || purchase.commissionAmount <= 0) {
+    return "PAID" as const;
+  }
+  if (purchase.status === "PAID") {
+    return "PAID" as const;
+  }
+  if (purchase.refundEligibleAt && purchase.refundEligibleAt > now) {
+    return "AWAITING_REFUND_WINDOW" as const;
+  }
+  return purchase.creatorPaymentId ? "READY_FOR_PAYOUT" : "PENDING_CREATOR_PAYMENT";
+}
+
+async function findPurchaseForCharge(params: {
+  chargeId: string;
+  paymentIntentId?: string | null;
+  invoiceId?: string | null;
+}) {
+  const { chargeId, paymentIntentId, invoiceId } = params;
+  const orConditions = [
+    { stripeChargeId: chargeId },
+    paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : null,
+    invoiceId ? { stripeInvoiceId: invoiceId } : null,
+  ].filter(Boolean) as Array<{
+    stripeChargeId?: string;
+    stripePaymentIntentId?: string;
+    stripeInvoiceId?: string;
+  }>;
+
+  return prisma.purchase.findFirst({
+    where: { OR: orConditions },
+    select: {
+      id: true,
+      projectId: true,
+      couponId: true,
+      amount: true,
+      currency: true,
+      commissionAmount: true,
+      commissionAmountOriginal: true,
+      commissionStatus: true,
+      refundedAmount: true,
+      refundEligibleAt: true,
+      creatorPaymentId: true,
+      status: true,
+      project: { select: { name: true, userId: true } },
+      coupon: { select: { marketerId: true } },
+    },
+  });
+}
+
 function parseEventDetails(event: Stripe.Event) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
@@ -312,6 +371,337 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   }
 
+  if (
+    event.type === "charge.refunded" ||
+    event.type === "charge.refund.created" ||
+    event.type === "charge.refund.updated"
+  ) {
+    const eventCreatedAt = new Date(event.created * 1000);
+    const charge =
+      event.type === "charge.refunded"
+        ? (event.data.object as Stripe.Charge)
+        : null;
+    const refund =
+      event.type === "charge.refunded"
+        ? null
+        : (event.data.object as Stripe.Refund);
+    const chargeId = charge?.id ?? refund?.charge ?? null;
+
+    if (!chargeId) {
+      return NextResponse.json({ received: true });
+    }
+
+    const purchase = await findPurchaseForCharge({
+      chargeId,
+      paymentIntentId:
+        charge && typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : null,
+      invoiceId:
+        charge && typeof charge.invoice === "string" ? charge.invoice : null,
+    });
+
+    if (!purchase) {
+      return NextResponse.json({ received: true });
+    }
+
+    const nextRefundedAmount = Math.min(
+      purchase.amount,
+      charge?.amount_refunded != null
+        ? charge.amount_refunded
+        : (purchase.refundedAmount ?? 0) + (refund?.amount ?? 0),
+    );
+    const previousRefundedAmount = purchase.refundedAmount ?? 0;
+    if (nextRefundedAmount === previousRefundedAmount) {
+      return NextResponse.json({ received: true });
+    }
+    const commissionBase =
+      purchase.commissionAmountOriginal ?? purchase.commissionAmount;
+    const deltaRefunded = Math.max(0, nextRefundedAmount - previousRefundedAmount);
+    const deltaCommission =
+      purchase.amount > 0
+        ? Math.round((commissionBase * deltaRefunded) / purchase.amount)
+        : 0;
+    const netAmount = Math.max(0, purchase.amount - nextRefundedAmount);
+    const nextCommissionAmount =
+      purchase.amount > 0
+        ? Math.round((commissionBase * netAmount) / purchase.amount)
+        : 0;
+    const isFullyRefunded = nextRefundedAmount >= purchase.amount;
+    const isSettled =
+      purchase.commissionStatus === "PAID" || purchase.status === "PAID";
+
+    const updateData: {
+      refundedAmount: number;
+      refundedAt: Date;
+      commissionAmountOriginal?: number;
+      commissionAmount?: number;
+      commissionStatus?: "REFUNDED";
+    } = {
+      refundedAmount: nextRefundedAmount,
+      refundedAt: eventCreatedAt,
+    };
+
+    if (purchase.commissionAmountOriginal == null) {
+      updateData.commissionAmountOriginal = purchase.commissionAmount;
+    }
+    if (!isSettled) {
+      updateData.commissionAmount = nextCommissionAmount;
+      if (isFullyRefunded) {
+        updateData.commissionStatus = "REFUNDED";
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.purchase.update({
+        where: { id: purchase.id },
+        data: updateData,
+      });
+
+      if (
+        isSettled &&
+        deltaCommission > 0 &&
+        purchase.coupon?.marketerId
+      ) {
+        await tx.commissionAdjustment.create({
+          data: {
+            creatorId: purchase.project.userId,
+            marketerId: purchase.coupon.marketerId,
+            projectId: purchase.projectId,
+            purchaseId: purchase.id,
+            amount: -deltaCommission,
+            currency: purchase.currency,
+            reason: "REFUND",
+          },
+        });
+      }
+
+      await tx.event.create({
+        data: {
+          type: "PURCHASE_REFUNDED",
+          actorId: null,
+          projectId: purchase.projectId,
+          subjectType: "Purchase",
+          subjectId: purchase.id,
+          data: {
+            purchaseId: purchase.id,
+            refundAmount: nextRefundedAmount,
+            commissionAmount: nextCommissionAmount,
+            currency: purchase.currency,
+          },
+        },
+      });
+
+      const projectName = purchase.project?.name ?? "your project";
+      if (purchase.coupon?.marketerId) {
+        await tx.notification.create({
+          data: {
+            userId: purchase.coupon.marketerId,
+            type: "REFUND",
+            ...notificationMessages.refundRecorded(
+              projectName,
+              nextRefundedAmount,
+              nextCommissionAmount,
+              purchase.currency,
+            ),
+            data: {
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              refundAmount: nextRefundedAmount,
+            },
+          },
+        });
+      }
+
+      if (purchase.project?.userId) {
+        await tx.notification.create({
+          data: {
+            userId: purchase.project.userId,
+            type: "REFUND",
+            ...notificationMessages.refundRecorded(
+              projectName,
+              nextRefundedAmount,
+              nextCommissionAmount,
+              purchase.currency,
+            ),
+            data: {
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              refundAmount: nextRefundedAmount,
+            },
+          },
+        });
+      }
+    });
+
+    return NextResponse.json({ received: true });
+  }
+
+  if (
+    event.type === "charge.dispute.created" ||
+    event.type === "charge.dispute.updated" ||
+    event.type === "charge.dispute.closed"
+  ) {
+    const dispute = event.data.object as Stripe.Dispute;
+    const chargeId = typeof dispute.charge === "string" ? dispute.charge : null;
+    if (!chargeId) {
+      return NextResponse.json({ received: true });
+    }
+
+    const purchase = await findPurchaseForCharge({ chargeId });
+    if (!purchase) {
+      return NextResponse.json({ received: true });
+    }
+
+    const eventCreatedAt = new Date(event.created * 1000);
+    const now = new Date();
+    const isWon = dispute.status === "won";
+    const nextStatus = isWon
+      ? resolvePurchaseStatusAfterDispute(purchase, now)
+      : "CHARGEBACK";
+
+    if (
+      purchase.disputeId === dispute.id &&
+      purchase.disputeStatus === dispute.status &&
+      purchase.commissionStatus === nextStatus
+    ) {
+      return NextResponse.json({ received: true });
+    }
+
+    const commissionBase =
+      purchase.commissionAmountOriginal ?? purchase.commissionAmount;
+    const commissionFromDispute =
+      purchase.amount > 0
+        ? Math.round((commissionBase * (dispute.amount ?? 0)) / purchase.amount)
+        : commissionBase;
+
+    await prisma.$transaction(async (tx) => {
+      const existingAdjustments = await tx.commissionAdjustment.findMany({
+        where: {
+          purchaseId: purchase.id,
+          reason: "CHARGEBACK",
+          status: { in: ["PENDING", "APPLIED"] },
+        },
+      });
+
+      await tx.purchase.update({
+        where: { id: purchase.id },
+        data: {
+          disputeId: dispute.id,
+          disputeStatus: dispute.status ?? null,
+          chargebackAt: !isWon ? eventCreatedAt : null,
+          commissionStatus:
+            purchase.commissionStatus === "PAID" || purchase.status === "PAID"
+              ? purchase.commissionStatus
+              : nextStatus,
+        },
+      });
+
+      if (purchase.coupon?.marketerId) {
+        if (!isWon && existingAdjustments.length === 0 && commissionFromDispute > 0) {
+          await tx.commissionAdjustment.create({
+            data: {
+              creatorId: purchase.project.userId,
+              marketerId: purchase.coupon.marketerId,
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              amount: -commissionFromDispute,
+              currency: purchase.currency,
+              reason: "CHARGEBACK",
+            },
+          });
+        }
+        if (isWon && existingAdjustments.length > 0) {
+          const totalAdjustment = existingAdjustments.reduce(
+            (acc, adj) => acc + adj.amount,
+            0,
+          );
+          if (totalAdjustment < 0) {
+            await tx.commissionAdjustment.create({
+              data: {
+                creatorId: purchase.project.userId,
+                marketerId: purchase.coupon.marketerId,
+                projectId: purchase.projectId,
+                purchaseId: purchase.id,
+                amount: Math.abs(totalAdjustment),
+                currency: purchase.currency,
+                reason: "CHARGEBACK_REVERSAL",
+              },
+            });
+          }
+          await tx.commissionAdjustment.updateMany({
+            where: { id: { in: existingAdjustments.map((adj) => adj.id) } },
+            data: { status: "REVERSED" },
+          });
+        }
+      }
+
+      await tx.event.create({
+        data: {
+          type: isWon ? "PURCHASE_CHARGEBACK_RESOLVED" : "PURCHASE_CHARGEBACK",
+          actorId: null,
+          projectId: purchase.projectId,
+          subjectType: "Purchase",
+          subjectId: purchase.id,
+          data: {
+            purchaseId: purchase.id,
+            disputeId: dispute.id,
+            disputeStatus: dispute.status,
+            amount: dispute.amount,
+            currency: dispute.currency,
+          },
+        },
+      });
+
+      const projectName = purchase.project?.name ?? "your project";
+      const notificationPayload = isWon
+        ? notificationMessages.chargebackResolved(
+            projectName,
+            dispute.amount,
+            dispute.currency ?? purchase.currency,
+          )
+        : notificationMessages.chargebackCreated(
+            projectName,
+            dispute.amount,
+            dispute.currency ?? purchase.currency,
+          );
+
+      if (purchase.coupon?.marketerId) {
+        await tx.notification.create({
+          data: {
+            userId: purchase.coupon.marketerId,
+            type: "CHARGEBACK",
+            ...notificationPayload,
+            data: {
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              disputeId: dispute.id,
+              disputeStatus: dispute.status,
+            },
+          },
+        });
+      }
+
+      if (purchase.project?.userId) {
+        await tx.notification.create({
+          data: {
+            userId: purchase.project.userId,
+            type: "CHARGEBACK",
+            ...notificationPayload,
+            data: {
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              disputeId: dispute.id,
+              disputeStatus: dispute.status,
+            },
+          },
+        });
+      }
+    });
+
+    return NextResponse.json({ received: true });
+  }
+
   let details = parseEventDetails(event);
   const accountId = event.account ?? null;
   if (details && !details.promotionCodeId && accountId) {
@@ -488,6 +878,7 @@ export async function POST(request: Request) {
       currency: details.currency,
       customerEmail: details.customerEmail,
       commissionAmount,
+      commissionAmountOriginal: commissionAmount,
       refundWindowDays,
       refundEligibleAt,
       transferId,
