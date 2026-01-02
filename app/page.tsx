@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,13 +17,13 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { formatCurrency } from "@/lib/data/metrics";
+import { useProjectsLeaderboard } from "@/lib/hooks/projects";
+import { useMarketersLeaderboard } from "@/lib/hooks/marketer";
 import {
   ArrowRight,
   ArrowUpRight,
-  Globe2,
   ShieldCheck,
   Sparkles,
-  TrendingUp,
   Users,
   Zap,
   CreditCard,
@@ -40,110 +39,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-// Type for leaderboard project data
-type LeaderboardProject = {
-  id: string;
-  name: string;
-  category: string;
-  logoUrl: string | null;
-  revenue: number;
-  marketers: number;
-  commission: number;
-  growth: string;
-};
-
-const topMarketers = [
-  {
-    name: "Lara Finch",
-    focus: "B2B SaaS",
-    revenue: 84500,
-    commission: 16900,
-    activeProjects: 6,
-    trend: "+12%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Lara",
-  },
-  {
-    name: "Koji Tanaka",
-    focus: "E-commerce",
-    revenue: 78200,
-    commission: 15640,
-    activeProjects: 8,
-    trend: "+5%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Koji",
-  },
-  {
-    name: "Tiago Mark",
-    focus: "Dev Tools",
-    revenue: 61200,
-    commission: 12240,
-    activeProjects: 4,
-    trend: "+8%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Tiago",
-  },
-  {
-    name: "Elena Rodriguez",
-    focus: "Web3",
-    revenue: 58900,
-    commission: 11780,
-    activeProjects: 5,
-    trend: "+22%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Elena",
-  },
-  {
-    name: "Ava Chen",
-    focus: "Creator Apps",
-    revenue: 49800,
-    commission: 9960,
-    activeProjects: 5,
-    trend: "+24%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Ava",
-  },
-  {
-    name: "Marcus Reid",
-    focus: "Fintech",
-    revenue: 45200,
-    commission: 9040,
-    activeProjects: 3,
-    trend: "+15%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Marcus",
-  },
-  {
-    name: "Sarah Lee",
-    focus: "AI Tools",
-    revenue: 38500,
-    commission: 7700,
-    activeProjects: 5,
-    trend: "+2%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah",
-  },
-  {
-    name: "David Kim",
-    focus: "HealthTech",
-    revenue: 32100,
-    commission: 6420,
-    activeProjects: 4,
-    trend: "+9%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=David",
-  },
-  {
-    name: "Priya Patel",
-    focus: "EdTech",
-    revenue: 28400,
-    commission: 5680,
-    activeProjects: 2,
-    trend: "+18%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Priya",
-  },
-  {
-    name: "Sam Wilson",
-    focus: "Marketing",
-    revenue: 22100,
-    commission: 4420,
-    activeProjects: 3,
-    trend: "+4%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sam",
-  },
-];
+// Helper functions
 
 // Helper function to generate avatar URL from project name
 function getProjectAvatarUrl(name: string, logoUrl: string | null): string {
@@ -164,56 +60,10 @@ function getProjectAvatarUrl(name: string, logoUrl: string | null): string {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${colors[colorIndex]}&color=fff`;
 }
 
-const highlights = [
-  {
-    title: "Creator-first payouts",
-    description:
-      "Control when commissions move. Keep cash flow predictable while affiliates stay motivated.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Marketer rankings",
-    description:
-      "Promote top performers with social proof and live revenue visibility across your network.",
-    icon: TrendingUp,
-  },
-  {
-    title: "Global-ready referrals",
-    description:
-      "Track coupon performance and pay across borders with a clean Stripe Connect trail.",
-    icon: Globe2,
-  },
-];
-
 export default function Home() {
-  // State for leaderboard projects
-  const [topProjects, setTopProjects] = useState<LeaderboardProject[]>([]);
-  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
-  const [projectsError, setProjectsError] = useState<string | null>(null);
-
-  // Fetch leaderboard projects on mount
-  useEffect(() => {
-    async function fetchLeaderboard() {
-      try {
-        setIsLoadingProjects(true);
-        setProjectsError(null);
-        const response = await fetch("/api/projects/leaderboard");
-        if (!response.ok) {
-          throw new Error("Failed to fetch leaderboard");
-        }
-        const payload = await response.json();
-        setTopProjects(payload.data || []);
-      } catch (error) {
-        console.error("Error fetching leaderboard:", error);
-        setProjectsError("Failed to load projects");
-        setTopProjects([]);
-      } finally {
-        setIsLoadingProjects(false);
-      }
-    }
-
-    fetchLeaderboard();
-  }, []);
+  // Fetch leaderboard data using React Query
+  const { data: topProjects = [], isLoading: isLoadingProjects, error: projectsError } = useProjectsLeaderboard();
+  const { data: topMarketers = [], isLoading: isLoadingMarketers } = useMarketersLeaderboard();
 
   return (
     <main className="relative min-h-screen bg-background selection:bg-primary/10">
@@ -381,17 +231,27 @@ export default function Home() {
                   <div className="text-right">Commission</div>
                 </div>
                 <div className="divide-y divide-border/40">
-                  {topMarketers.map((marketer, i) => (
-                    <div
-                      key={marketer.name}
-                      className="group grid grid-cols-[1fr_120px_120px] gap-4 items-center p-5 hover:bg-muted/30 transition-colors"
+                  {isLoadingMarketers ? (
+                    <div className="p-5 text-center text-sm text-muted-foreground">
+                      Loading marketers...
+                    </div>
+                  ) : topMarketers.length === 0 ? (
+                    <div className="p-5 text-center text-sm text-muted-foreground">
+                      No marketers with revenue yet
+                    </div>
+                  ) : (
+                    topMarketers.map((marketer, i) => (
+                    <Link
+                      key={marketer.id}
+                      href={`/marketers/${marketer.id}`}
+                      className="group grid grid-cols-[1fr_120px_120px] gap-4 items-center p-5 hover:bg-muted/30 transition-colors block"
                     >
                       <div className="flex items-center gap-4 min-w-0">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background text-sm font-bold text-muted-foreground shadow-sm">
                           {i < 9 ? `0${i + 1}` : i + 1}
                         </div>
                         <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarImage src={marketer.image} alt={marketer.name} />
+                          <AvatarImage src={marketer.image || undefined} alt={marketer.name} />
                           <AvatarFallback>{marketer.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
@@ -410,8 +270,9 @@ export default function Home() {
                       <div className="text-right">
                         <p className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(marketer.commission)}</p>
                       </div>
-                    </div>
-                  ))}
+                    </Link>
+                    ))
+                  )}
                 </div>
                 <div className="p-4 bg-muted/10 border-t border-border/40">
                   <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground justify-between group">
@@ -438,14 +299,14 @@ export default function Home() {
                     </div>
                   ) : projectsError ? (
                     <div className="p-5 text-center text-sm text-destructive">
-                      {projectsError}
+                      {projectsError instanceof Error ? projectsError.message : "Failed to load projects"}
                     </div>
                   ) : topProjects.length === 0 ? (
                     <div className="p-5 text-center text-sm text-muted-foreground">
                       No projects with revenue yet
                     </div>
                   ) : (
-                    topProjects.map((project, i) => (
+                    topProjects.map((project: typeof topProjects[0], i: number) => (
                       <Link
                         href={`/projects/${project.id}`}
                         key={project.id}

@@ -12,6 +12,7 @@ import { CheckCircle, CreditCard, ExternalLink, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ProfileSettings } from "@/components/profile-settings";
 
 export default function SettingsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
@@ -237,10 +238,10 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Profile */}
+      {/* Account Info */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Profile</CardTitle>
+          <CardTitle className="text-base">Account</CardTitle>
           <CardDescription>Your account information.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -260,6 +261,9 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Public Profile */}
+      <ProfileSettings user={currentUser} />
 
       {/* Stripe Connection */}
       <Card>

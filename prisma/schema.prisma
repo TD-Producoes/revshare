@@ -23,6 +23,7 @@ model User {
   onboardingStatus          String?
   onboardingData            Json?
   onboardingCompletedAt     DateTime?
+  metadata                  Json?
   projects                  Project[]
   coupons                   Coupon[]
   contracts                 Contract[]
