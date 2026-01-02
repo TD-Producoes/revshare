@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { NotificationPreferencesCard } from "@/components/shared/notification-preferences-card";
 import { CheckCircle, CreditCard, ExternalLink, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -449,46 +449,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Notification Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Notifications</CardTitle>
-          <CardDescription>
-            Configure email notification preferences.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Application Updates</p>
-              <p className="text-sm text-muted-foreground">
-                When your applications are approved or rejected
-              </p>
-            </div>
-            <Badge>Enabled</Badge>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Payout Notifications</p>
-              <p className="text-sm text-muted-foreground">
-                When payments are processed
-              </p>
-            </div>
-            <Badge>Enabled</Badge>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Weekly Summary</p>
-              <p className="text-sm text-muted-foreground">
-                Weekly performance summary email
-              </p>
-            </div>
-            <Badge variant="outline">Disabled</Badge>
-          </div>
-        </CardContent>
-      </Card>
+      <NotificationPreferencesCard userId={currentUser.id} />
 
       {/* Danger Zone */}
       <Card className="border-destructive/50">

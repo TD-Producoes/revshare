@@ -20,6 +20,7 @@ import {
   Search,
   Settings,
   CreditCard,
+  Bell,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const creatorNavItems: NavItem[] = [
   { title: "Projects", href: "/creator/projects", icon: FolderKanban },
   { title: "Offers", href: "/creator/offers", icon: FileText },
   { title: "Payouts", href: "/creator/payouts", icon: CreditCard },
+  { title: "Notifications", href: "/creator/notifications", icon: Bell },
 ];
 
 const marketerNavItems: NavItem[] = [
@@ -42,6 +44,7 @@ const marketerNavItems: NavItem[] = [
   { title: "My Offers", href: "/marketer/offers", icon: FileText },
   { title: "Browse", href: "/marketer/browse", icon: Search },
   { title: "Earnings", href: "/marketer/earnings", icon: CreditCard },
+  { title: "Notifications", href: "/marketer/notifications", icon: Bell },
 ];
 
 function NavLink({

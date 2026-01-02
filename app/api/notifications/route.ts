@@ -7,6 +7,8 @@ const querySchema = z.object({
   userId: z.string().min(1),
   status: z.enum(["UNREAD", "READ", "ARCHIVED"]).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(50).optional(),
 });
 
 export async function GET(request: Request) {
@@ -15,6 +17,8 @@ export async function GET(request: Request) {
     userId: searchParams.get("userId"),
     status: searchParams.get("status") ?? undefined,
     limit: searchParams.get("limit") ?? undefined,
+    page: searchParams.get("page") ?? undefined,
+    pageSize: searchParams.get("pageSize") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -24,20 +28,33 @@ export async function GET(request: Request) {
     );
   }
 
-  const { userId, status, limit } = parsed.data;
+  const { userId, status, limit, page, pageSize } = parsed.data;
+  const resolvedPageSize = pageSize ?? limit ?? 20;
+  const resolvedPage = page ?? 1;
 
-  const notifications = await prisma.notification.findMany({
-    where: {
-      userId,
-      ...(status ? { status } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit ?? 20,
+  const where = {
+    userId,
+    ...(status ? { status } : {}),
+  };
+
+  const [notifications, totalCount, unreadCount] = await Promise.all([
+    prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: resolvedPageSize,
+      skip: (resolvedPage - 1) * resolvedPageSize,
+    }),
+    prisma.notification.count({ where }),
+    prisma.notification.count({
+      where: { userId, status: "UNREAD" },
+    }),
+  ]);
+
+  return NextResponse.json({
+    data: notifications,
+    unreadCount,
+    totalCount,
+    page: resolvedPage,
+    pageSize: resolvedPageSize,
   });
-
-  const unreadCount = await prisma.notification.count({
-    where: { userId, status: "UNREAD" },
-  });
-
-  return NextResponse.json({ data: notifications, unreadCount });
 }

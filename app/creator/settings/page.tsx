@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { NotificationPreferencesCard } from "@/components/shared/notification-preferences-card";
 import { CheckCircle, CreditCard, ExternalLink, Plus } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -598,6 +599,8 @@ export default function SettingsPage() {
           </Dialog>
         </CardContent>
       </Card>
+
+      <NotificationPreferencesCard userId={currentUser.id} />
 
       {/* Project Currency */}
       <Card>
