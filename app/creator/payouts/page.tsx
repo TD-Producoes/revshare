@@ -70,6 +70,25 @@ function HeaderWithInfo({ label, help }: HeaderInfoProps) {
   );
 }
 
+type DateTimeAlign = "left" | "right";
+
+function renderDateTime(value?: string | Date | null, align: DateTimeAlign = "left") {
+  if (!value) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+  const date = new Date(value);
+  const alignClass = align === "right" ? "items-end text-right" : "items-start";
+
+  return (
+    <div className={`flex flex-col ${alignClass} leading-tight`}>
+      <span>{date.toLocaleDateString()}</span>
+      <span className="text-xs text-muted-foreground">
+        {date.toLocaleTimeString()}
+      </span>
+    </div>
+  );
+}
+
 export default function PayoutsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
@@ -654,13 +673,11 @@ export default function PayoutsPage() {
                                 <Badge className="bg-green-600 text-white">Paid</Badge>
                               )}
                             </TableCell>
-                            <TableCell className="text-right text-muted-foreground">
-                              {purchase.refundEligibleAt
-                                ? new Date(purchase.refundEligibleAt).toLocaleDateString()
-                                : "-"}
+                            <TableCell className="text-right">
+                              {renderDateTime(purchase.refundEligibleAt, "right")}
                             </TableCell>
-                            <TableCell className="text-right text-muted-foreground">
-                              {new Date(purchase.createdAt).toLocaleDateString()}
+                            <TableCell className="text-right">
+                              {renderDateTime(purchase.createdAt, "right")}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -703,8 +720,8 @@ export default function PayoutsPage() {
                   <TableBody>
                     {adjustments.map((adjustment) => (
                       <TableRow key={adjustment.id}>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(adjustment.createdAt).toLocaleDateString()}
+                        <TableCell>
+                          {renderDateTime(adjustment.createdAt)}
                         </TableCell>
                         <TableCell className="font-medium">
                           {adjustment.marketerName}
@@ -772,9 +789,7 @@ export default function PayoutsPage() {
                 <TableBody>
                   {payments.map((payment) => (
                     <TableRow key={payment.id}>
-                      <TableCell>
-                        {new Date(payment.createdAt).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{renderDateTime(payment.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         {payment.purchaseCount}
                       </TableCell>
