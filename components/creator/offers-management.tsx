@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -220,7 +221,7 @@ export function OffersManagement() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Contract Management</h1>
+        <h1 className="text-2xl font-bold">Applications</h1>
         <p className="text-muted-foreground">
           Review and manage affiliate applications for your projects.
         </p>
@@ -229,7 +230,7 @@ export function OffersManagement() {
       {/* Pending offers alert */}
       {pendingContracts.length > 0 && (
         <Card className="border-yellow-500/50 bg-yellow-500/5">
-          <CardContent className="py-4">
+          <CardContent>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-yellow-600" />
               <span className="font-medium">
@@ -237,6 +238,12 @@ export function OffersManagement() {
                 {pendingContracts.length !== 1 ? "s" : ""} require your review
               </span>
             </div>
+            <Link
+              href="/creator/marketers"
+              className="mt-2 inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Once approved, marketers will appear in Marketers →
+            </Link>
           </CardContent>
         </Card>
       )}
