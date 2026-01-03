@@ -30,6 +30,7 @@ import {
   Award,
   Calendar,
   ExternalLink,
+  EyeOff,
   Globe,
   MapPin,
   PieChart,
@@ -202,7 +203,7 @@ export default function MarketerProfilePage() {
     );
   }
 
-  if (error || !profile || !marketerId) {
+  if (error || !profile || !marketerId || !profile.user) {
     return (
       <main className="min-h-screen bg-background">
         <Navbar />
@@ -307,25 +308,40 @@ export default function MarketerProfilePage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>{profile.user.name}</BreadcrumbPage>
+                <BreadcrumbPage 
+                  className={!profile.user.name ? "blur-xs opacity-60" : ""}
+                >
+                  {profile.user.name ?? "Anonymous Marketer"}
+                </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
 
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
             <div className="flex gap-6 items-center">
-              <Avatar className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-sm border-2 border-primary/20">
-                {avatarUrl && (
-                  <AvatarImage src={avatarUrl} alt={profile.user.name} />
-                )}
-                <AvatarFallback className="rounded-2xl text-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-                  {getInitials(profile.user.name)}
-                </AvatarFallback>
-              </Avatar>
+              {!profile.user.name ? (
+                // Show spy icon for GHOST marketers
+                <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-muted border-2 border-border shadow-sm">
+                  <EyeOff className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
+                </div>
+              ) : (
+                <Avatar className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-sm border-2 border-primary/20">
+                  {avatarUrl && (
+                    <AvatarImage src={avatarUrl} alt={profile.user.name} />
+                  )}
+                  <AvatarFallback className="rounded-2xl text-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
+                    {getInitials(profile.user.name)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
               <div className="space-y-2">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                    {profile.user.name}
+                  <h1 
+                    className={`text-3xl md:text-4xl font-bold tracking-tight transition-all ${
+                      !profile.user.name ? "blur-xs opacity-60" : ""
+                    }`}
+                  >
+                    {profile.user.name ?? "Anonymous Marketer"}
                   </h1>
                   {xProfile?.verified && (
                     <Badge
@@ -412,7 +428,7 @@ export default function MarketerProfilePage() {
                 size="lg"
                 className="h-12 px-8 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-semibold text-base"
               >
-                Partner with {profile.user.name.split(" ")[0]}
+                Partner with {profile.user.name ? profile.user.name.split(" ")[0] : "this marketer"}
                 <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
               <p className="text-xs text-center text-muted-foreground">
@@ -831,7 +847,7 @@ export default function MarketerProfilePage() {
                 )}
 
                 <Button className="w-full h-11 rounded-xl shadow-md" size="lg">
-                  Partner with {profile.user.name.split(" ")[0]}
+                  Partner with {profile.user.name ? profile.user.name.split(" ")[0] : "this marketer"}
                 </Button>
               </CardContent>
             </Card>
@@ -927,9 +943,16 @@ export default function MarketerProfilePage() {
                             />
                           ))}
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          &ldquo;{testimonial.text}&rdquo;
-                        </p>
+                        {testimonial.text ? (
+                          <p className="text-sm text-muted-foreground mb-2">
+                            &ldquo;{testimonial.text}&rdquo;
+                          </p>
+                        ) : (
+                          // Show blurred dummy text for GHOST marketers
+                          <p className="text-sm text-muted-foreground mb-2 blur-xs opacity-60">
+                            &ldquo;This testimonial text is hidden to protect the marketer&apos;s identity.&rdquo;
+                          </p>
+                        )}
                         <p className="text-xs font-medium">
                           — {testimonial.creatorName}, {testimonial.projectName}
                         </p>

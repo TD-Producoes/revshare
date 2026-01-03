@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 export type RevenueDataPoint = {
   date: string;
@@ -9,27 +9,31 @@ export type RevenueDataPoint = {
 };
 
 export type PublicProjectStats = {
-  activeMarketers: number;
-  totalPurchases: number;
-  avgCommissionPercent: number | null;
-  avgPaidCommission: number | null;
-  totalRevenue: number;
-  affiliateRevenue: number;
-  mrr: number;
-  revenueTimeline: RevenueDataPoint[];
+  activeMarketers: number | null | -1; // -1 means hidden by visibility settings
+  totalPurchases: number | null | -1; // -1 means hidden by visibility settings
+  avgCommissionPercent: number | null | -1; // -1 means hidden by visibility settings
+  avgPaidCommission: number | null | -1; // -1 means hidden by visibility settings
+  totalRevenue: number | null | -1; // -1 means hidden by visibility settings
+  affiliateRevenue: number | null | -1; // -1 means hidden by visibility settings
+  mrr: number | null | -1; // -1 means hidden by visibility settings
+  revenueTimeline: RevenueDataPoint[] | null;
 };
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
-      id: true,
-      marketerCommissionPercent: true,
+      userId: true,
+      visibility: true,
+      showMrr: true,
+      showRevenue: true,
+      showStats: true,
+      showAvgCommission: true,
     },
   });
 
@@ -37,116 +41,123 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // Calculate date range for last 30 days
-  const now = new Date();
-  const thirtyDaysAgo = new Date(now);
+  // If project is PRIVATE, only owner can see stats
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  const isOwner = authUser?.id === project.userId;
+
+  if (project.visibility === "PRIVATE" && !isOwner) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Get active marketers count
+  const activeMarketers = await prisma.coupon.count({
+    where: {
+      projectId,
+      status: "ACTIVE",
+    },
+  });
+
+  // Get total purchases count
+  const purchaseCount = await prisma.purchase.count({
+    where: {
+      projectId,
+      status: "PAID",
+    },
+  });
+
+  // Get average commission percentage
+  const avgCommissionAgg = await prisma.coupon.aggregate({
+    where: {
+      projectId,
+      status: "ACTIVE",
+    },
+    _avg: {
+      commissionPercent: true,
+    },
+  });
+
+  const avgCommissionPercent = avgCommissionAgg._avg.commissionPercent || 0;
+
+  // Get average paid commission amount (in cents)
+  const avgPaidCommissionAgg = await prisma.purchase.aggregate({
+    where: {
+      projectId,
+      status: "PAID",
+    },
+    _avg: {
+      commissionAmount: true,
+    },
+  });
+
+  // Get revenue stats
+  const totalRevenueAgg = await prisma.purchase.aggregate({
+    where: {
+      projectId,
+      status: "PAID",
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  const affiliateRevenueAgg = await prisma.purchase.aggregate({
+    where: {
+      projectId,
+      status: "PAID",
+      couponId: { not: null },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  // Get MRR (approximate as last 30 days revenue)
+  const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [
-    activeMarketers,
-    purchaseCount,
-    avgCommission,
-    totalRevenueAgg,
-    affiliateRevenueAgg,
-    last30DaysRevenue,
-    purchases,
-    avgPaidCommissionAgg,
-  ] = await Promise.all([
-    // Count unique marketers with active coupons for this project
-    prisma.coupon
-      .groupBy({
-        by: ["marketerId"],
-        where: {
-          projectId,
-          status: "ACTIVE",
-        },
-      })
-      .then((groups) => groups.length),
+  const last30DaysRevenue = await prisma.purchase.aggregate({
+    where: {
+      projectId,
+      status: "PAID",
+      createdAt: { gte: thirtyDaysAgo },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
 
-    // Count total purchases
-    prisma.purchase.count({
-      where: { projectId },
-    }),
+  // Get revenue timeline (last 30 days)
+  const purchases = await prisma.purchase.findMany({
+    where: {
+      projectId,
+      status: "PAID",
+      createdAt: { gte: thirtyDaysAgo },
+    },
+    select: {
+      amount: true,
+      couponId: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
 
-    // Calculate average commission from coupons (or use project default)
-    prisma.coupon.aggregate({
-      where: {
-        projectId,
-        status: "ACTIVE",
-      },
-      _avg: {
-        commissionPercent: true,
-      },
-    }),
-
-    // Total revenue (all time)
-    prisma.purchase.aggregate({
-      where: { projectId },
-      _sum: { amount: true },
-    }),
-
-    // Affiliate revenue (purchases with coupons)
-    prisma.purchase.aggregate({
-      where: { projectId, couponId: { not: null } },
-      _sum: { amount: true },
-    }),
-
-    // Last 30 days revenue for MRR calculation
-    prisma.purchase.aggregate({
-      where: {
-        projectId,
-        createdAt: { gte: thirtyDaysAgo },
-      },
-      _sum: { amount: true },
-    }),
-
-    // All purchases for timeline (last 30 days)
-    prisma.purchase.findMany({
-      where: {
-        projectId,
-        createdAt: { gte: thirtyDaysAgo },
-      },
-      select: {
-        amount: true,
-        couponId: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-
-    // Average paid commission amount (from purchases with coupons)
-    prisma.purchase.aggregate({
-      where: {
-        projectId,
-        couponId: { not: null },
-        commissionAmount: { gt: 0 },
-      },
-      _avg: { commissionAmount: true },
-    }),
-  ]);
-
-  // Use average from coupons, or fall back to project default
-  const avgCommissionPercent =
-    avgCommission._avg.commissionPercent != null
-      ? Number(avgCommission._avg.commissionPercent) * 100
-      : Number(project.marketerCommissionPercent) * 100;
-
-  // Build daily revenue timeline
-  const dailyRevenue = new Map<
-    string,
-    { total: number; affiliate: number }
-  >();
-
-  // Initialize all days in range
-  for (let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) {
+  // Group purchases by day
+  const dailyRevenue = new Map<string, { total: number; affiliate: number }>();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
     const dateKey = d.toISOString().split("T")[0];
     dailyRevenue.set(dateKey, { total: 0, affiliate: 0 });
   }
 
-  // Aggregate purchases by day
   for (const purchase of purchases) {
     const dateKey = purchase.createdAt.toISOString().split("T")[0];
-    const existing = dailyRevenue.get(dateKey) ?? { total: 0, affiliate: 0 };
+    const existing = dailyRevenue.get(dateKey) || { total: 0, affiliate: 0 };
     existing.total += purchase.amount;
     if (purchase.couponId) {
       existing.affiliate += purchase.amount;
@@ -169,14 +180,29 @@ export async function GET(
       : null;
 
   const stats: PublicProjectStats = {
-    activeMarketers,
-    totalPurchases: purchaseCount,
-    avgCommissionPercent: Math.round(avgCommissionPercent),
-    avgPaidCommission,
-    totalRevenue: (totalRevenueAgg._sum.amount ?? 0) / 100,
-    affiliateRevenue: (affiliateRevenueAgg._sum.amount ?? 0) / 100,
-    mrr: (last30DaysRevenue._sum.amount ?? 0) / 100,
-    revenueTimeline,
+    // Return -1 for hidden stats (not owner and visibility setting is false)
+    // Return null for missing data (owner can see but no data exists)
+    // Return actual value when visible
+    activeMarketers: project.showStats || isOwner ? activeMarketers : -1,
+    totalPurchases: project.showStats || isOwner ? purchaseCount : -1,
+    avgCommissionPercent:
+      project.showAvgCommission || isOwner
+        ? Math.round(Number(avgCommissionPercent))
+        : -1,
+    avgPaidCommission: project.showStats || isOwner ? avgPaidCommission : -1,
+    totalRevenue:
+      project.showRevenue || isOwner
+        ? (totalRevenueAgg._sum.amount ?? 0) / 100
+        : -1,
+    affiliateRevenue:
+      project.showRevenue || isOwner
+        ? (affiliateRevenueAgg._sum.amount ?? 0) / 100
+        : -1,
+    mrr:
+      project.showMrr || isOwner
+        ? (last30DaysRevenue._sum.amount ?? 0) / 100
+        : -1,
+    revenueTimeline: project.showRevenue || isOwner ? revenueTimeline : null,
   };
 
   return NextResponse.json({ data: stats });

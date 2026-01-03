@@ -306,7 +306,7 @@ export type MarketerTestimonial = {
   projectId: string;
   projectName: string;
   rating: number;
-  text: string;
+  text: string | null; // null in GHOST mode to protect identity
   createdAt: string | Date;
 };
 

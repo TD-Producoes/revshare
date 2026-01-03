@@ -26,6 +26,10 @@ export type ApiProject = {
   logoUrl?: string | null;
   imageUrls?: string[] | null;
   createdAt?: string | null;
+  visibility?: "PUBLIC" | "GHOST" | "PRIVATE";
+  showMrr?: boolean;
+  showRevenue?: boolean;
+  showStats?: boolean;
 };
 
 export type ProjectStats = {
@@ -104,14 +108,14 @@ export type ProjectMetricsSnapshot = {
 };
 
 export type PublicProjectStats = {
-  activeMarketers: number;
-  totalPurchases: number;
+  activeMarketers: number | null;
+  totalPurchases: number | null;
   avgCommissionPercent: number | null;
   avgPaidCommission: number | null;
-  totalRevenue: number;
-  affiliateRevenue: number;
-  mrr: number;
-  revenueTimeline: RevenueDataPoint[];
+  totalRevenue: number | null;
+  affiliateRevenue: number | null;
+  mrr: number | null;
+  revenueTimeline: RevenueDataPoint[] | null;
 };
 
 export function useProjects(userId?: string | null) {
@@ -215,9 +219,7 @@ export function useProjectMetrics(id?: string | null, days = 30) {
           timeline: [],
         };
       }
-      const response = await fetch(
-        `/api/projects/${id}/metrics?days=${days}`,
-      );
+      const response = await fetch(`/api/projects/${id}/metrics?days=${days}`);
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to fetch project metrics.");
@@ -308,7 +310,13 @@ export function useProjectProfile(id?: string | null) {
           }
         } catch {
           // User fetch failed, use embedded user data
-          user = project.user;
+          if (project.user) {
+            user = {
+              id: project.user.id,
+              name: project.user.name ?? "",
+              metadata: project.user.metadata,
+            };
+          }
         }
       }
 
@@ -325,8 +333,8 @@ export type SearchProject = {
   logoUrl: string | null;
   country: string | null;
   website: string | null;
-  revenue: number;
-  marketers: number;
+  revenue: number | null;
+  marketers: number | null;
   commission: number;
 };
 

@@ -20,6 +20,8 @@ import { MultiImageUpload } from "@/components/ui/multi-image-upload";
 import { FeaturesInput } from "@/components/ui/features-input";
 import { countries } from "@/lib/data/countries";
 import { projectCategories } from "@/lib/data/categories";
+import { VisibilitySettings } from "@/components/shared/visibility-settings";
+import { VisibilityMode } from "@prisma/client";
 
 function formatDateInput(value: string | Date | null | undefined): string {
   if (!value) return "";
@@ -47,6 +49,11 @@ export function ProjectSettingsTab({
   logoUrl,
   imageUrls,
   refundWindowDays,
+  visibility,
+  showMrr,
+  showRevenue,
+  showStats,
+  showAvgCommission,
 }: {
   projectId: string;
   creatorId: string;
@@ -63,6 +70,11 @@ export function ProjectSettingsTab({
   logoUrl?: string | null;
   imageUrls?: string[] | null;
   refundWindowDays?: number | null;
+  visibility?: "PUBLIC" | "GHOST" | "PRIVATE" | null;
+  showMrr?: boolean;
+  showRevenue?: boolean;
+  showStats?: boolean;
+  showAvgCommission?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
@@ -179,6 +191,37 @@ export function ProjectSettingsTab({
       setError(message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleVisibilitySave = async (data: {
+    visibility: "PUBLIC" | "GHOST" | "PRIVATE";
+    showMrr?: boolean;
+    showRevenue?: boolean;
+    showStats?: boolean;
+  }) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: creatorId,
+          ...data,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update project visibility");
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["projects", projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["projects", creatorId ?? "all"],
+        }),
+      ]);
+    } catch (err) {
+      throw err;
     }
   };
 
@@ -418,6 +461,19 @@ export function ProjectSettingsTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Visibility & Privacy Card */}
+      <div className="md:col-span-2">
+        <VisibilitySettings
+          initialVisibility={(visibility as VisibilityMode) || "PUBLIC"}
+          initialShowMrr={showMrr}
+          initialShowRevenue={showRevenue}
+          initialShowStats={showStats}
+          initialShowAvgCommission={showAvgCommission}
+          onSave={handleVisibilitySave}
+          type="project"
+        />
+      </div>
 
       {/* Save Button - Full Width */}
       <div className="md:col-span-2">

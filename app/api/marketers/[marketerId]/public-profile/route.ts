@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { redactMarketerData } from "@/lib/services/visibility";
 
 export type PublicMarketerProfile = {
   user: {
     id: string;
-    name: string;
-    email: string;
+    name: string | null; // null in GHOST mode
+    email: string | null; // null in GHOST mode
     createdAt: string;
     metadata: unknown;
   };
@@ -79,6 +81,10 @@ export async function GET(
   { params }: { params: Promise<{ marketerId: string }> }
 ) {
   const { marketerId } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
   // Fetch user
   const user = await prisma.user.findUnique({
@@ -90,10 +96,16 @@ export async function GET(
       role: true,
       createdAt: true,
       metadata: true,
+      visibility: true,
     },
   });
 
   if (!user || user.role !== "marketer") {
+    return NextResponse.json({ error: "Marketer not found" }, { status: 404 });
+  }
+
+  const isSelf = authUser?.id === user.id;
+  if (user.visibility === "PRIVATE" && !isSelf) {
     return NextResponse.json({ error: "Marketer not found" }, { status: 404 });
   }
 
@@ -481,13 +493,30 @@ export async function GET(
     totalCommissionOwed: pm.totalCommissionOwed / 100,
   }));
 
+  // Redact user data based on visibility settings before building profile
+  const userForProfile = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt.toISOString(),
+    metadata: user.metadata,
+    visibility: user.visibility,
+  };
+
+  const redactedUser = redactMarketerData(userForProfile, isSelf);
+
+  // If user is PRIVATE and not self, redactedUser will be null - already handled above
+  if (!redactedUser) {
+    return NextResponse.json({ error: "Marketer not found" }, { status: 404 });
+  }
+
   const profile: PublicMarketerProfile = {
     user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      createdAt: user.createdAt.toISOString(),
-      metadata: user.metadata,
+      id: redactedUser.id,
+      name: redactedUser.name ?? null, // Can be null in GHOST mode
+      email: redactedUser.email ?? null, // Can be null in GHOST mode
+      createdAt: redactedUser.createdAt,
+      metadata: redactedUser.metadata,
     },
     stats: {
       totalEarnings,

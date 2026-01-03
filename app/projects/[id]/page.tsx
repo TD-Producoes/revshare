@@ -134,11 +134,37 @@ export default function ProjectProfilePage({
   const commission = formatCommission(project.marketerCommissionPercent);
   const features = project.features ?? [];
   const images = project.imageUrls ?? [];
-  const hasStats =
-    stats && (stats.activeMarketers > 0 || stats.totalPurchases > 0);
-  const hasRevenueData = stats && stats.totalRevenue > 0;
+  
+  // Helper function to check if a value is hidden (-1 means hidden by visibility settings)
+  const isHidden = (value: number | null | -1 | undefined): boolean => {
+    return value === -1;
+  };
+  
+  // Helper function to get display value (return null if hidden, otherwise return the value)
+  const getDisplayValue = (value: number | null | -1 | undefined): number | null => {
+    if (isHidden(value)) return null;
+    return value ?? null;
+  };
+  
+  // Show stats section if stats exist (even if values are hidden, we'll blur xsem)
+  const hasStats = stats && (
+    stats.activeMarketers !== undefined || 
+    stats.totalPurchases !== undefined || 
+    stats.avgCommissionPercent !== undefined
+  );
+  
+  // Show revenue section if MRR is enabled (showMrr is true) OR if there's actual revenue data
+  // This ensures MRR section is always shown when showMrr is true, even if other values are hidden
+  const shouldShowRevenueSection = 
+    stats && (
+      project.showMrr || // MRR is enabled, so show the section
+      (stats.totalRevenue !== -1 && (stats.totalRevenue ?? 0) > 0) ||
+      (stats.affiliateRevenue !== -1 && (stats.affiliateRevenue ?? 0) > 0) ||
+      (stats.mrr !== -1 && (stats.mrr ?? 0) > 0)
+    );
+  
   const hasChartData =
-    stats && stats.revenueTimeline.some((d) => d.total > 0);
+    stats && stats.revenueTimeline && stats.revenueTimeline.some((d) => d.total > 0);
   const currency = project.currency?.toUpperCase() || "USD";
 
   return (
@@ -170,7 +196,11 @@ export default function ProjectProfilePage({
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>{project.name}</BreadcrumbPage>
+                <BreadcrumbPage 
+                  className={project.name === "Anonymous Project" ? "blur-xs opacity-60" : ""}
+                >
+                  {project.name}
+                </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -186,7 +216,11 @@ export default function ProjectProfilePage({
               </Avatar>
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                  <h1 
+                    className={`text-3xl md:text-4xl font-bold tracking-tight transition-all ${
+                      project.name === "Anonymous Project" ? "blur-xs opacity-60" : ""
+                    }`}
+                  >
                     {project.name}
                   </h1>
                   {project.creatorStripeAccountId && (
@@ -264,38 +298,75 @@ export default function ProjectProfilePage({
           {/* Left Column: Main Content */}
           <div className="space-y-10">
             {/* Performance Stats & Chart */}
-            {hasRevenueData && stats && (
+            {shouldShowRevenueSection && stats && (
               <div className="space-y-5">
                 {/* Stats Grid - Clean minimal cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {/* Total Revenue Card */}
                   <div className="rounded-lg border border-border bg-card p-4">
-                    <div className="text-2xl font-semibold mb-1">
-                      {formatCurrency(stats.totalRevenue, currency)}
+                    <div 
+                      className={`text-2xl font-semibold mb-1 transition-all ${
+                        isHidden(stats.totalRevenue) 
+                          ? "blur-xs opacity-60" 
+                          : ""
+                      }`}
+                    >
+                      {getDisplayValue(stats.totalRevenue) != null
+                        ? formatCurrency(getDisplayValue(stats.totalRevenue) ?? 0, currency)
+                        : "—"}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Total revenue
                     </div>
                   </div>
+                  
+                  {/* MRR Card - Always shown if showMrr is true */}
                   <div className="rounded-lg border border-border bg-card p-4">
-                    <div className="text-2xl font-semibold mb-1">
-                      {formatCurrency(stats.mrr, currency)}
+                    <div 
+                      className={`text-2xl font-semibold mb-1 transition-all ${
+                        isHidden(stats.mrr) 
+                          ? "blur-xs opacity-60" 
+                          : ""
+                      }`}
+                    >
+                      {getDisplayValue(stats.mrr) != null
+                        ? formatCurrency(getDisplayValue(stats.mrr) ?? 0, currency)
+                        : "—"}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       MRR (estimated)
                     </div>
                   </div>
+                  
+                  {/* Affiliate Revenue Card */}
                   <div className="rounded-lg border border-border bg-card p-4">
-                    <div className="text-2xl font-semibold mb-1">
-                      {formatCurrency(stats.affiliateRevenue, currency)}
+                    <div 
+                      className={`text-2xl font-semibold mb-1 transition-all ${
+                        isHidden(stats.affiliateRevenue) 
+                          ? "blur-xs opacity-60" 
+                          : ""
+                      }`}
+                    >
+                      {getDisplayValue(stats.affiliateRevenue) != null
+                        ? formatCurrency(getDisplayValue(stats.affiliateRevenue) ?? 0, currency)
+                        : "—"}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Affiliate revenue
                     </div>
                   </div>
+                  
+                  {/* Avg Commission Card */}
                   <div className="rounded-lg border border-border bg-card p-4">
-                    <div className="text-2xl font-semibold mb-1">
-                      {stats.avgPaidCommission != null
-                        ? formatCurrency(stats.avgPaidCommission, currency)
+                    <div 
+                      className={`text-2xl font-semibold mb-1 transition-all ${
+                        isHidden(stats.avgPaidCommission) 
+                          ? "blur-xs opacity-60" 
+                          : ""
+                      }`}
+                    >
+                      {getDisplayValue(stats.avgPaidCommission) != null
+                        ? formatCurrency(getDisplayValue(stats.avgPaidCommission) ?? 0, currency)
                         : "—"}
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -303,8 +374,8 @@ export default function ProjectProfilePage({
                     </div>
                   </div>
                 </div>
-                {/* Revenue Chart */}
-                {hasChartData && (
+                {/* Revenue Chart - Only show if revenue timeline is not hidden */}
+                {hasChartData && stats.revenueTimeline !== null && (
                   <div className="rounded-lg border border-border bg-card p-5">
                     <div className="flex items-center justify-between mb-4">
                       <p className="text-sm font-medium">
@@ -325,7 +396,7 @@ export default function ProjectProfilePage({
                     </div>
                     <div className="h-[200px]">
                       <RevenueChart
-                        data={stats.revenueTimeline}
+                        data={stats.revenueTimeline ?? []}
                         currency={currency}
                       />
                     </div>
@@ -380,23 +451,39 @@ export default function ProjectProfilePage({
                 {hasStats && stats && (
                   <div className="grid grid-cols-3 gap-4 pb-4 border-b border-border/40">
                     <div>
-                      <div className="text-2xl font-semibold">
-                        {stats.activeMarketers}
+                      <div 
+                        className={`text-2xl font-semibold transition-all ${
+                          isHidden(stats.activeMarketers) ? "blur-xs opacity-60" : ""
+                        }`}
+                      >
+                        {getDisplayValue(stats.activeMarketers) != null
+                          ? getDisplayValue(stats.activeMarketers)
+                          : "—"}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Partners
                       </div>
                     </div>
                     <div>
-                      <div className="text-2xl font-semibold">
-                        {stats.totalPurchases}
+                      <div 
+                        className={`text-2xl font-semibold transition-all ${
+                          isHidden(stats.totalPurchases) ? "blur-xs opacity-60" : ""
+                        }`}
+                      >
+                        {getDisplayValue(stats.totalPurchases) != null
+                          ? getDisplayValue(stats.totalPurchases)
+                          : "—"}
                       </div>
                       <div className="text-xs text-muted-foreground">Sales</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-semibold">
-                        {stats.avgCommissionPercent != null
-                          ? `${stats.avgCommissionPercent}%`
+                      <div 
+                        className={`text-2xl font-semibold transition-all ${
+                          isHidden(stats.avgCommissionPercent) ? "blur-xs opacity-60" : ""
+                        }`}
+                      >
+                        {getDisplayValue(stats.avgCommissionPercent) != null
+                          ? `${getDisplayValue(stats.avgCommissionPercent)}%`
                           : commission}
                       </div>
                       <div className="text-xs text-muted-foreground">

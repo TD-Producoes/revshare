@@ -34,7 +34,8 @@ export async function GET(
       onboardingStatus: true,
       onboardingData: true,
       metadata: true,
-    },
+      visibility: true,
+    } as any,
   });
 
   if (!user) {
@@ -67,6 +68,11 @@ const updateMetadataSchema = z.object({
     .optional(),
 });
 
+const updateSchema = z.object({
+  visibility: z.enum(["PUBLIC", "GHOST", "PRIVATE"]).optional(),
+  metadata: updateMetadataSchema.optional(),
+});
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ userId: string }> }
@@ -74,7 +80,7 @@ export async function PATCH(
   const { userId } = await params;
 
   const body = await request.json();
-  const parsed = updateMetadataSchema.safeParse(body);
+  const parsed = updateSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -92,76 +98,79 @@ export async function PATCH(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const { visibility, metadata: metadataUpdate } = parsed.data;
   let metadata = parseUserMetadata(user.metadata);
-  const { bio, location, website, specialties, focusArea, socialMedia } =
-    parsed.data;
 
-  // Update basic profile fields
-  if (bio !== undefined) {
-    metadata = { ...metadata, bio: bio || undefined };
-  }
-  if (location !== undefined) {
-    metadata = { ...metadata, location: location || undefined };
-  }
-  if (website !== undefined) {
-    metadata = { ...metadata, website: website || undefined };
-  }
-  if (specialties !== undefined) {
-    metadata = { ...metadata, specialties: specialties || undefined };
-  }
-  if (focusArea !== undefined) {
-    metadata = { ...metadata, focusArea: focusArea || undefined };
-  }
+  if (metadataUpdate) {
+    const { bio, location, website, specialties, focusArea, socialMedia } = metadataUpdate;
 
-  // Update social media profiles
-  if (socialMedia) {
-    const platforms: SocialMediaPlatform[] = [
-      "x",
-      "linkedin",
-      "github",
-      "youtube",
-      "instagram",
-    ];
+    // Update basic profile fields
+    if (bio !== undefined) {
+      metadata = { ...metadata, bio: bio || undefined };
+    }
+    if (location !== undefined) {
+      metadata = { ...metadata, location: location || undefined };
+    }
+    if (website !== undefined) {
+      metadata = { ...metadata, website: website || undefined };
+    }
+    if (specialties !== undefined) {
+      metadata = { ...metadata, specialties: specialties || undefined };
+    }
+    if (focusArea !== undefined) {
+      metadata = { ...metadata, focusArea: focusArea || undefined };
+    }
 
-    for (const platform of platforms) {
-      const profileData = socialMedia[platform];
+    // Update social media profiles
+    if (socialMedia) {
+      const platforms: SocialMediaPlatform[] = [
+        "x",
+        "linkedin",
+        "github",
+        "youtube",
+        "instagram",
+      ];
 
-      if (profileData === null) {
-        // Remove the profile
-        metadata = removeSocialMediaProfile(metadata, platform);
-      } else if (profileData?.handle) {
-        // Validate handle
-        if (!isValidHandle(profileData.handle, platform)) {
-          return NextResponse.json(
-            { error: `Invalid ${platform} handle format` },
-            { status: 400 }
+      for (const platform of platforms) {
+        const profileData = socialMedia[platform];
+
+        if (profileData === null) {
+          // Remove the profile
+          metadata = removeSocialMediaProfile(metadata, platform);
+        } else if (profileData?.handle) {
+          // Validate handle
+          if (!isValidHandle(profileData.handle, platform)) {
+            return NextResponse.json(
+              { error: `Invalid ${platform} handle format` },
+              { status: 400 }
+            );
+          }
+
+          // Fetch profile data from social media platform
+          const fetchResult = await fetchSocialMediaProfile(
+            platform,
+            profileData.handle
           );
-        }
 
-        // Fetch profile data from social media platform
-        const fetchResult = await fetchSocialMediaProfile(
-          platform,
-          profileData.handle
-        );
-
-        if (fetchResult.success && fetchResult.data) {
-          // Use fetched data merged with any provided data
-          const storageProfile = fetchedProfileToStorage(fetchResult.data);
-          metadata = setSocialMediaProfile(metadata, platform, {
-            ...storageProfile,
-            // Allow overriding with provided data if API didn't return it
-            followerCount:
-              storageProfile.followerCount ?? profileData.followerCount,
-            verified: storageProfile.verified ?? profileData.verified,
-          });
-        } else {
-          // If fetch failed, still save the handle without additional data
-          metadata = setSocialMediaProfile(metadata, platform, {
-            handle: profileData.handle.replace(/^@/, ""),
-            followerCount: profileData.followerCount,
-            verified: profileData.verified,
-            lastUpdated: new Date().toISOString(),
-          });
+          if (fetchResult.success && fetchResult.data) {
+            // Use fetched data merged with any provided data
+            const storageProfile = fetchedProfileToStorage(fetchResult.data);
+            metadata = setSocialMediaProfile(metadata, platform, {
+              ...storageProfile,
+              // Allow overriding with provided data if API didn't return it
+              followerCount:
+                storageProfile.followerCount ?? profileData.followerCount,
+              verified: storageProfile.verified ?? profileData.verified,
+            });
+          } else {
+            // If fetch failed, still save the handle without additional data
+            metadata = setSocialMediaProfile(metadata, platform, {
+              handle: profileData.handle.replace(/^@/, ""),
+              followerCount: profileData.followerCount,
+              verified: profileData.verified,
+              lastUpdated: new Date().toISOString(),
+            });
+          }
         }
       }
     }
@@ -169,7 +178,10 @@ export async function PATCH(
 
   const updated = await prisma.user.update({
     where: { id: userId },
-    data: { metadata: metadata as Prisma.InputJsonValue },
+    data: { 
+      metadata: metadata as Prisma.InputJsonValue,
+      ...(visibility ? { visibility } : {}),
+    },
     select: {
       id: true,
       role: true,
@@ -181,7 +193,8 @@ export async function PATCH(
       onboardingStatus: true,
       onboardingData: true,
       metadata: true,
-    },
+      visibility: true,
+    } as any,
   });
 
   return NextResponse.json({ data: updated });

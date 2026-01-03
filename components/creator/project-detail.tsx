@@ -1,30 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useProjects, useEvents } from "@/lib/data/store";
-import { getRevenueTimeline } from "@/lib/data/metrics";
+import { ProjectActivityTab } from "@/components/creator/project-tabs/activity-tab";
+import { ProjectCouponsTab } from "@/components/creator/project-tabs/coupons-tab";
+import { ProjectMarketersTab } from "@/components/creator/project-tabs/marketers-tab";
+import { ProjectMetricsTab } from "@/components/creator/project-tabs/metrics-tab";
+import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-tab";
+import { ProjectSettingsTab } from "@/components/creator/project-tabs/settings-tab";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import { Project } from "@/lib/data/types";
 import {
-  useProject,
-  useProjectMetrics,
-  useProjectPurchases,
-} from "@/lib/hooks/projects";
-import { useProjectCoupons, useProjectCouponTemplates } from "@/lib/hooks/coupons";
-import { useAuthUserId } from "@/lib/hooks/auth";
-import { useUser } from "@/lib/hooks/users";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -43,29 +34,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, MoreHorizontal } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-tab";
-import { ProjectMetricsTab } from "@/components/creator/project-tabs/metrics-tab";
-import { ProjectCouponsTab } from "@/components/creator/project-tabs/coupons-tab";
-import { ProjectMarketersTab } from "@/components/creator/project-tabs/marketers-tab";
-import { ProjectActivityTab } from "@/components/creator/project-tabs/activity-tab";
-import { ProjectSettingsTab } from "@/components/creator/project-tabs/settings-tab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getRevenueTimeline } from "@/lib/data/metrics";
+import { useEvents, useProjects } from "@/lib/data/store";
+import { Project } from "@/lib/data/types";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useProjectCoupons, useProjectCouponTemplates } from "@/lib/hooks/coupons";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  useProject,
+  useProjectMetrics,
+  useProjectPurchases,
+} from "@/lib/hooks/projects";
+import { useUser } from "@/lib/hooks/users";
+import { cn } from "@/lib/utils";
+import { VisibilityMode } from "@prisma/client";
+import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -633,6 +619,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                   ? apiProject.refundWindowDays
                   : null
               }
+              visibility={apiProject?.visibility as VisibilityMode}
+              showMrr={apiProject?.showMrr}
+              showRevenue={apiProject?.showRevenue}
+              showStats={apiProject?.showStats}
+              showAvgCommission={apiProject?.showAvgCommission}
             />
           ) : null}
         </TabsContent>

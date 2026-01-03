@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { redactProjectData } from "@/lib/services/visibility";
 
 const updateSchema = z
   .object({
@@ -24,6 +26,11 @@ const updateSchema = z
     logoUrl: z.string().url().optional().nullable(),
     imageUrls: z.array(z.string().url()).max(6).optional(),
     refundWindowDays: z.number().int().min(0).max(3650).optional(),
+    visibility: z.enum(["PUBLIC", "GHOST", "PRIVATE"]).optional(),
+    showMrr: z.boolean().optional(),
+    showRevenue: z.boolean().optional(),
+    showStats: z.boolean().optional(),
+    showAvgCommission: z.boolean().optional(),
   })
   .refine(
     (data) =>
@@ -39,17 +46,26 @@ const updateSchema = z
       data.features !== undefined ||
       data.logoUrl !== undefined ||
       data.imageUrls !== undefined ||
-      data.refundWindowDays !== undefined,
+      data.refundWindowDays !== undefined ||
+      data.visibility !== undefined ||
+      data.showMrr !== undefined ||
+      data.showRevenue !== undefined ||
+      data.showStats !== undefined ||
+      data.showAvgCommission !== undefined,
     {
       message: "At least one field must be provided",
-    },
+    }
   );
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -72,11 +88,15 @@ export async function GET(
       logoUrl: true,
       imageUrls: true,
       createdAt: true,
+      visibility: true,
+      showMrr: true,
+      showRevenue: true,
+      showStats: true,
+      showAvgCommission: true,
       user: {
         select: {
           id: true,
           name: true,
-          // metadata: true, // Will be enabled after migration
         },
       },
     },
@@ -86,18 +106,25 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ data: project });
+  const isOwner = authUser?.id === project.userId;
+  if (project.visibility === "PRIVATE" && !isOwner) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  const redacted = redactProjectData(project, isOwner);
+
+  return NextResponse.json({ data: redacted });
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const parsed = updateSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -127,7 +154,7 @@ export async function PATCH(
   if (nextMarketerPercent + platformPercent > 100) {
     return NextResponse.json(
       { error: "Combined commission percent cannot exceed 100%" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -139,18 +166,15 @@ export async function PATCH(
         ? { description: payload.description }
         : {}),
       ...(payload.category ? { category: payload.category } : {}),
-      ...(payload.currency
-        ? { currency: payload.currency.toUpperCase() }
-        : {}),
+      ...(payload.currency ? { currency: payload.currency.toUpperCase() } : {}),
       ...(payload.refundWindowDays !== undefined
         ? { refundWindowDays: payload.refundWindowDays }
         : {}),
       ...(payload.marketerCommissionPercent !== undefined
         ? {
-            marketerCommissionPercent: (
-              payload.marketerCommissionPercent > 1
-                ? payload.marketerCommissionPercent / 100
-                : payload.marketerCommissionPercent
+            marketerCommissionPercent: (payload.marketerCommissionPercent > 1
+              ? payload.marketerCommissionPercent / 100
+              : payload.marketerCommissionPercent
             ).toString(),
           }
         : {}),
@@ -171,6 +195,19 @@ export async function PATCH(
       ...(payload.imageUrls !== undefined
         ? { imageUrls: payload.imageUrls }
         : {}),
+      ...(payload.visibility !== undefined
+        ? { visibility: payload.visibility }
+        : {}),
+      ...(payload.showMrr !== undefined ? { showMrr: payload.showMrr } : {}),
+      ...(payload.showRevenue !== undefined
+        ? { showRevenue: payload.showRevenue }
+        : {}),
+      ...(payload.showStats !== undefined
+        ? { showStats: payload.showStats }
+        : {}),
+      ...(payload.showAvgCommission !== undefined
+        ? { showAvgCommission: payload.showAvgCommission }
+        : {}),
     },
     select: {
       id: true,
@@ -187,6 +224,11 @@ export async function PATCH(
       features: true,
       logoUrl: true,
       imageUrls: true,
+      visibility: true,
+      showMrr: true,
+      showRevenue: true,
+      showStats: true,
+      showAvgCommission: true,
     },
   });
 
