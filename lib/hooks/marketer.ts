@@ -210,6 +210,7 @@ export type PublicMarketerProfile = {
   }>;
   recentCommissions: Array<{
     id: string;
+    projectId: string;
     project: string;
     amount: number;
     date: string;
@@ -243,11 +244,11 @@ export type PublicMarketerProfile = {
     projectMetrics: Array<{
       projectId: string;
       projectName: string;
-      totalProjectRevenue: number;
-      totalAffiliateRevenue: number;
-      totalCommissionOwed: number;
-      totalPurchases: number;
-      totalCustomers: number;
+      totalProjectRevenue: number | -1; // -1 means hidden by visibility settings
+      totalAffiliateRevenue: number | -1; // -1 means hidden by visibility settings
+      totalCommissionOwed: number | -1; // -1 means hidden by visibility settings
+      totalPurchases: number | -1; // -1 means hidden by visibility settings
+      totalCustomers: number | -1; // -1 means hidden by visibility settings
     }>;
   };
 };

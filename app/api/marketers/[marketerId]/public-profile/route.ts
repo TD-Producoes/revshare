@@ -37,6 +37,7 @@ export type PublicMarketerProfile = {
   }>;
   recentCommissions: Array<{
     id: string;
+    projectId: string;
     project: string;
     amount: number;
     date: string;
@@ -70,11 +71,11 @@ export type PublicMarketerProfile = {
     projectMetrics: Array<{
       projectId: string;
       projectName: string;
-      totalProjectRevenue: number;
-      totalAffiliateRevenue: number;
-      totalCommissionOwed: number;
-      totalPurchases: number;
-      totalCustomers: number;
+      totalProjectRevenue: number | -1; // -1 means hidden by visibility settings
+      totalAffiliateRevenue: number | -1; // -1 means hidden by visibility settings
+      totalCommissionOwed: number | -1; // -1 means hidden by visibility settings
+      totalPurchases: number | -1; // -1 means hidden by visibility settings
+      totalCustomers: number | -1; // -1 means hidden by visibility settings
     }>;
   };
 };
@@ -390,6 +391,7 @@ export async function GET(
     const project = projectsList.find((proj) => proj.id === purchase.projectId);
     return {
       id: purchase.id,
+      projectId: purchase.projectId,
       project: project?.name ?? "Unknown",
       amount: purchase.commissionAmount / 100,
       date: purchase.createdAt.toISOString(),
@@ -551,13 +553,52 @@ export async function GET(
     projectMetricsMap.set(snapshot.projectId, existing);
   }
 
-  // Convert from cents to dollars and build array
-  const projectMetrics = Array.from(projectMetricsMap.values()).map((pm) => ({
-    ...pm,
-    totalProjectRevenue: pm.totalProjectRevenue / 100,
-    totalAffiliateRevenue: pm.totalAffiliateRevenue / 100,
-    totalCommissionOwed: pm.totalCommissionOwed / 100,
-  }));
+  // Convert from cents to dollars and build array, respecting visibility
+  const projectMetrics = Array.from(projectMetricsMap.values()).map((pm) => {
+    // Find the project to check visibility settings
+    const project = projects.find((p) => p.id === pm.projectId);
+    if (!project) {
+      // If project not found, return -1 for all values
+      return {
+        ...pm,
+        totalProjectRevenue: -1,
+        totalAffiliateRevenue: -1,
+        totalCommissionOwed: -1,
+        totalPurchases: -1,
+        totalCustomers: -1,
+      };
+    }
+
+    // Check if the authenticated user is the project owner or has a contract
+    const isProjectOwner = authUser?.id === project.userId;
+    const hasProjectContract = userContractMap.get(project.id) ?? false;
+    const hasProjectAccess = isProjectOwner || hasProjectContract;
+
+    // Determine if stats should be hidden based on visibility settings
+    const shouldHideRevenue =
+      !project.showRevenue &&
+      !hasProjectAccess &&
+      project.visibility !== "PUBLIC";
+    const shouldHideStats =
+      !project.showStats &&
+      !hasProjectAccess &&
+      project.visibility !== "PUBLIC";
+
+    return {
+      ...pm,
+      totalProjectRevenue: shouldHideRevenue
+        ? -1
+        : pm.totalProjectRevenue / 100,
+      totalAffiliateRevenue: shouldHideRevenue
+        ? -1
+        : pm.totalAffiliateRevenue / 100,
+      totalCommissionOwed: shouldHideRevenue
+        ? -1
+        : pm.totalCommissionOwed / 100,
+      totalPurchases: shouldHideStats ? -1 : pm.totalPurchases,
+      totalCustomers: shouldHideStats ? -1 : pm.totalCustomers,
+    };
+  });
 
   // Redact user data based on visibility settings before building profile
   const userForProfile = {

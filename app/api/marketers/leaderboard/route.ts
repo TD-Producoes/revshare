@@ -40,7 +40,7 @@ export async function GET() {
     marketers.map(async (marketer) => {
       // Redact marketer data based on visibility (no self context for public leaderboard)
       const redacted = redactMarketerData(marketer, false);
-      
+
       // Filter out PRIVATE marketers
       if (!redacted) {
         return null;
@@ -71,8 +71,10 @@ export async function GET() {
       const activeProjectIds = new Set(activeContracts.map((c) => c.projectId));
 
       // Calculate total revenue and commission
-      const totalRevenue = purchases.reduce((sum, p) => sum + p.amount, 0) / 100; // Convert cents to dollars
-      const totalCommission = purchases.reduce((sum, p) => sum + p.commissionAmount, 0) / 100;
+      const totalRevenue =
+        purchases.reduce((sum, p) => sum + p.amount, 0) / 100; // Convert cents to dollars
+      const totalCommission =
+        purchases.reduce((sum, p) => sum + p.commissionAmount, 0) / 100;
 
       // Calculate growth (compare last 30 days vs previous 30 days)
       const recentRevenue = purchases
@@ -80,13 +82,14 @@ export async function GET() {
         .reduce((sum, p) => sum + p.amount, 0);
       const previousRevenue = purchases
         .filter(
-          (p) => p.createdAt >= sixtyDaysAgo && p.createdAt < thirtyDaysAgo,
+          (p) => p.createdAt >= sixtyDaysAgo && p.createdAt < thirtyDaysAgo
         )
         .reduce((sum, p) => sum + p.amount, 0);
 
       let trend = "0%";
       if (previousRevenue > 0) {
-        const growthPercent = ((recentRevenue - previousRevenue) / previousRevenue) * 100;
+        const growthPercent =
+          ((recentRevenue - previousRevenue) / previousRevenue) * 100;
         trend = `${growthPercent >= 0 ? "+" : ""}${Math.round(growthPercent)}%`;
       } else if (recentRevenue > 0) {
         trend = "+100%";
@@ -103,10 +106,7 @@ export async function GET() {
         }
 
         // Get X profile for avatar (only if not redacted in GHOST mode)
-        if (
-          metadata.socialMedia &&
-          typeof metadata.socialMedia === "object"
-        ) {
+        if (metadata.socialMedia && typeof metadata.socialMedia === "object") {
           const socialMedia = metadata.socialMedia as Record<string, unknown>;
           if (socialMedia.x && typeof socialMedia.x === "object") {
             const xProfile = socialMedia.x as Record<string, unknown>;
@@ -128,7 +128,9 @@ export async function GET() {
             .join("")
             .toUpperCase()
             .slice(0, 2);
-          image = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=6366F1&color=fff`;
+          image = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            initials
+          )}&background=6366F1&color=fff`;
         } else {
           // Anonymous avatar for GHOST mode
           image = `https://ui-avatars.com/api/?name=Anonymous&background=6366F1&color=fff`;
@@ -145,7 +147,7 @@ export async function GET() {
         trend,
         image,
       };
-    }),
+    })
   );
 
   // Sort by revenue (descending) and return top marketers
@@ -157,4 +159,3 @@ export async function GET() {
 
   return NextResponse.json({ data: sortedMarketers });
 }
-

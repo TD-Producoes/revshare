@@ -574,13 +574,14 @@ export default function MarketerProfilePage() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p
-                                className={`font-medium transition-all ${
+                              <Link
+                                href={`/projects/${project.id}`}
+                                className={`font-medium transition-all hover:text-primary ${
                                   isAnonymous ? "blur-xs opacity-60" : ""
                                 }`}
                               >
                                 {project.name}
-                              </p>
+                              </Link>
                               <p className="text-xs text-muted-foreground">
                                 {project.category}
                               </p>
@@ -633,6 +634,11 @@ export default function MarketerProfilePage() {
                 <CardContent>
                   <div className="space-y-4">
                     {metrics.projectMetrics.map((projectMetric) => {
+                      // Helper function to check if a value is hidden (-1 means hidden by visibility settings)
+                      const isHidden = (value: number | -1): boolean => {
+                        return value === -1;
+                      };
+
                       const project = projects.find(
                         (p) => p.id === projectMetric.projectId
                       );
@@ -654,13 +660,14 @@ export default function MarketerProfilePage() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p
-                                className={`font-semibold transition-all ${
+                              <Link
+                                href={`/projects/${projectMetric.projectId}`}
+                                className={`font-semibold transition-all hover:text-primary ${
                                   isAnonymous ? "blur-xs opacity-60" : ""
                                 }`}
                               >
                                 {projectMetric.projectName}
-                              </p>
+                              </Link>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
@@ -668,46 +675,86 @@ export default function MarketerProfilePage() {
                               <p className="text-xs text-muted-foreground mb-1">
                                 Project Revenue
                               </p>
-                              <p className="font-semibold">
-                                {formatCurrency(
-                                  projectMetric.totalProjectRevenue
-                                )}
+                              <p
+                                className={`font-semibold transition-all ${
+                                  isHidden(projectMetric.totalProjectRevenue)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalProjectRevenue)
+                                  ? "—"
+                                  : formatCurrency(
+                                      projectMetric.totalProjectRevenue
+                                    )}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 Affiliate Revenue
                               </p>
-                              <p className="font-semibold text-blue-600">
-                                {formatCurrency(
-                                  projectMetric.totalAffiliateRevenue
-                                )}
+                              <p
+                                className={`font-semibold text-blue-600 transition-all ${
+                                  isHidden(projectMetric.totalAffiliateRevenue)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalAffiliateRevenue)
+                                  ? "—"
+                                  : formatCurrency(
+                                      projectMetric.totalAffiliateRevenue
+                                    )}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 Commission Owed
                               </p>
-                              <p className="font-semibold text-purple-600">
-                                {formatCurrency(
-                                  projectMetric.totalCommissionOwed
-                                )}
+                              <p
+                                className={`font-semibold text-purple-600 transition-all ${
+                                  isHidden(projectMetric.totalCommissionOwed)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalCommissionOwed)
+                                  ? "—"
+                                  : formatCurrency(
+                                      projectMetric.totalCommissionOwed
+                                    )}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 Purchases
                               </p>
-                              <p className="font-semibold">
-                                {projectMetric.totalPurchases.toLocaleString()}
+                              <p
+                                className={`font-semibold transition-all ${
+                                  isHidden(projectMetric.totalPurchases)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalPurchases)
+                                  ? "—"
+                                  : projectMetric.totalPurchases.toLocaleString()}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 Customers
                               </p>
-                              <p className="font-semibold">
-                                {projectMetric.totalCustomers.toLocaleString()}
+                              <p
+                                className={`font-semibold transition-all ${
+                                  isHidden(projectMetric.totalCustomers)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalCustomers)
+                                  ? "—"
+                                  : projectMetric.totalCustomers.toLocaleString()}
                               </p>
                             </div>
                           </div>
@@ -946,9 +993,12 @@ export default function MarketerProfilePage() {
                           className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-muted/20"
                         >
                           <div>
-                            <p className="font-medium text-sm">
+                            <Link
+                              href={`/projects/${commission.projectId}`}
+                              className="font-medium text-sm hover:text-primary transition-colors"
+                            >
                               {commission.project}
-                            </p>
+                            </Link>
                             <p className="text-xs text-muted-foreground">
                               {commission.sales} sales •{" "}
                               {new Date(commission.date).toLocaleDateString()}
