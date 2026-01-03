@@ -51,6 +51,7 @@ type MetricsSummary = {
   affiliateMrr?: number;
   customers?: number;
   affiliateCustomers?: number;
+  affiliatePurchases?: number;
 };
 
 type MetricsTimeline = Array<{
