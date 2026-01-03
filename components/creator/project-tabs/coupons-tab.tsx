@@ -60,6 +60,7 @@ export function ProjectCouponsTab({
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead className="text-right">Discount</TableHead>
+                <TableHead>Duration</TableHead>
                 <TableHead>Window</TableHead>
                 <TableHead className="text-right">Max Redemptions</TableHead>
                 <TableHead>Status</TableHead>
@@ -74,6 +75,11 @@ export function ProjectCouponsTab({
                 const end = template.endAt
                   ? new Date(template.endAt).toLocaleDateString()
                   : "No end";
+                const durationLabel =
+                  template.durationType === "REPEATING" &&
+                  template.durationInMonths
+                    ? `Repeats for ${template.durationInMonths} months`
+                    : "First payment only";
                 return (
                   <TableRow key={template.id}>
                     <TableCell className="font-medium">
@@ -87,6 +93,7 @@ export function ProjectCouponsTab({
                     <TableCell className="text-right">
                       {template.percentOff}%
                     </TableCell>
+                    <TableCell>{durationLabel}</TableCell>
                     <TableCell>
                       {start} → {end}
                     </TableCell>

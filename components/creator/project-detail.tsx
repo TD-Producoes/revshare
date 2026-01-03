@@ -35,6 +35,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Command,
@@ -157,6 +164,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     name: "",
     description: "",
     percentOff: "10",
+    durationType: "ONCE",
+    durationInMonths: "",
     startAt: "",
     endAt: "",
     maxRedemptions: "",
@@ -374,6 +383,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       name: "",
       description: "",
       percentOff: "10",
+      durationType: "ONCE",
+      durationInMonths: "",
       startAt: "",
       endAt: "",
       maxRedemptions: "",
@@ -390,6 +401,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       name: template.name,
       description: template.description ?? "",
       percentOff: String(template.percentOff),
+      durationType: template.durationType ?? "ONCE",
+      durationInMonths: template.durationInMonths
+        ? String(template.durationInMonths)
+        : "",
       startAt: formatDateInput(template.startAt),
       endAt: formatDateInput(template.endAt),
       maxRedemptions: template.maxRedemptions
@@ -411,6 +426,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         ? new Date(templateForm.startAt)
         : null;
       const endAt = templateForm.endAt ? new Date(templateForm.endAt) : null;
+      const durationType =
+        templateForm.durationType === "REPEATING" ? "REPEATING" : "ONCE";
+      const durationInMonths = templateForm.durationInMonths
+        ? Number(templateForm.durationInMonths)
+        : undefined;
       if (startAt && Number.isNaN(startAt.getTime())) {
         setTemplateError("Start date is invalid.");
         return;
@@ -427,6 +447,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         setTemplateError("End date must be in the future.");
         return;
       }
+      if (
+        durationType === "REPEATING" &&
+        (!durationInMonths || Number.isNaN(durationInMonths) || durationInMonths < 1)
+      ) {
+        setTemplateError("Enter how many billing cycles the coupon should repeat.");
+        return;
+      }
       const isEditing = Boolean(editingTemplateId);
       const response = await fetch(
         `/api/projects/${projectId}/coupon-templates`,
@@ -439,11 +466,14 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             name: templateForm.name,
             description: templateForm.description || undefined,
             percentOff: Number(templateForm.percentOff),
+            durationType,
+            durationInMonths:
+              durationType === "REPEATING" ? durationInMonths : undefined,
             startAt: templateForm.startAt || undefined,
             endAt: templateForm.endAt || undefined,
             maxRedemptions: templateForm.maxRedemptions
               ? Number(templateForm.maxRedemptions)
-              : undefined,
+            : undefined,
             productIds:
               templateForm.productIds.length > 0
                 ? templateForm.productIds
@@ -684,6 +714,47 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                     }))
                   }
                   placeholder="Optional"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Coupon duration</Label>
+                <Select
+                  value={templateForm.durationType}
+                  onValueChange={(value) =>
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      durationType: value,
+                      durationInMonths: value === "REPEATING" ? prev.durationInMonths : "",
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ONCE">First payment only</SelectItem>
+                    <SelectItem value="REPEATING">Repeat for multiple cycles</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="templateDurationMonths">Billing cycles</Label>
+                <Input
+                  id="templateDurationMonths"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={templateForm.durationInMonths}
+                  onChange={(event) =>
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      durationInMonths: event.target.value,
+                    }))
+                  }
+                  placeholder="e.g. 3"
+                  disabled={templateForm.durationType !== "REPEATING"}
                 />
               </div>
             </div>
