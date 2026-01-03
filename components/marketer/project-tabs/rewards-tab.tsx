@@ -181,38 +181,36 @@ export function MarketerRewardsTab({
               No rewards earned yet.
             </p>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Reward</TableHead>
-                    <TableHead>Milestone</TableHead>
-                    <TableHead>Reward Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Earned</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Reward</TableHead>
+                  <TableHead>Milestone</TableHead>
+                  <TableHead>Reward Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Earned</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {earnedRewards.map((item) => (
+                  <TableRow key={item.reward.id}>
+                    <TableCell className="font-medium">{item.reward.name}</TableCell>
+                    <TableCell>{getMilestoneCopy(item.reward)}</TableCell>
+                    <TableCell>{getRewardCopy(item.reward)}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {item.status === "CLAIMED" ? "Claimed" : "Unlocked"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {item.earned?.earnedAt
+                        ? new Date(item.earned.earnedAt).toLocaleDateString()
+                        : "-"}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {earnedRewards.map((item) => (
-                    <TableRow key={item.reward.id}>
-                      <TableCell className="font-medium">{item.reward.name}</TableCell>
-                      <TableCell>{getMilestoneCopy(item.reward)}</TableCell>
-                      <TableCell>{getRewardCopy(item.reward)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {item.status === "CLAIMED" ? "Claimed" : "Unlocked"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {item.earned?.earnedAt
-                          ? new Date(item.earned.earnedAt).toLocaleDateString()
-                          : "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
