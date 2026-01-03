@@ -136,6 +136,8 @@ model CouponTemplate {
   name               String
   description        String?
   percentOff         Int
+  durationType       CouponDuration @default(ONCE)
+  durationInMonths   Int?
   startAt            DateTime?
   endAt              DateTime?
   maxRedemptions     Int?
@@ -249,6 +251,11 @@ model NotificationPreference {
 enum CouponStatus {
   ACTIVE
   REVOKED
+}
+
+enum CouponDuration {
+  ONCE
+  REPEATING
 }
 
 enum ContractStatus {

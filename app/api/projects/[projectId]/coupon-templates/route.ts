@@ -10,6 +10,8 @@ const templateInput = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
   percentOff: z.number().int().min(1).max(100),
+  durationType: z.enum(["ONCE", "REPEATING"]).optional(),
+  durationInMonths: z.number().int().min(1).max(12).optional(),
   startAt: z.string().min(1).optional(),
   endAt: z.string().min(1).optional(),
   maxRedemptions: z.number().int().min(1).optional(),
@@ -23,6 +25,8 @@ const templateUpdateInput = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
   percentOff: z.number().int().min(1).max(100),
+  durationType: z.enum(["ONCE", "REPEATING"]).optional(),
+  durationInMonths: z.number().int().min(1).max(12).optional(),
   startAt: z.string().min(1).optional(),
   endAt: z.string().min(1).optional(),
   maxRedemptions: z.number().int().min(1).optional(),
@@ -63,6 +67,8 @@ export async function GET(
       name: true,
       description: true,
       percentOff: true,
+      durationType: true,
+      durationInMonths: true,
       startAt: true,
       endAt: true,
       maxRedemptions: true,
@@ -99,6 +105,15 @@ export async function POST(
   }
 
   const payload = parsed.data;
+  const durationType = payload.durationType ?? "ONCE";
+  const durationInMonths =
+    durationType === "REPEATING" ? payload.durationInMonths : undefined;
+  if (durationType === "REPEATING" && !durationInMonths) {
+    return NextResponse.json(
+      { error: "durationInMonths is required for repeating coupons" },
+      { status: 400 },
+    );
+  }
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -138,7 +153,10 @@ export async function POST(
   const stripeCoupon = await stripe.coupons.create(
     {
       percent_off: payload.percentOff,
-      duration: "once",
+      duration: durationType === "REPEATING" ? "repeating" : "once",
+      ...(durationType === "REPEATING" && durationInMonths
+        ? { duration_in_months: durationInMonths }
+        : {}),
       ...(payload.maxRedemptions ? { max_redemptions: payload.maxRedemptions } : {}),
       ...(endAt ? { redeem_by: Math.floor(endAt.getTime() / 1000) } : {}),
       ...(payload.productIds?.length
@@ -158,6 +176,8 @@ export async function POST(
         name: payload.name,
         description: payload.description,
         percentOff: payload.percentOff,
+        durationType,
+        durationInMonths: durationType === "REPEATING" ? durationInMonths : null,
         startAt,
         endAt,
         maxRedemptions: payload.maxRedemptions,
@@ -171,6 +191,8 @@ export async function POST(
         name: true,
         description: true,
         percentOff: true,
+        durationType: true,
+        durationInMonths: true,
         startAt: true,
         endAt: true,
         maxRedemptions: true,
@@ -265,6 +287,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
 
+  const durationType = payload.durationType ?? template.durationType ?? "ONCE";
+  const durationInMonths =
+    durationType === "REPEATING" ? payload.durationInMonths : undefined;
+  if (durationType === "REPEATING" && !durationInMonths) {
+    return NextResponse.json(
+      { error: "durationInMonths is required for repeating coupons" },
+      { status: 400 },
+    );
+  }
+
   const startAt = payload.startAt ? new Date(payload.startAt) : null;
   const endAt = payload.endAt ? new Date(payload.endAt) : null;
   if (startAt && Number.isNaN(startAt.getTime())) {
@@ -284,6 +316,9 @@ export async function PATCH(
   const nextMaxRedemptions = payload.maxRedemptions ?? null;
   const nextPercentOff = payload.percentOff;
   const nextEndAt = endAt;
+  const nextDurationType = durationType;
+  const nextDurationInMonths =
+    durationType === "REPEATING" ? durationInMonths ?? null : null;
 
   const productIdsChanged =
     normalizeIds(nextProductIds).join("|") !==
@@ -294,9 +329,17 @@ export async function PATCH(
   const endAtChanged =
     (template.endAt ? template.endAt.toISOString() : null) !==
     (nextEndAt ? nextEndAt.toISOString() : null);
+  const durationTypeChanged = template.durationType !== nextDurationType;
+  const durationMonthsChanged =
+    (template.durationInMonths ?? null) !== nextDurationInMonths;
 
   const shouldReplaceCoupon =
-    productIdsChanged || maxRedemptionsChanged || percentOffChanged || endAtChanged;
+    productIdsChanged ||
+    maxRedemptionsChanged ||
+    percentOffChanged ||
+    endAtChanged ||
+    durationTypeChanged ||
+    durationMonthsChanged;
 
   let stripeCouponId = template.stripeCouponId;
   if (shouldReplaceCoupon) {
@@ -304,7 +347,10 @@ export async function PATCH(
     const stripeCoupon = await stripe.coupons.create(
       {
         percent_off: nextPercentOff,
-        duration: "once",
+        duration: nextDurationType === "REPEATING" ? "repeating" : "once",
+        ...(nextDurationType === "REPEATING" && nextDurationInMonths
+          ? { duration_in_months: nextDurationInMonths }
+          : {}),
         ...(nextMaxRedemptions ? { max_redemptions: nextMaxRedemptions } : {}),
         ...(nextEndAt ? { redeem_by: Math.floor(nextEndAt.getTime() / 1000) } : {}),
         ...(nextProductIds.length
@@ -325,6 +371,8 @@ export async function PATCH(
       name: payload.name,
       description: payload.description,
       percentOff: nextPercentOff,
+      durationType: nextDurationType,
+      durationInMonths: nextDurationInMonths,
       startAt,
       endAt: nextEndAt,
       maxRedemptions: nextMaxRedemptions,
@@ -337,6 +385,8 @@ export async function PATCH(
       name: true,
       description: true,
       percentOff: true,
+      durationType: true,
+      durationInMonths: true,
       startAt: true,
       endAt: true,
       maxRedemptions: true,
