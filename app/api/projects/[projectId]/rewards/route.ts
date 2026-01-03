@@ -9,6 +9,7 @@ const rewardInput = z.object({
   description: z.string().optional(),
   milestoneType: z.enum(["NET_REVENUE", "COMPLETED_SALES", "ACTIVE_CUSTOMERS"]),
   milestoneValue: z.number().int().min(1),
+  startsAt: z.string().optional().nullable(),
   rewardType: z.enum([
     "DISCOUNT_COUPON",
     "FREE_SUBSCRIPTION",
@@ -47,6 +48,17 @@ const buildRewardLabel = (payload: z.infer<typeof rewardInput>) => {
     return "Plan upgrade";
   }
   return "Access / perk";
+};
+
+const parseOptionalDate = (value?: string | null) => {
+  if (!value) {
+    return { date: null, valid: true };
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return { date: null, valid: false };
+  }
+  return { date, valid: true };
 };
 
 export async function POST(
@@ -105,6 +117,14 @@ export async function POST(
     );
   }
 
+  const { date: startsAtInput, valid: startsAtValid } = parseOptionalDate(
+    payload.startsAt,
+  );
+  if (!startsAtValid) {
+    return NextResponse.json({ error: "Invalid startsAt date" }, { status: 400 });
+  }
+  const startsAt = startsAtInput ?? new Date();
+
   const reward = await prisma.reward.create({
     data: {
       projectId: project.id,
@@ -112,6 +132,7 @@ export async function POST(
       description: payload.description,
       milestoneType: payload.milestoneType,
       milestoneValue: payload.milestoneValue,
+      startsAt,
       rewardType: payload.rewardType,
       rewardLabel: buildRewardLabel(payload),
       rewardPercentOff:
@@ -276,6 +297,13 @@ export async function PATCH(
     );
   }
 
+  const { date: updateStartsAt, valid: updateStartsAtValid } = parseOptionalDate(
+    fullPayload.startsAt,
+  );
+  if (!updateStartsAtValid) {
+    return NextResponse.json({ error: "Invalid startsAt date" }, { status: 400 });
+  }
+
   const updated = await prisma.reward.update({
     where: { id: existing.id },
     data: {
@@ -283,6 +311,7 @@ export async function PATCH(
       description: fullPayload.description,
       milestoneType: fullPayload.milestoneType,
       milestoneValue: fullPayload.milestoneValue,
+      ...(updateStartsAt ? { startsAt: updateStartsAt } : {}),
       rewardType: fullPayload.rewardType,
       rewardLabel: buildRewardLabel(fullPayload),
       rewardPercentOff:

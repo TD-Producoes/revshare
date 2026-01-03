@@ -70,6 +70,7 @@ function buildAffiliateRows(
   projectCoupons: Array<{
     code: string;
     marketer: { id: string; name: string };
+    refundWindowDays?: number | null;
   }>,
   projectPurchases: Array<{
     amount: number;
@@ -88,6 +89,7 @@ function buildAffiliateRows(
       marketerId,
       marketerName: coupon.marketer.name,
       codes: [],
+      refundWindowDays: coupon.refundWindowDays,
     };
     existing.codes.push(coupon.code);
     couponMap.set(marketerId, existing);
@@ -130,6 +132,7 @@ function buildAffiliateRows(
       purchases: purchaseInfo?.purchases ?? 0,
       revenue: purchaseInfo?.revenue ?? 0,
       commission: purchaseInfo?.commission ?? 0,
+      refundWindowDays: couponInfo?.refundWindowDays ?? null,
     };
   });
 }
