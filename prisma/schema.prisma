@@ -74,6 +74,7 @@ model Project {
   metricsSnapshots          MetricsSnapshot[]
   marketerMetricsSnapshots  MarketerMetricsSnapshot[]
   testimonials              Testimonial[]
+  rewards                   Reward[]
   createdAt                 DateTime                  @default(now())
   updatedAt                 DateTime                  @updatedAt
   visibility                VisibilityMode            @default(PUBLIC)
@@ -151,6 +152,32 @@ model CouponTemplate {
 
   project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   coupons Coupon[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model Reward {
+  id                String              @id @default(cuid())
+  projectId         String
+  name              String
+  description       String?
+  milestoneType     RewardMilestoneType @default(NET_REVENUE)
+  milestoneValue    Int
+  rewardType        RewardType
+  rewardLabel       String?
+  rewardPercentOff  Int?
+  rewardDurationMonths Int?
+  fulfillmentType   RewardFulfillment   @default(AUTO_COUPON)
+  earnLimit         RewardEarnLimit     @default(ONCE_PER_MARKETER)
+  availabilityType  RewardAvailability  @default(UNLIMITED)
+  availabilityLimit Int?
+  visibility        RewardVisibility    @default(PUBLIC)
+  status            RewardStatus        @default(DRAFT)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@index([status])
@@ -265,11 +292,54 @@ enum ContractStatus {
   REJECTED
 }
 
+enum RewardStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum RewardMilestoneType {
+  NET_REVENUE
+  COMPLETED_SALES
+  ACTIVE_CUSTOMERS
+}
+
+enum RewardType {
+  DISCOUNT_COUPON
+  FREE_SUBSCRIPTION
+  PLAN_UPGRADE
+  ACCESS_PERK
+}
+
+enum RewardFulfillment {
+  AUTO_COUPON
+  MANUAL
+}
+
+enum RewardEarnLimit {
+  ONCE_PER_MARKETER
+  MULTIPLE
+}
+
+enum RewardAvailability {
+  UNLIMITED
+  FIRST_N
+}
+
+enum RewardVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 enum EventType {
   USER_SIGNED_UP
   USER_LOGGED_IN
   PROJECT_CREATED
   PROJECT_UPDATED
+  REWARD_CREATED
+  REWARD_UPDATED
+  REWARD_STATUS_CHANGED
   COUPON_TEMPLATE_CREATED
   COUPON_TEMPLATE_UPDATED
   COUPON_CLAIMED
