@@ -307,11 +307,17 @@ export function MyOffersTable({
                   claimCoupon.isPending &&
                   claimCoupon.variables?.projectId === contract.projectId;
 
+                // Route to offer detail page if approved, otherwise to project directory
+                const projectHref =
+                  contract.status === "approved"
+                    ? `/marketer/offers/${contract.projectId}`
+                    : `/marketer/projects/${contract.projectId}`;
+
                 return (
                   <TableRow key={contract.id}>
                     <TableCell className="font-medium">
                       <Link
-                        href={`/marketer/projects/${contract.projectId}`}
+                        href={projectHref}
                         className="hover:underline"
                       >
                         {contract.projectName}
@@ -653,6 +659,16 @@ export function MyOffersTable({
 
               if (!project) return null;
 
+              // Find corresponding contract for this offer
+              const contract = contracts.find(
+                (c) => c.projectId === offer.projectId
+              );
+              // Route to offer detail page if contract is approved, otherwise to project directory
+              const projectHref =
+                contract?.status === "approved"
+                  ? `/marketer/offers/${project.id}`
+                  : `/marketer/projects/${project.id}`;
+
               const metrics = getMarketerProjectMetrics(
                 events,
                 project,
@@ -664,7 +680,7 @@ export function MyOffersTable({
                   <TableCell>
                     <div>
                       <Link
-                        href={`/marketer/projects/${project.id}`}
+                        href={projectHref}
                         className="font-medium hover:underline"
                       >
                         {project.name}
