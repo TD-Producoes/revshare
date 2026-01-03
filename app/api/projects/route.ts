@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { createClient } from "@/lib/supabase/server";
+import { redactProjectData } from "@/lib/services/visibility";
 
 const projectInput = z.object({
   userId: z.string().min(1),
@@ -27,7 +29,16 @@ function normalizePercent(value: number) {
 }
 
 export async function GET() {
+  const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+
   const projects = await prisma.project.findMany({
+    where: {
+      OR: [
+        { visibility: { in: ["PUBLIC", "GHOST"] } },
+        ...(authUser ? [{ userId: authUser.id }] : []),
+      ],
+    },
     select: {
       id: true,
       name: true,
@@ -53,11 +64,19 @@ export async function GET() {
       logoUrl: true,
       imageUrls: true,
       createdAt: true,
-    },
+      visibility: true,
+      showMrr: true,
+      showRevenue: true,
+      showStats: true,
+    } as any,
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ data: projects });
+  const redactedProjects = projects.map((project) =>
+    redactProjectData(project as any, authUser?.id === (project as any).userId)
+  ).filter(Boolean);
+
+  return NextResponse.json({ data: redactedProjects });
 }
 
 export async function POST(request: Request) {

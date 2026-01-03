@@ -23,7 +23,8 @@ type ProjectCardProps = {
   project: ProjectCardData;
 };
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number | null): string {
+  if (value === null) return "Hidden";
   if (value >= 1000000) {
     return `$${(value / 1000000).toFixed(1)}M`;
   }
@@ -73,7 +74,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </div>
 
             {/* Name */}
-            <h3 className="mb-2 text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+            <h3 
+              className={`mb-2 text-xl font-bold text-foreground group-hover:text-primary transition-all ${
+                project.name === "Anonymous Project" ? "blur-xs opacity-60" : ""
+              }`}
+            >
               {project.name}
             </h3>
 
@@ -108,7 +113,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
           {/* Footer Stats */}
           <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
             <div className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{project.marketers}</span> marketers
+              <span className="font-medium text-foreground">
+                {project.marketers === null ? "Hidden" : project.marketers}
+              </span> marketers
             </div>
             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
               {project.commission}% commission

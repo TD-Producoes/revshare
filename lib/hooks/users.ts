@@ -32,6 +32,7 @@ export type ApiUser = {
     details_submitted?: boolean;
   } | null;
   metadata?: UserMetadata | null;
+  visibility?: "PUBLIC" | "GHOST" | "PRIVATE";
 };
 
 export function useUser(userId?: string | null) {
@@ -242,10 +243,11 @@ export function useUpdateUserMetadata(userId?: string | null) {
         throw new Error("User ID is required");
       }
 
+      // Wrap payload in metadata key as expected by the API
       const response = await fetch(`/api/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ metadata: payload }),
       });
 
       const data = await response.json();
@@ -256,8 +258,11 @@ export function useUpdateUserMetadata(userId?: string | null) {
 
       return data.data as ApiUser;
     },
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
+      // Invalidate queries to trigger refetch
       queryClient.invalidateQueries({ queryKey: ["user", userId ?? "none"] });
+      // Also update the cache directly for immediate UI update
+      queryClient.setQueryData(["user", userId ?? "none"], updatedUser);
     },
   });
 }

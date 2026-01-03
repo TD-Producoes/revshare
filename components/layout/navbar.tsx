@@ -95,18 +95,18 @@ export function Navbar() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/projects" legacyBehavior passHref>
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                  <Link href="/projects">
                       Projects
-                    </NavigationMenuLink>
                   </Link>
+                    </NavigationMenuLink>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/marketers" legacyBehavior passHref>
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                  <Link href="/marketers">
                       Marketers
-                    </NavigationMenuLink>
                   </Link>
+                    </NavigationMenuLink>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>

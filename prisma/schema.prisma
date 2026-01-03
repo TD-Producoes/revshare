@@ -13,13 +13,13 @@ datasource db {
 }
 
 model User {
-  id                       String                  @id
+  id                       String                    @id
   role                     UserRole
   name                     String
-  email                    String                  @unique
-  stripeConnectedAccountId String?                 @unique
-  stripeCustomerId         String?                 @unique
-  autoChargeEnabled        Boolean                 @default(false)
+  email                    String                    @unique
+  stripeConnectedAccountId String?                   @unique
+  stripeCustomerId         String?                   @unique
+  autoChargeEnabled        Boolean                   @default(false)
   onboardingStatus         String?
   onboardingData           Json?
   onboardingCompletedAt    DateTime?
@@ -28,43 +28,43 @@ model User {
   coupons                  Coupon[]
   contracts                Contract[]
   paymentMethods           PaymentMethod[]
-  creatorTransfers         Transfer[]              @relation("CreatorTransfers")
-  marketerTransfers        Transfer[]              @relation("MarketerTransfers")
+  creatorTransfers         Transfer[]                @relation("CreatorTransfers")
+  marketerTransfers        Transfer[]                @relation("MarketerTransfers")
   creatorPayments          CreatorPayment[]
-  creatorAdjustments       CommissionAdjustment[]  @relation("CreatorAdjustments")
-  marketerAdjustments      CommissionAdjustment[]  @relation("MarketerAdjustments")
+  creatorAdjustments       CommissionAdjustment[]    @relation("CreatorAdjustments")
+  marketerAdjustments      CommissionAdjustment[]    @relation("MarketerAdjustments")
   marketerMetricsSnapshots MarketerMetricsSnapshot[]
-  events                   Event[]                 @relation("ActorEvents")
+  events                   Event[]                   @relation("ActorEvents")
   notifications            Notification[]
   notificationPreference   NotificationPreference?
-  testimonialsGiven        Testimonial[]           @relation("CreatorTestimonials")
-  testimonialsReceived     Testimonial[]           @relation("MarketerTestimonials")
-  createdAt                DateTime                @default(now())
-  updatedAt                DateTime                @updatedAt
-  visibility               VisibilityMode          @default(PUBLIC)
+  testimonialsGiven        Testimonial[]             @relation("CreatorTestimonials")
+  testimonialsReceived     Testimonial[]             @relation("MarketerTestimonials")
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  visibility               VisibilityMode            @default(PUBLIC)
 }
 
 model Project {
-  id                        String                 @id @default(cuid())
+  id                        String                    @id @default(cuid())
   userId                    String
   name                      String
   description               String?
-  category                  String?                @default("Other")
-  refundWindowDays          Int                    @default(30)
+  category                  String?                   @default("Other")
+  refundWindowDays          Int                       @default(30)
   creatorStripeAccountId    String?
   onboardingStatus          String?
   onboardingData            Json?
   onboardingCompletedAt     DateTime?
   currency                  String?
-  platformCommissionPercent Decimal                @default(0.2) @db.Decimal(5, 2)
-  marketerCommissionPercent Decimal                @default(0.2) @db.Decimal(5, 2)
+  platformCommissionPercent Decimal                   @default(0.2) @db.Decimal(5, 2)
+  marketerCommissionPercent Decimal                   @default(0.2) @db.Decimal(5, 2)
   country                   String?
   website                   String?
   foundationDate            DateTime?
-  about                     String?                @db.Text
-  features                  String[]               @default([])
+  about                     String?                   @db.Text
+  features                  String[]                  @default([])
   logoUrl                   String?
-  imageUrls                 String[]               @default([])
+  imageUrls                 String[]                  @default([])
   couponTemplates           CouponTemplate[]
   coupons                   Coupon[]
   purchases                 Purchase[]
@@ -74,12 +74,13 @@ model Project {
   metricsSnapshots          MetricsSnapshot[]
   marketerMetricsSnapshots  MarketerMetricsSnapshot[]
   testimonials              Testimonial[]
-  createdAt                 DateTime               @default(now())
-  updatedAt                 DateTime               @updatedAt
-  visibility                VisibilityMode         @default(PUBLIC)
-  showMrr                   Boolean                @default(true)
-  showRevenue               Boolean                @default(true)
-  showStats                 Boolean                @default(true)
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  visibility                VisibilityMode            @default(PUBLIC)
+  showMrr                   Boolean                   @default(true)
+  showRevenue               Boolean                   @default(true)
+  showStats                 Boolean                   @default(true)
+  showAvgCommission         Boolean                   @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -430,31 +431,31 @@ model PaymentMethod {
 }
 
 model MetricsSnapshot {
-  id                 String @id @default(dbgenerated("gen_random_uuid()"))
-  projectId          String
-  date               DateTime
-  totalRevenue       Int
-  affiliateRevenue   Int
-  affiliateShareOwed Int
-  platformFee        Int
-  mrr                Int
-  purchasesCount     Int
-  affiliatePurchasesCount Int
-  directPurchasesCount    Int
-  uniqueCustomers         Int
-  affiliateCustomers      Int          @default(0)
-  totalRevenueDay         Int          @default(0)
-  affiliateRevenueDay     Int          @default(0)
-  affiliateShareOwedDay   Int          @default(0)
-  platformFeeDay          Int          @default(0)
-  mrrDay                  Int          @default(0)
-  purchasesCountDay       Int          @default(0)
-  affiliatePurchasesCountDay Int        @default(0)
-  directPurchasesCountDay    Int        @default(0)
-  uniqueCustomersDay         Int        @default(0)
-  affiliateCustomersDay      Int        @default(0)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  id                         String   @id @default(dbgenerated("gen_random_uuid()"))
+  projectId                  String
+  date                       DateTime
+  totalRevenue               Int
+  affiliateRevenue           Int
+  affiliateShareOwed         Int
+  platformFee                Int
+  mrr                        Int
+  purchasesCount             Int
+  affiliatePurchasesCount    Int
+  directPurchasesCount       Int
+  uniqueCustomers            Int
+  affiliateCustomers         Int      @default(0)
+  totalRevenueDay            Int      @default(0)
+  affiliateRevenueDay        Int      @default(0)
+  affiliateShareOwedDay      Int      @default(0)
+  platformFeeDay             Int      @default(0)
+  mrrDay                     Int      @default(0)
+  purchasesCountDay          Int      @default(0)
+  affiliatePurchasesCountDay Int      @default(0)
+  directPurchasesCountDay    Int      @default(0)
+  uniqueCustomersDay         Int      @default(0)
+  affiliateCustomersDay      Int      @default(0)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -464,17 +465,17 @@ model MetricsSnapshot {
 }
 
 model MarketerMetricsSnapshot {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()"))
-  projectId          String
-  marketerId         String
-  date               DateTime
-  projectRevenueDay  Int      @default(0)
-  affiliateRevenueDay Int     @default(0)
-  commissionOwedDay  Int      @default(0)
-  purchasesCountDay  Int      @default(0)
-  customersCountDay  Int      @default(0)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                  String   @id @default(dbgenerated("gen_random_uuid()"))
+  projectId           String
+  marketerId          String
+  date                DateTime
+  projectRevenueDay   Int      @default(0)
+  affiliateRevenueDay Int      @default(0)
+  commissionOwedDay   Int      @default(0)
+  purchasesCountDay   Int      @default(0)
+  customersCountDay   Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   marketer User    @relation(fields: [marketerId], references: [id], onDelete: Cascade)

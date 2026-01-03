@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProfileSettings } from "@/components/profile-settings";
+import { VisibilitySettings } from "@/components/shared/visibility-settings";
 
 export default function SettingsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
@@ -29,22 +30,6 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  if (isAuthLoading || isUserLoading) {
-    return (
-      <div className="flex h-40 items-center justify-center text-muted-foreground">
-        Loading...
-      </div>
-    );
-  }
-
-  if (!currentUser || currentUser.role !== "marketer") {
-    return (
-      <div className="text-muted-foreground">
-        This section is only available to marketers.
-      </div>
-    );
-  }
 
   useEffect(() => {
     const status = searchParams.get("onboarding");
@@ -76,7 +61,7 @@ export default function SettingsPage() {
       }
     };
 
-    void finalize();
+    finalize();
   }, [authUserId, queryClient, router, searchParams]);
 
   useEffect(() => {
@@ -112,8 +97,24 @@ export default function SettingsPage() {
       }
     };
 
-    void refresh();
+    refresh();
   }, [authUserId, currentUser, queryClient]);
+
+  if (isAuthLoading || isUserLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!currentUser || currentUser.role !== "marketer") {
+    return (
+      <div className="text-muted-foreground">
+        This section is only available to marketers.
+      </div>
+    );
+  }
 
   const handleConnectStripe = async () => {
     setConnectError(null);
@@ -227,6 +228,24 @@ export default function SettingsPage() {
     } finally {
       setIsRefreshingStatus(false);
     }
+  };
+
+  const handleVisibilitySave = async (data: {
+    visibility: "PUBLIC" | "GHOST" | "PRIVATE";
+  }) => {
+    if (!currentUser) return;
+    const response = await fetch(`/api/users/${currentUser.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibility: data.visibility }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.error ?? "Failed to update visibility");
+    }
+    await queryClient.invalidateQueries({
+      queryKey: ["user", authUserId ?? "none"],
+    });
   };
 
   return (
@@ -452,6 +471,13 @@ export default function SettingsPage() {
           <Button variant="outline">Submit W-9</Button>
         </CardContent>
       </Card>
+
+      {/* Privacy Settings */}
+      <VisibilitySettings
+        initialVisibility={currentUser.visibility || "PUBLIC"}
+        onSave={handleVisibilitySave}
+        type="user"
+      />
 
       <NotificationPreferencesCard userId={currentUser.id} />
 

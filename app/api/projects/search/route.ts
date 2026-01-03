@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getCountryName } from "@/lib/data/countries";
+import { createClient } from "@/lib/supabase/server";
+import { redactProjectData } from "@/lib/services/visibility";
 
 export type SearchProject = {
   id: string;
@@ -33,6 +35,9 @@ function matchesCommissionRange(commission: number, range: string): boolean {
 }
 
 export async function GET(request: Request) {
+  const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+
   const { searchParams } = new URL(request.url);
 
   // Extract filter parameters
@@ -42,8 +47,14 @@ export async function GET(request: Request) {
   const commissionRanges = searchParams.get("commissionRanges")?.split(",").filter(Boolean) || [];
   const countries = searchParams.get("countries")?.split(",").filter(Boolean) || [];
 
-  // Fetch all projects
-  const projects = await prisma.project.findMany({
+  // Fetch projects (respecting visibility)
+  const projects = (await prisma.project.findMany({
+    where: {
+      OR: [
+        { visibility: { in: ["PUBLIC", "GHOST"] } },
+        ...(authUser ? [{ userId: authUser.id }] : []),
+      ],
+    } as any,
     select: {
       id: true,
       name: true,
@@ -53,8 +64,13 @@ export async function GET(request: Request) {
       country: true,
       website: true,
       marketerCommissionPercent: true,
-    },
-  });
+      userId: true,
+      visibility: true,
+      showMrr: true,
+      showRevenue: true,
+      showStats: true,
+    } as any,
+  })) as any[];
 
   // Calculate stats for each project
   const projectsWithStats = await Promise.all(
@@ -74,7 +90,7 @@ export async function GET(request: Request) {
         _sum: { amount: true },
       });
 
-      const totalRevenue = (totalRevenueAgg._sum.amount ?? 0) / 100; // Convert cents to dollars
+      const totalRevenue = (totalRevenueAgg?._sum?.amount ?? 0) / 100; // Convert cents to dollars
 
       // Get commission percentage (convert from decimal to percentage)
       const commissionPercent = project.marketerCommissionPercent
@@ -86,23 +102,34 @@ export async function GET(request: Request) {
       // Get country name if country code exists
       const countryName = project.country ? getCountryName(project.country) : null;
 
-      return {
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        category: project.category,
-        logoUrl: project.logoUrl,
-        country: countryName,
-        website: project.website,
-        revenue: totalRevenue,
-        marketers: activeMarketers.length,
-        commission: Math.round(commissionPercent),
-      };
+      const isOwner = authUser?.id === project.userId;
+      const redacted = redactProjectData(
+        {
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          category: project.category,
+          logoUrl: project.logoUrl,
+          country: countryName,
+          website: project.website,
+          revenue: (project as any).showRevenue || isOwner ? totalRevenue : null,
+          marketers: (project as any).showStats || isOwner ? activeMarketers.length : null,
+          commission: Math.round(commissionPercent),
+          visibility: (project as any).visibility,
+          showMrr: (project as any).showMrr,
+          showRevenue: (project as any).showRevenue,
+          showStats: (project as any).showStats,
+          userId: project.userId,
+        },
+        isOwner
+      );
+
+      return redacted;
     })
   );
 
   // Apply filters
-  let filtered = projectsWithStats;
+  let filtered = projectsWithStats.filter((p): p is NonNullable<typeof p> => p !== null);
 
   // Search filter
   if (search) {
@@ -124,7 +151,7 @@ export async function GET(request: Request) {
   // Revenue range filter
   if (revenueRanges.length > 0) {
     filtered = filtered.filter((project) =>
-      revenueRanges.some((range) => matchesRevenueRange(project.revenue, range))
+      revenueRanges.some((range) => project.revenue !== null && matchesRevenueRange(project.revenue, range))
     );
   }
 
@@ -132,7 +159,7 @@ export async function GET(request: Request) {
   if (commissionRanges.length > 0) {
     filtered = filtered.filter((project) =>
       commissionRanges.some((range) =>
-        matchesCommissionRange(project.commission, range)
+        project.commission !== null && matchesCommissionRange(project.commission, range)
       )
     );
   }

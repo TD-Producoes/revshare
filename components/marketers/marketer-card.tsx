@@ -4,18 +4,18 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DollarSign, MapPin, Target } from "lucide-react";
+import { DollarSign, MapPin, Target, EyeOff } from "lucide-react";
 
 export type MarketerCardData = {
   id: string;
-  name: string;
+  name: string | null; // null in GHOST mode
   bio?: string | null;
   avatarUrl?: string | null;
   location?: string | null;
   specialties?: string[];
   focusArea?: string | null;
-  totalEarnings: number;
-  totalRevenue: number;
+  totalEarnings: number | null;
+  totalRevenue: number | null;
   activeProjects: number;
 };
 
@@ -23,7 +23,8 @@ type MarketerCardProps = {
   marketer: MarketerCardData;
 };
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number | null): string {
+  if (value === null) return "Hidden";
   if (value >= 1000000) {
     return `$${(value / 1000000).toFixed(1)}M`;
   }
@@ -38,12 +39,14 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function getMarketerAvatarUrl(name: string, avatarUrl?: string | null): string {
+function getMarketerAvatarUrl(name: string | null, avatarUrl?: string | null): string {
   if (avatarUrl) return avatarUrl;
+  if (!name) return `https://ui-avatars.com/api/?name=??&background=random&size=128`;
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&size=128`;
 }
 
-function getInitials(name: string): string {
+function getInitials(name: string | null): string {
+  if (!name) return "??";
   return name
     .split(" ")
     .map((word) => word[0])
@@ -61,20 +64,31 @@ export function MarketerCard({ marketer }: MarketerCardProps) {
           <div className="flex-1">
             {/* Avatar Section */}
             <div className="mb-3 flex h-16 w-16 items-center justify-center">
-              <Avatar className="h-full w-full rounded-lg">
-                <AvatarImage
-                  src={getMarketerAvatarUrl(marketer.name, marketer.avatarUrl)}
-                  alt={marketer.name}
-                />
-                <AvatarFallback className="rounded-lg text-sm font-bold">
-                  {getInitials(marketer.name)}
-                </AvatarFallback>
-              </Avatar>
+              {!marketer.name ? (
+                // Show spy icon for GHOST marketers
+                <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted border-2 border-border">
+                  <EyeOff className="h-8 w-8 text-muted-foreground" />
+                </div>
+              ) : (
+                <Avatar className="h-full w-full rounded-lg">
+                  <AvatarImage
+                    src={getMarketerAvatarUrl(marketer.name, marketer.avatarUrl)}
+                    alt={marketer.name}
+                  />
+                  <AvatarFallback className="rounded-lg text-sm font-bold">
+                    {getInitials(marketer.name)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
             </div>
 
             {/* Name */}
-            <h3 className="mb-2 text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-              {marketer.name}
+            <h3 
+              className={`mb-2 text-xl font-bold text-foreground group-hover:text-primary transition-all ${
+                !marketer.name ? "blur-xs opacity-60" : ""
+              }`}
+            >
+              {marketer.name ?? "Anonymous Marketer"}
             </h3>
 
             {/* Specialties Badges */}

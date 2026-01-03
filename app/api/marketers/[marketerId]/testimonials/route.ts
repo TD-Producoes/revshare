@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 export type MarketerTestimonial = {
   id: string;
@@ -10,7 +11,7 @@ export type MarketerTestimonial = {
   projectId: string;
   projectName: string;
   rating: number;
-  text: string;
+  text: string | null; // null in GHOST mode to protect identity
   createdAt: string | Date;
 };
 
@@ -19,14 +20,29 @@ export async function GET(
   { params }: { params: Promise<{ marketerId: string }> }
 ) {
   const { marketerId } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
-  // Verify the marketer exists
+  // Verify the marketer exists and check visibility
   const marketer = await prisma.user.findUnique({
     where: { id: marketerId },
-    select: { id: true, role: true },
+    select: {
+      id: true,
+      role: true,
+      visibility: true,
+    },
   });
 
   if (!marketer || marketer.role !== "marketer") {
+    return NextResponse.json({ error: "Marketer not found" }, { status: 404 });
+  }
+
+  const isSelf = authUser?.id === marketer.id;
+
+  // If marketer is PRIVATE and not self, return 404
+  if (marketer.visibility === "PRIVATE" && !isSelf) {
     return NextResponse.json({ error: "Marketer not found" }, { status: 404 });
   }
 
@@ -50,6 +66,10 @@ export async function GET(
     orderBy: { createdAt: "desc" },
   });
 
+  const isGhost = marketer.visibility === "GHOST" && !isSelf;
+
+  // For GHOST marketers, return testimonials but hide the text (only show rating)
+  // This allows showing ratings while protecting identity
   const data: MarketerTestimonial[] = testimonials.map((testimonial) => ({
     id: testimonial.id,
     contractId: testimonial.contractId,
@@ -58,10 +78,9 @@ export async function GET(
     projectId: testimonial.projectId,
     projectName: testimonial.project.name,
     rating: testimonial.rating,
-    text: testimonial.text,
+    text: isGhost ? null : testimonial.text, // Hide text for GHOST marketers
     createdAt: testimonial.createdAt,
   }));
 
   return NextResponse.json({ data });
 }
-
