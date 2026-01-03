@@ -131,6 +131,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
       const message =
         error instanceof Error ? error.message : "Failed to generate promo code.";
       setPromoError(message);
+      throw error;
     }
   };
 
