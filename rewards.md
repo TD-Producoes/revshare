@@ -173,8 +173,8 @@ All logged in **Audit Log**:
 ### Location (multiple entry points)
 
 * Project public page
-* My Offers → Project → Rewards
-* Dashboard → Rewards summary (optional)
+* Applications → Project → Rewards (new tab)
+* Dashboard → Rewards summary
 
 ---
 

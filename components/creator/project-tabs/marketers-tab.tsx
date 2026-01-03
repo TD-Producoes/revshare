@@ -21,6 +21,7 @@ type AffiliateRow = {
   purchases: number;
   revenue: number;
   commission: number;
+  refundWindowDays?: number | null;
 };
 
 export function ProjectMarketersTab({
@@ -59,6 +60,7 @@ export function ProjectMarketersTab({
                 <TableHead className="text-right">Paid Customers</TableHead>
                 <TableHead className="text-right">Conversion</TableHead>
                 <TableHead className="text-right">MRR Attributed</TableHead>
+                <TableHead className="text-right">Refund Window</TableHead>
                 <TableHead className="text-right">Commission Owed</TableHead>
               </TableRow>
             </TableHeader>
@@ -85,6 +87,11 @@ export function ProjectMarketersTab({
                   </TableCell>
                   <TableCell className="text-right">-</TableCell>
                   <TableCell className="text-right">-</TableCell>
+                  <TableCell className="text-right">
+                    {typeof row.refundWindowDays === "number"
+                      ? `${row.refundWindowDays} days`
+                      : "-"}
+                  </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(getCommissionOwed(row.commission))}
                   </TableCell>

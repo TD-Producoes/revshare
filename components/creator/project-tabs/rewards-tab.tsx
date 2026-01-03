@@ -50,6 +50,7 @@ type Reward = {
   description?: string | null;
   milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
   milestoneValue: number;
+  startsAt?: string | null;
   rewardType: "DISCOUNT_COUPON" | "FREE_SUBSCRIPTION" | "PLAN_UPGRADE" | "ACCESS_PERK";
   rewardPercentOff?: number | null;
   rewardDurationMonths?: number | null;
@@ -97,6 +98,16 @@ const getAvailabilityLabel = (reward: Reward) =>
     ? `First ${reward.availabilityLimit} marketers`
     : "Unlimited";
 
+const formatDateForInput = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export function ProjectRewardsTab({
   projectId,
   creatorId,
@@ -116,6 +127,7 @@ export function ProjectRewardsTab({
     description: "",
     milestoneType: "NET_REVENUE",
     milestoneValue: "",
+    startsAt: "",
     rewardType: "DISCOUNT_COUPON",
     rewardPercentOff: "100",
     rewardDurationMonths: "1",
@@ -151,6 +163,7 @@ export function ProjectRewardsTab({
       description: "",
       milestoneType: "NET_REVENUE",
       milestoneValue: "",
+      startsAt: "",
       rewardType: "DISCOUNT_COUPON",
       rewardPercentOff: "100",
       rewardDurationMonths: "1",
@@ -210,6 +223,7 @@ export function ProjectRewardsTab({
           description: formState.description || undefined,
           milestoneType: formState.milestoneType,
           milestoneValue: Number(formState.milestoneValue),
+          startsAt: formState.startsAt || undefined,
           rewardType: formState.rewardType,
           rewardPercentOff:
             formState.rewardType === "DISCOUNT_COUPON"
@@ -261,6 +275,7 @@ export function ProjectRewardsTab({
       description: reward.description ?? "",
       milestoneType: reward.milestoneType,
       milestoneValue: String(reward.milestoneValue),
+      startsAt: formatDateForInput(reward.startsAt),
       rewardType: reward.rewardType,
       rewardPercentOff: reward.rewardPercentOff
         ? String(reward.rewardPercentOff)
@@ -498,10 +513,10 @@ export function ProjectRewardsTab({
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="milestoneValue">Threshold</Label>
-                  <Input
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="milestoneValue">Threshold</Label>
+                <Input
                     id="milestoneValue"
                     type="number"
                     min={1}
@@ -515,6 +530,23 @@ export function ProjectRewardsTab({
                     placeholder="1000"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rewardStartsAt">Starts on</Label>
+                <Input
+                  id="rewardStartsAt"
+                  type="date"
+                  value={formState.startsAt}
+                  onChange={(event) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      startsAt: event.target.value,
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to start counting from today.
+                </p>
               </div>
               <p className="text-xs text-muted-foreground">
                 Milestones are evaluated after the refund window ends.

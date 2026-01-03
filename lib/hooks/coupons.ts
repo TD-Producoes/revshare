@@ -25,6 +25,7 @@ export type ProjectCoupon = {
   code: string;
   percentOff: number;
   commissionPercent: number;
+  refundWindowDays?: number | null;
   status: string;
   claimedAt: string | Date;
   template?: {

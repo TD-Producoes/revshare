@@ -69,4 +69,16 @@ export const notificationMessages = {
     title: "New coupon template",
     message: `${templateName} is now available for ${projectName}.`,
   }),
+  rewardUnlocked: (rewardName: string, projectName: string) => ({
+    title: "Reward unlocked",
+    message: `${rewardName} is now unlocked for ${projectName}.`,
+  }),
+  rewardClaimedMarketer: (rewardName: string, projectName: string) => ({
+    title: "Reward claimed",
+    message: `You claimed ${rewardName} for ${projectName}.`,
+  }),
+  rewardClaimed: (marketerName: string, rewardName: string, projectName: string) => ({
+    title: "Reward claimed",
+    message: `${marketerName} claimed ${rewardName} for ${projectName}.`,
+  }),
 };

@@ -8,6 +8,14 @@ export async function GET(
 ) {
   const { projectId } = await params;
 
+  const contracts = await prisma.contract.findMany({
+    where: { projectId },
+    select: { userId: true, refundWindowDays: true },
+  });
+  const refundWindowByMarketer = new Map(
+    contracts.map((contract) => [contract.userId, contract.refundWindowDays]),
+  );
+
   const coupons = await prisma.coupon.findMany({
     where: { projectId },
     select: {
@@ -38,5 +46,10 @@ export async function GET(
     orderBy: { claimedAt: "desc" },
   });
 
-  return NextResponse.json({ data: coupons });
+  const enriched = coupons.map((coupon) => ({
+    ...coupon,
+    refundWindowDays: refundWindowByMarketer.get(coupon.marketer.id) ?? null,
+  }));
+
+  return NextResponse.json({ data: enriched });
 }

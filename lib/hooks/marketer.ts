@@ -81,6 +81,69 @@ export type MarketerProjectStats = {
   };
 };
 
+export type MarketerProjectReward = {
+  reward: {
+    id: string;
+    name: string;
+    description?: string | null;
+    milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
+    milestoneValue: number;
+    rewardType: "DISCOUNT_COUPON" | "FREE_SUBSCRIPTION" | "PLAN_UPGRADE" | "ACCESS_PERK";
+    rewardLabel: string | null;
+    rewardPercentOff?: number | null;
+    rewardDurationMonths?: number | null;
+    fulfillmentType: "AUTO_COUPON" | "MANUAL";
+    earnLimit: "ONCE_PER_MARKETER" | "MULTIPLE";
+    availabilityType: "UNLIMITED" | "FIRST_N";
+    availabilityLimit?: number | null;
+    visibility: "PUBLIC" | "PRIVATE";
+    status: "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED";
+    startsAt?: string | Date | null;
+    createdAt: string | Date;
+  };
+  earned?: {
+    id: string;
+    status: "PENDING_REFUND" | "UNLOCKED" | "CLAIMED";
+    earnedAt: string | Date;
+    unlockedAt?: string | Date | null;
+    claimedAt?: string | Date | null;
+    rewardCoupon?: {
+      id: string;
+      code: string | null;
+      stripeCouponId: string | null;
+      stripePromotionCodeId: string | null;
+    } | null;
+  } | null;
+  progress: {
+    current: number;
+    total: number;
+    goal: number;
+    percent: number;
+  };
+  status: "IN_PROGRESS" | "PENDING_REFUND" | "UNLOCKED" | "CLAIMED";
+};
+
+export function useMarketerProjectRewards(
+  projectId?: string | null,
+  userId?: string | null
+) {
+  return useQuery<MarketerProjectReward[]>({
+    queryKey: ["marketer-project-rewards", projectId ?? "none", userId ?? "none"],
+    enabled: Boolean(projectId && userId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/marketer/projects/${projectId}/rewards?userId=${userId}`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch rewards.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
 export function useMarketerPurchases(userId?: string | null) {
   return useQuery<MarketerPurchase[]>({
     queryKey: ["marketer-purchases", userId ?? "none"],
