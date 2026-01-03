@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import { useFounderProfile } from "@/lib/hooks/users";
 import { parseUserMetadata } from "@/lib/services/user-metadata";
+import { isAnonymousName } from "@/lib/utils/anonymous";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -268,7 +269,7 @@ export default function FounderProfilePage({
                     };
 
                     // Check if project is anonymous
-                    const isAnonymous = project.name === "Anonymous Project";
+                    const isAnonymous = isAnonymousName(project.name);
 
                     return (
                       <Link
@@ -466,7 +467,7 @@ export default function FounderProfilePage({
                       <div className="flex-1">
                         <p
                           className={`font-medium text-sm ${
-                            projects[0].name === "Anonymous Project"
+                            isAnonymousName(projects[0].name)
                               ? "blur-xs opacity-60"
                               : ""
                           }`}

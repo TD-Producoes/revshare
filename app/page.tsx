@@ -14,6 +14,7 @@ import {
 import { formatCurrency } from "@/lib/data/metrics";
 import { useMarketersLeaderboard } from "@/lib/hooks/marketer";
 import { useProjectsLeaderboard } from "@/lib/hooks/projects";
+import { getAvatarFallback, isAnonymousName } from "@/lib/utils/anonymous";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -305,19 +306,26 @@ export default function Home() {
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background text-sm font-bold text-muted-foreground shadow-sm">
                             {i < 9 ? `0${i + 1}` : i + 1}
                           </div>
-                          <Avatar className="h-10 w-10 shrink-0">
-                            <AvatarImage
-                              src={marketer.image || undefined}
-                              alt={marketer.name || "Anonymous"}
-                            />
-                            <AvatarFallback>
-                              {marketer.name?.charAt(0) || "A"}
-                            </AvatarFallback>
-                          </Avatar>
+                          {isAnonymousName(marketer.name) ? (
+                            // Show spy icon for GHOST marketers
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted border-2 border-border">
+                              {getAvatarFallback(marketer.name, "h-5 w-5")}
+                            </div>
+                          ) : (
+                            <Avatar className="h-10 w-10 shrink-0">
+                              <AvatarImage
+                                src={marketer.image || undefined}
+                                alt={marketer.name || "Anonymous"}
+                              />
+                              <AvatarFallback>
+                                {getAvatarFallback(marketer.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
                           <div className="min-w-0">
                             <p
                               className={`font-semibold text-foreground group-hover:text-primary transition-colors truncate ${
-                                !marketer.name ? "blur-xs opacity-60" : ""
+                                isAnonymousName(marketer.name) ? "blur-xs opacity-60" : ""
                               }`}
                             >
                               {marketer.name || "Anonymous Marketer"}
@@ -395,22 +403,29 @@ export default function Home() {
                             <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-sm font-bold text-muted-foreground shadow-sm">
                               {i < 9 ? `0${i + 1}` : i + 1}
                             </div>
-                            <Avatar className="h-10 w-10 rounded-lg">
-                              <AvatarImage
-                                src={getProjectAvatarUrl(
-                                  project.name,
-                                  project.logoUrl
-                                )}
-                                alt={project.name}
-                              />
-                              <AvatarFallback className="rounded-lg">
-                                {project.name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
+                            {isAnonymousName(project.name) ? (
+                              // Show spy icon for GHOST projects
+                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted border-2 border-border">
+                                {getAvatarFallback(project.name, "h-5 w-5")}
+                              </div>
+                            ) : (
+                              <Avatar className="h-10 w-10 rounded-lg">
+                                <AvatarImage
+                                  src={getProjectAvatarUrl(
+                                    project.name,
+                                    project.logoUrl
+                                  )}
+                                  alt={project.name}
+                                />
+                                <AvatarFallback className="rounded-lg">
+                                  {getAvatarFallback(project.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
                             <div>
                               <p
                                 className={`font-semibold text-foreground group-hover:text-primary transition-colors ${
-                                  project.name === "Anonymous Project"
+                                  isAnonymousName(project.name)
                                     ? "blur-xs opacity-60"
                                     : ""
                                 }`}

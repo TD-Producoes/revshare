@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Building2, Globe, MapPin } from "lucide-react";
+import { getAvatarFallback, isAnonymousName } from "@/lib/utils/anonymous";
 
 export type ProjectCardData = {
   id: string;
@@ -49,15 +50,6 @@ function getProjectAvatarUrl(name: string, logoUrl?: string | null): string {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&size=128`;
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 export function ProjectCard({
   project,
   basePath = "/projects",
@@ -70,21 +62,28 @@ export function ProjectCard({
           <div className="flex-1">
             {/* Logo/Image Section */}
             <div className="mb-3 flex h-16 w-16 items-center justify-center">
-              <Avatar className="h-full w-full rounded-lg">
-                <AvatarImage
+            {isAnonymousName(project.name) ? (
+                // Show spy icon for GHOST marketers
+                <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted border-2 border-border">
+                  {getAvatarFallback(project.name, "h-8 w-8")}
+                </div>
+              ) : (
+                <Avatar className="h-full w-full rounded-lg">
+                  <AvatarImage
                   src={getProjectAvatarUrl(project.name, project.logoUrl)}
                   alt={project.name}
                 />
-                <AvatarFallback className="rounded-lg text-sm font-bold">
-                  {getInitials(project.name)}
-                </AvatarFallback>
-              </Avatar>
+                  <AvatarFallback className="rounded-lg text-sm font-bold">
+                    {getAvatarFallback(project.name)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
             </div>
 
             {/* Name */}
             <h3 
               className={`mb-2 text-xl font-bold text-foreground group-hover:text-primary transition-all ${
-                project.name === "Anonymous Project" ? "blur-xs opacity-60" : ""
+                isAnonymousName(project.name) ? "blur-xs opacity-60" : ""
               }`}
             >
               {project.name}

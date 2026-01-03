@@ -68,7 +68,7 @@ export function ProjectMarketersTab({
                   <TableCell className="font-medium">
                     <Link
                       className="hover:underline"
-                      href={`/creator/marketers/${row.marketerId}`}
+                      href={`/creator/affiliates/${row.marketerId}`}
                     >
                       {row.marketerName}
                     </Link>

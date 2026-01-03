@@ -15,37 +15,37 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency, formatNumber } from "@/lib/data/metrics";
 
-export default function CreatorMarketersPage() {
+export default function CreatorAffiliatesPage() {
   const { data: authUserId } = useAuthUserId();
   const { data: marketers = [], isLoading } = useCreatorMarketers(authUserId);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Marketers</h1>
+        <h1 className="text-2xl font-bold">Affiliates</h1>
         <p className="text-muted-foreground">
-          Review performance across all marketers promoting your projects.
+          Review performance across all affiliates promoting your projects.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">All Marketers</CardTitle>
+          <CardTitle className="text-base">All Affiliates</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-muted-foreground text-center py-8">
-              Loading marketers...
+              Loading affiliates...
             </p>
           ) : marketers.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              No marketers yet.
+              No affiliates yet.
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Marketer</TableHead>
+                  <TableHead>Affiliate</TableHead>
                   <TableHead className="text-right">Projects</TableHead>
                   <TableHead className="text-right">Affiliate Revenue</TableHead>
                   <TableHead className="text-right">Commission Owed</TableHead>
@@ -59,7 +59,7 @@ export default function CreatorMarketersPage() {
                     <TableCell className="font-medium">
                       <Link
                         className="hover:underline"
-                        href={`/creator/marketers/${marketer.id}`}
+                        href={`/creator/affiliates/${marketer.id}`}
                       >
                         {marketer.name}
                       </Link>
@@ -92,3 +92,4 @@ export default function CreatorMarketersPage() {
     </div>
   );
 }
+
