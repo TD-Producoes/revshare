@@ -47,8 +47,8 @@ export default function ProjectsDirectoryPage() {
   const availableCountries = filterOptions?.countries ?? [];
 
   // Convert API response to ProjectCardData format
-  const projectCards: ProjectCardData[] = useMemo(() => {
-    return projects.map((project) => ({
+  const projectCards = useMemo<ProjectCardData[]>(() => {
+    return projects.map((project): ProjectCardData => ({
       id: project.id,
       name: project.name,
       description: project.description,

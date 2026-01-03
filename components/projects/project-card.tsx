@@ -14,8 +14,8 @@ export type ProjectCardData = {
   logoUrl?: string | null;
   country?: string | null;
   website?: string | null;
-  revenue: number;
-  marketers: number;
+  revenue: number | null; // Can be null when revenue is hidden
+  marketers: number | null; // Can be null when stats are hidden
   commission: number;
 };
 

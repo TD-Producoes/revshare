@@ -30,6 +30,7 @@ export type ApiProject = {
   showMrr?: boolean;
   showRevenue?: boolean;
   showStats?: boolean;
+  showAvgCommission?: boolean;
 };
 
 export type ProjectStats = {

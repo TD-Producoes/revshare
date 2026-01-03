@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { EventType, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid query", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -36,42 +37,44 @@ export async function GET(request: Request) {
   const pageSize = parsed.data.pageSize ?? 20;
   const page = parsed.data.page ?? 1;
 
-  const actorFilter = actor
-    ? {
-        actor: {
-          OR: [
-            { name: { contains: actor, mode: "insensitive" } },
-            { email: { contains: actor, mode: "insensitive" } },
-          ],
-        },
-      }
-    : {};
+  // Build where clause conditionally with explicit typing
+  // Start with base conditions
+  const whereConditions: Prisma.EventWhereInput = {};
 
-  const where =
-    role === "creator"
-      ? {
-          OR: [{ actorId: userId }, { project: { userId } }],
-          ...(projectId ? { projectId } : {}),
-          ...(eventType ? { type: eventType } : {}),
-          ...actorFilter,
-        }
-      : role === "marketer"
-        ? {
-            OR: [
-              { actorId: userId },
-              { subjectId: userId },
-              { data: { path: ["marketerId"], equals: userId } },
-            ],
-            ...(projectId ? { projectId } : {}),
-            ...(eventType ? { type: eventType } : {}),
-            ...actorFilter,
-          }
-        : {
-            OR: [{ actorId: userId }, { subjectId: userId }],
-            ...(projectId ? { projectId } : {}),
-            ...(eventType ? { type: eventType } : {}),
-            ...actorFilter,
-          };
+  // Add projectId filter if provided
+  if (projectId) {
+    whereConditions.projectId = projectId;
+  }
+
+  // Add eventType filter if provided
+  if (eventType) {
+    whereConditions.type = eventType as EventType;
+  }
+
+  // Add actor filter if provided
+  if (actor) {
+    whereConditions.actor = {
+      OR: [
+        { name: { contains: actor, mode: "insensitive" as const } },
+        { email: { contains: actor, mode: "insensitive" as const } },
+      ],
+    };
+  }
+
+  // Add role-based OR conditions
+  if (role === "creator") {
+    whereConditions.OR = [{ actorId: userId }, { project: { userId } }];
+  } else if (role === "marketer") {
+    whereConditions.OR = [
+      { actorId: userId },
+      { subjectId: userId },
+      { data: { path: ["marketerId"], equals: userId } },
+    ];
+  } else {
+    whereConditions.OR = [{ actorId: userId }, { subjectId: userId }];
+  }
+
+  const where = whereConditions;
 
   const [events, totalCount] = await Promise.all([
     prisma.event.findMany({
