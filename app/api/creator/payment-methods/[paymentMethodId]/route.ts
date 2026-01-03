@@ -10,14 +10,14 @@ const removeInput = z.object({
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ paymentMethodId: string }> },
+  { params }: { params: Promise<{ paymentMethodId: string }> }
 ) {
   const { paymentMethodId } = await params;
   const parsed = removeInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -35,7 +35,7 @@ export async function DELETE(
   if (!paymentMethod) {
     return NextResponse.json(
       { error: "Payment method not found." },
-      { status: 404 },
+      { status: 404 }
     );
   }
 
@@ -51,7 +51,7 @@ export async function DELETE(
               ? error.message
               : "Failed to detach payment method.",
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
   }
@@ -69,7 +69,7 @@ export async function DELETE(
     const stripe = platformStripe();
     await stripe.customers.update(user.stripeCustomerId, {
       invoice_settings: {
-        default_payment_method: fallback?.stripePaymentMethodId ?? null,
+        default_payment_method: fallback?.stripePaymentMethodId ?? undefined,
       },
     });
   }
