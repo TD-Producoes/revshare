@@ -40,6 +40,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { ProjectRewards } from "@/components/projects/project-rewards";
 import {
   Dialog,
   DialogContent,
@@ -144,7 +145,10 @@ export function ProjectDetail({
   const { data: profileData, isLoading, error } = useProjectProfile(projectId);
   const { data: authUserId } = useAuthUserId();
   const { data: currentUser } = useUser(authUserId);
-  const { data: contracts = [] } = useContractsForMarketer(currentUser?.id);
+  // Only fetch contracts if user is a marketer
+  const { data: contracts = [] } = useContractsForMarketer(
+    currentUser?.role === "marketer" ? currentUser?.id : null
+  );
   const createContract = useCreateContract();
 
   // Dialog state
@@ -468,7 +472,7 @@ export function ProjectDetail({
                     {getAvatarFallback(project.name, "h-10 w-10 md:h-12 md:w-12")}
                   </div>
                 ) : (
-                  <Avatar className="h-full w-full rounded-lg">
+                  <Avatar className="flex h-20 w-20 md:h-24 md:w-24 rounded-lg">
                     <AvatarImage
                       src={getProjectAvatarUrl(project.name, project.logoUrl)}
                       alt={project.name}
@@ -543,19 +547,21 @@ export function ProjectDetail({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 w-full md:w-auto shrink-0">
-                <Button
-                  size="lg"
-                  className="h-12 px-8 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-semibold text-base"
-                  onClick={handleOpenApply}
-                >
-                  Apply to Promote
-                  <ArrowUpRight className="ml-2 h-4 w-4" />
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">
-                  Usually responds in 24h
-                </p>
-              </div>
+              {currentUser?.role === "marketer" && (
+                <div className="flex flex-col gap-3 w-full md:w-auto shrink-0">
+                  <Button
+                    size="lg"
+                    className="h-12 px-8 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-semibold text-base"
+                    onClick={handleOpenApply}
+                  >
+                    Apply to Promote
+                    <ArrowUpRight className="ml-2 h-4 w-4" />
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Usually responds in 24h
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -691,6 +697,10 @@ export function ProjectDetail({
                 </p>
               </div>
             )}
+
+            {/* Rewards Section */}
+            <ProjectRewards projectId={projectId} />
+
             {/* Image Gallery */}
             {images.length > 0 && (
               <div className="space-y-4">
@@ -725,54 +735,73 @@ export function ProjectDetail({
               <CardContent className="space-y-5">
                 {/* Stats Row */}
                 {hasStats && stats && (
-                  <div className="grid grid-cols-3 gap-4 pb-4 border-b border-border/40">
-                    <div>
-                      <div
-                        className={`text-2xl font-semibold transition-all ${
-                          isHidden(stats.activeMarketers)
+                  <>
+                    <div className="grid grid-cols-3 gap-4 pb-4 border-b border-border/40">
+                      <div>
+                        <div
+                          className={`text-2xl font-semibold transition-all ${
+                            isHidden(stats.activeMarketers)
+                              ? "blur-xs opacity-60"
+                              : ""
+                          }`}
+                        >
+                          {getDisplayValue(stats.activeMarketers) != null
+                            ? getDisplayValue(stats.activeMarketers)
+                            : "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Partners
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          className={`text-2xl font-semibold transition-all ${
+                            isHidden(stats.totalPurchases)
+                              ? "blur-xs opacity-60"
+                              : ""
+                          }`}
+                        >
+                          {getDisplayValue(stats.totalPurchases) != null
+                            ? getDisplayValue(stats.totalPurchases)
+                            : "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Sales</div>
+                      </div>
+                      <div>
+                        <div
+                          className={`text-2xl font-semibold transition-all ${
+                            isHidden(stats.avgCommissionPercent)
+                              ? "blur-xs opacity-60"
+                              : ""
+                          }`}
+                        >
+                          {getDisplayValue(stats.avgCommissionPercent) != null
+                            ? `${getDisplayValue(stats.avgCommissionPercent)}%`
+                            : commission}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Avg rate
+                        </div>
+                      </div>
+                    </div>
+                    {/* Claimed Rewards Row */}
+                    <div className="flex items-center justify-between py-2 border-b border-border/40">
+                      <span className="text-sm text-muted-foreground">
+                        Claimed rewards
+                      </span>
+                      <span
+                        className={`text-sm font-semibold transition-all ${
+                          isHidden(stats.claimedRewards)
                             ? "blur-xs opacity-60"
                             : ""
                         }`}
                       >
-                        {getDisplayValue(stats.activeMarketers) != null
-                          ? getDisplayValue(stats.activeMarketers)
+                        {getDisplayValue(stats.claimedRewards) != null
+                          ? getDisplayValue(stats.claimedRewards)
                           : "—"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Partners
-                      </div>
+                      </span>
                     </div>
-                    <div>
-                      <div
-                        className={`text-2xl font-semibold transition-all ${
-                          isHidden(stats.totalPurchases)
-                            ? "blur-xs opacity-60"
-                            : ""
-                        }`}
-                      >
-                        {getDisplayValue(stats.totalPurchases) != null
-                          ? getDisplayValue(stats.totalPurchases)
-                          : "—"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Sales</div>
-                    </div>
-                    <div>
-                      <div
-                        className={`text-2xl font-semibold transition-all ${
-                          isHidden(stats.avgCommissionPercent)
-                            ? "blur-xs opacity-60"
-                            : ""
-                        }`}
-                      >
-                        {getDisplayValue(stats.avgCommissionPercent) != null
-                          ? `${getDisplayValue(stats.avgCommissionPercent)}%`
-                          : commission}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Avg rate
-                      </div>
-                    </div>
-                  </div>
+                  </>
                 )}
 
                 {/* Terms */}
@@ -812,23 +841,24 @@ export function ProjectDetail({
                   </div>
                 )}
 
-                <Button
-                  className="w-full h-11 rounded-xl shadow-md"
-                  size="lg"
-                  onClick={handleOpenApply}
-                  disabled={
-                    !currentUser ||
-                    currentUser.role !== "marketer" ||
-                    getContractStatus() === "approved" ||
-                    getContractStatus() === "pending"
-                  }
-                >
-                  {getContractStatus() === "approved"
-                    ? "Already Promoting"
-                    : getContractStatus() === "pending"
-                    ? "Application Pending"
-                    : "Apply Now"}
-                </Button>
+                {currentUser?.role === "marketer" && (
+                  <Button
+                    className="w-full h-11 rounded-xl shadow-md"
+                    size="lg"
+                    onClick={handleOpenApply}
+                    disabled={
+                      !currentUser ||
+                      getContractStatus() === "approved" ||
+                      getContractStatus() === "pending"
+                    }
+                  >
+                    {getContractStatus() === "approved"
+                      ? "Already Promoting"
+                      : getContractStatus() === "pending"
+                      ? "Application Pending"
+                      : "Apply Now"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
