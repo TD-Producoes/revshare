@@ -109,6 +109,7 @@ export type ProjectMetricsSnapshot = {
 };
 
 export type PublicProjectStats = {
+  claimedRewards?: number | null | -1; // -1 means hidden by visibility settings
   activeMarketers: number | null;
   totalPurchases: number | null;
   avgCommissionPercent: number | null;

@@ -16,6 +16,7 @@ export type PublicProjectStats = {
   totalRevenue: number | null | -1; // -1 means hidden by visibility settings
   affiliateRevenue: number | null | -1; // -1 means hidden by visibility settings
   mrr: number | null | -1; // -1 means hidden by visibility settings
+  claimedRewards: number | null | -1; // -1 means hidden by visibility settings
   revenueTimeline: RevenueDataPoint[] | null;
 };
 
@@ -196,6 +197,14 @@ export async function GET(
       ? avgPaidCommissionAgg._avg.commissionAmount / 100
       : null;
 
+  // Get claimed rewards count
+  const claimedRewardsCount = await prisma.rewardEarned.count({
+    where: {
+      projectId,
+      status: "CLAIMED",
+    },
+  });
+
   const stats: PublicProjectStats = {
     // Return -1 for hidden stats (not owner/contract holder and visibility setting is false)
     // Return null for missing data (owner/contract holder can see but no data exists)
@@ -220,6 +229,7 @@ export async function GET(
       project.showMrr || hasAccess
         ? (last30DaysRevenue._sum.amount ?? 0) / 100
         : -1,
+    claimedRewards: project.showStats || hasAccess ? claimedRewardsCount : -1,
     revenueTimeline: project.showRevenue || hasAccess ? revenueTimeline : null,
   };
 
