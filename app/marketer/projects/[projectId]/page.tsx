@@ -1,10 +1,24 @@
-import { MarketerProjectDetail } from "@/components/marketer/project-detail";
+"use client";
 
-export default async function MarketerProjectPage({
+import { use } from "react";
+import { ProjectDetail } from "@/components/projects/project-detail";
+
+/**
+ * Marketer Project Detail Page
+ * Displays the project detail within the marketer dashboard (with sidebar/header)
+ */
+export default function MarketerProjectPage({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }) {
-  const { projectId } = await params;
-  return <MarketerProjectDetail projectId={projectId} />;
+  const { projectId } = use(params);
+
+  return (
+    <ProjectDetail
+      projectId={projectId}
+      isPrivate={true}
+      basePath="/marketer/projects"
+    />
+  );
 }
