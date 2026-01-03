@@ -5,6 +5,7 @@ import { ProjectCouponsTab } from "@/components/creator/project-tabs/coupons-tab
 import { ProjectMarketersTab } from "@/components/creator/project-tabs/marketers-tab";
 import { ProjectMetricsTab } from "@/components/creator/project-tabs/metrics-tab";
 import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-tab";
+import { ProjectRewardsTab } from "@/components/creator/project-tabs/rewards-tab";
 import { ProjectSettingsTab } from "@/components/creator/project-tabs/settings-tab";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -193,6 +194,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     metrics: "Metrics",
     coupons: "Coupons",
     marketers: "Marketers",
+    rewards: "Rewards",
     activity: "Activity",
     settings: "Settings",
   }[activeTab] ?? "Overview";
@@ -578,6 +580,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <TabsTrigger className="px-3 py-2 text-sm" value="marketers">
               Marketers
             </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="rewards">
+              Rewards
+            </TabsTrigger>
             <TabsTrigger className="px-3 py-2 text-sm" value="activity">
               Activity
             </TabsTrigger>
@@ -627,6 +632,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             isLoading={isPurchasesLoading || isCouponsLoading}
             error={(purchasesError as Error | null) ?? (couponsError as Error | null)}
           />
+        </TabsContent>
+
+        <TabsContent value="rewards">
+          <ProjectRewardsTab projectId={projectId} creatorId={currentUser?.id} />
         </TabsContent>
 
         <TabsContent value="activity">

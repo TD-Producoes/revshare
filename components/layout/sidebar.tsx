@@ -54,13 +54,13 @@ const creatorNavSections: NavSection[] = [
     label: "Finance",
     items: [
       { title: "Payouts", href: "/creator/payouts", icon: CreditCard },
-      { title: "Audit Log", href: "/creator/events", icon: History },
     ],
   },
   {
     label: "System",
     items: [
       { title: "Notifications", href: "/creator/notifications", icon: Bell },
+      { title: "Audit Log", href: "/creator/events", icon: History },
     ],
   },
 ];
