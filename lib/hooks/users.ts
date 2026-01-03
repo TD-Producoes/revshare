@@ -86,11 +86,11 @@ export type FounderProfileProject = {
   name: string;
   category: string;
   logoUrl: string;
-  revenue: number;
-  commissions: number;
-  mrr: number;
-  marketers: number;
-  sales: number;
+  revenue: number | -1; // -1 means hidden by visibility settings
+  commissions: number | -1; // -1 means hidden by visibility settings
+  mrr: number | -1; // -1 means hidden by visibility settings
+  marketers: number | -1; // -1 means hidden by visibility settings
+  sales: number | -1; // -1 means hidden by visibility settings
   createdAt: string | Date;
 };
 
@@ -156,24 +156,41 @@ export function useFounderProfile(userId?: string | null) {
               ? (await statsResponse.json())?.data
               : null;
 
+            // Handle visibility: -1 means hidden, null means no data, number means actual value
+            const getValue = (
+              value: number | null | -1 | undefined,
+              fallback: number | -1 = -1
+            ): number | -1 => {
+              if (value === -1) return -1; // Hidden by visibility settings
+              if (value === null || value === undefined) return fallback;
+              return value;
+            };
+
             return {
               id: project.id,
-              name: project.name,
+              name: project.name, // Already redacted by dashboard API
               category: projectDetails?.category || "Other",
               logoUrl:
                 projectDetails?.logoUrl ||
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(
                   project.name.substring(0, 2)
                 )}&background=6366F1&color=fff`,
-              revenue: project.metrics?.totalRevenue
-                ? project.metrics.totalRevenue / 100
-                : 0,
+              // Use stats API values which respect visibility, fallback to dashboard metrics if stats unavailable
+              revenue:
+                projectStats?.totalRevenue !== undefined
+                  ? getValue(projectStats.totalRevenue, 0)
+                  : project.metrics?.totalRevenue
+                  ? project.metrics.totalRevenue / 100
+                  : -1,
               commissions: project.metrics?.affiliateShareOwed
                 ? project.metrics.affiliateShareOwed / 100
-                : 0,
-              mrr: projectStats?.mrr || 0,
-              marketers: project.marketerCount || 0,
-              sales: projectStats?.totalPurchases || 0,
+                : -1, // Commissions are always from dashboard (internal metric)
+              mrr: getValue(projectStats?.mrr, 0),
+              marketers:
+                projectStats?.activeMarketers !== undefined
+                  ? getValue(projectStats.activeMarketers, 0)
+                  : project.marketerCount || -1,
+              sales: getValue(projectStats?.totalPurchases, 0),
               createdAt: project.createdAt,
             };
           }
@@ -181,21 +198,29 @@ export function useFounderProfile(userId?: string | null) {
       );
 
       // Sort projects by revenue descending (in case API didn't sort properly)
-      projectsWithStats.sort((a, b) => b.revenue - a.revenue);
+      // Treat -1 (hidden) as 0 for sorting purposes
+      projectsWithStats.sort((a, b) => {
+        const revenueA = a.revenue === -1 ? 0 : a.revenue;
+        const revenueB = b.revenue === -1 ? 0 : b.revenue;
+        return revenueB - revenueA;
+      });
 
-      // Calculate overall stats
+      // Calculate overall stats (only include visible values, exclude -1)
       const totalRevenue = dashboard.totals.totalRevenue / 100;
       const totalCommissions = dashboard.totals.affiliateShareOwed / 100;
       const combinedMRR = projectsWithStats.reduce(
-        (sum: number, p: FounderProfileProject) => sum + p.mrr,
+        (sum: number, p: FounderProfileProject) =>
+          sum + (p.mrr === -1 ? 0 : p.mrr),
         0
       );
       const activeMarketers = projectsWithStats.reduce(
-        (sum: number, p: FounderProfileProject) => sum + p.marketers,
+        (sum: number, p: FounderProfileProject) =>
+          sum + (p.marketers === -1 ? 0 : p.marketers),
         0
       );
       const totalSales = projectsWithStats.reduce(
-        (sum: number, p: FounderProfileProject) => sum + p.sales,
+        (sum: number, p: FounderProfileProject) =>
+          sum + (p.sales === -1 ? 0 : p.sales),
         0
       );
       const totalProjects = projectsWithStats.length;

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { redactProjectData } from "@/lib/services/visibility";
+import { createClient } from "@/lib/supabase/server";
 
 type DayTotals = {
   revenue: number;
@@ -14,6 +16,12 @@ export async function GET(request: Request) {
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
+
+  // Get authenticated user to determine if they're the owner
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
   const creator = await prisma.user.findUnique({
     where: { id: userId },
@@ -33,6 +41,19 @@ export async function GET(request: Request) {
       marketerCommissionPercent: true,
       platformCommissionPercent: true,
       createdAt: true,
+      visibility: true,
+      showRevenue: true,
+      showStats: true,
+      logoUrl: true,
+      website: true,
+      imageUrls: true,
+      about: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -140,29 +161,40 @@ export async function GET(request: Request) {
       affiliateRevenue: Math.round((totals.affiliateRevenue / 100) * 100) / 100,
     }));
 
-  const projectData = projects.map((project) => {
-    const metrics = projectMetrics.get(project.id);
-    const marketerCount = metrics ? metrics.marketers.size : 0;
+  // Determine if the requester is the owner
+  const isOwner = authUser?.id === userId;
 
-    return {
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      userId: project.userId,
-      marketerCommissionPercent: project.marketerCommissionPercent,
-      platformCommissionPercent: project.platformCommissionPercent,
-      createdAt: project.createdAt,
-      metrics: metrics
-        ? {
-            totalRevenue: metrics.totalRevenue,
-            affiliateRevenue: metrics.affiliateRevenue,
-            mrr: 0,
-            activeSubscribers: 0,
-          }
-        : null,
-      marketerCount,
-    };
-  });
+  const projectData = projects
+    .map((project) => {
+      // Redact project data based on visibility (if not owner)
+      const redacted = redactProjectData(project, isOwner);
+      if (!redacted) {
+        return null; // PRIVATE project, filter out
+      }
+
+      const metrics = projectMetrics.get(project.id);
+      const marketerCount = metrics ? metrics.marketers.size : 0;
+
+      return {
+        id: redacted.id,
+        name: redacted.name, // Will be "Anonymous Project" for GHOST mode
+        description: redacted.description,
+        userId: redacted.userId,
+        marketerCommissionPercent: project.marketerCommissionPercent,
+        platformCommissionPercent: project.platformCommissionPercent,
+        createdAt: project.createdAt,
+        metrics: metrics
+          ? {
+              totalRevenue: metrics.totalRevenue,
+              affiliateRevenue: metrics.affiliateRevenue,
+              mrr: 0,
+              activeSubscribers: 0,
+            }
+          : null,
+        marketerCount,
+      };
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null);
 
   // Sort projects by total revenue descending
   const sortedProjects = projectData.sort((a, b) => {

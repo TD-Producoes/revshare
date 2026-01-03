@@ -4,8 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { getCountryName } from "@/lib/data/countries";
 
 export async function GET() {
-  // Fetch all projects to extract unique filter options
+  // Fetch only PUBLIC and GHOST projects to extract unique filter options
+  // PRIVATE projects should not appear in filter options
   const projects = await prisma.project.findMany({
+    where: {
+      visibility: { in: ["PUBLIC", "GHOST"] },
+    },
     select: {
       category: true,
       country: true,

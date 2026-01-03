@@ -202,9 +202,9 @@ export type PublicMarketerProfile = {
     name: string;
     category: string | null;
     logoUrl: string | null;
-    revenue: number;
-    earnings: number;
-    sales: number;
+    revenue: number | -1; // -1 means hidden by visibility settings
+    earnings: number | -1; // -1 means hidden by visibility settings
+    sales: number | -1; // -1 means hidden by visibility settings
     commission: number;
     joinedDate: string;
   }>;
@@ -272,7 +272,7 @@ export function usePublicMarketerProfile(marketerId?: string | null) {
 
 export type LeaderboardMarketer = {
   id: string;
-  name: string;
+  name: string | null; // Can be null for GHOST mode
   focus: string | null;
   revenue: number;
   commission: number;

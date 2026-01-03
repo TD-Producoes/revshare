@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { redactMarketerData } from "@/lib/services/visibility";
+import {
+  redactMarketerData,
+  redactProjectData,
+} from "@/lib/services/visibility";
 
 export type PublicMarketerProfile = {
   user: {
@@ -26,9 +29,9 @@ export type PublicMarketerProfile = {
     name: string;
     category: string | null;
     logoUrl: string | null;
-    revenue: number;
-    earnings: number;
-    sales: number;
+    revenue: number | -1; // -1 means hidden by visibility settings
+    earnings: number | -1; // -1 means hidden by visibility settings
+    sales: number | -1; // -1 means hidden by visibility settings
     commission: number;
     joinedDate: string;
   }>;
@@ -183,7 +186,7 @@ export async function GET(
     orderBy: { createdAt: "desc" },
   });
 
-  // Get projects with details
+  // Get projects with details and visibility settings
   const projects = await prisma.project.findMany({
     where: { id: { in: projectIds } },
     select: {
@@ -191,6 +194,20 @@ export async function GET(
       name: true,
       category: true,
       logoUrl: true,
+      userId: true,
+      visibility: true,
+      showRevenue: true,
+      showStats: true,
+      website: true,
+      imageUrls: true,
+      description: true,
+      about: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 
@@ -212,34 +229,80 @@ export async function GET(
     projectStats.set(purchase.projectId, existing);
   }
 
-  // Build projects list
-  const projectsList = projects.map((project) => {
-    const stats = projectStats.get(project.id) ?? {
-      revenue: 0,
-      earnings: 0,
-      sales: 0,
-    };
-    const commissionPercent = contractMap.get(project.id);
-    const commission =
-      commissionPercent != null ? Number(commissionPercent) * 100 : 0;
+  // Check which projects the authenticated user has contracts with (if any)
+  const userContractMap = new Map<string, boolean>();
+  if (authUser?.id) {
+    const userContracts = await prisma.contract.findMany({
+      where: {
+        userId: authUser.id,
+        projectId: { in: projectIds },
+        status: "APPROVED",
+      },
+      select: { projectId: true },
+    });
+    userContracts.forEach((contract) => {
+      userContractMap.set(contract.projectId, true);
+    });
+  }
 
-    return {
-      id: project.id,
-      name: project.name,
-      category: project.category ?? "Other",
-      logoUrl: project.logoUrl,
-      revenue: stats.revenue / 100, // Convert cents to dollars
-      earnings: stats.earnings / 100,
-      sales: stats.sales,
-      commission: Math.round(commission),
-      joinedDate:
-        joinedDateMap.get(project.id)?.toISOString() ??
-        new Date().toISOString(),
-    };
+  // Build projects list with visibility redaction
+  const projectsList = projects
+    .map((project) => {
+      // Check if the authenticated user is the project owner or has a contract with the project
+      const isProjectOwner = authUser?.id === project.userId;
+      const hasProjectContract = userContractMap.get(project.id) ?? false;
+      const hasProjectAccess = isProjectOwner || hasProjectContract;
+
+      // Redact project data based on visibility (unless user has access)
+      const redacted = redactProjectData(project, hasProjectAccess);
+
+      // Filter out PRIVATE projects (unless user has access)
+      if (!redacted) {
+        return null;
+      }
+
+      const stats = projectStats.get(project.id) ?? {
+        revenue: 0,
+        earnings: 0,
+        sales: 0,
+      };
+      const commissionPercent = contractMap.get(project.id);
+      const commission =
+        commissionPercent != null ? Number(commissionPercent) * 100 : 0;
+
+      // Determine if stats should be hidden based on visibility settings
+      // Marketers with contracts should see all stats (like owners)
+      const shouldHideRevenue =
+        !project.showRevenue &&
+        !hasProjectAccess &&
+        project.visibility !== "PUBLIC";
+      const shouldHideStats =
+        !project.showStats &&
+        !hasProjectAccess &&
+        project.visibility !== "PUBLIC";
+
+      return {
+        id: redacted.id,
+        name: redacted.name, // Will be "Anonymous Project" for GHOST mode
+        category: redacted.category ?? "Other",
+        logoUrl: redacted.logoUrl, // Will be null for GHOST mode
+        revenue: shouldHideRevenue ? -1 : stats.revenue / 100, // Convert cents to dollars, -1 if hidden
+        earnings: shouldHideRevenue ? -1 : stats.earnings / 100, // -1 if hidden
+        sales: shouldHideStats ? -1 : stats.sales, // -1 if hidden
+        commission: Math.round(commission),
+        joinedDate:
+          joinedDateMap.get(project.id)?.toISOString() ??
+          new Date().toISOString(),
+      };
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+
+  // Sort by revenue (treat -1 as 0 for sorting)
+  projectsList.sort((a, b) => {
+    const revenueA = a.revenue === -1 ? 0 : a.revenue;
+    const revenueB = b.revenue === -1 ? 0 : b.revenue;
+    return revenueB - revenueA;
   });
-
-  // Sort by revenue
-  projectsList.sort((a, b) => b.revenue - a.revenue);
 
   // Calculate overall stats
   const totalEarnings =
@@ -322,9 +385,9 @@ export async function GET(
     });
   }
 
-  // Get recent commissions (last 5)
+  // Get recent commissions (last 5) - use redacted project names
   const recentCommissions = purchases.slice(0, 5).map((purchase) => {
-    const project = projects.find((proj) => proj.id === purchase.projectId);
+    const project = projectsList.find((proj) => proj.id === purchase.projectId);
     return {
       id: purchase.id,
       project: project?.name ?? "Unknown",
@@ -462,10 +525,13 @@ export async function GET(
   >();
 
   for (const snapshot of metricsSnapshots) {
+    // Use redacted project name from projectsList
+    const redactedProject = projectsList.find(
+      (p) => p.id === snapshot.projectId
+    );
     const existing = projectMetricsMap.get(snapshot.projectId) ?? {
       projectId: snapshot.projectId,
-      projectName:
-        projects.find((p) => p.id === snapshot.projectId)?.name ?? "Unknown",
+      projectName: redactedProject?.name ?? "Unknown",
       totalProjectRevenue: 0,
       totalAffiliateRevenue: 0,
       totalCommissionOwed: 0,
