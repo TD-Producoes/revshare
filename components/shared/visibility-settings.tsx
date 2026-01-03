@@ -151,9 +151,11 @@ export function VisibilitySettings({
           </>
         )}
 
-        <Button onClick={handleSave} disabled={isSaving} className="w-full">
-          {isSaving ? "Saving..." : "Save Privacy Settings"}
-        </Button>
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save Privacy Settings"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

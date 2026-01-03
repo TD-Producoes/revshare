@@ -30,7 +30,9 @@ function normalizePercent(value: number) {
 
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
   const projects = await prisma.project.findMany({
     where: {
@@ -68,13 +70,15 @@ export async function GET() {
       showMrr: true,
       showRevenue: true,
       showStats: true,
-    } as any,
+    },
     orderBy: { createdAt: "desc" },
   });
 
-  const redactedProjects = projects.map((project) =>
-    redactProjectData(project as any, authUser?.id === (project as any).userId)
-  ).filter(Boolean);
+  const redactedProjects = projects
+    .map((project) =>
+      redactProjectData(project, authUser?.id === project.userId)
+    )
+    .filter(Boolean);
 
   return NextResponse.json({ data: redactedProjects });
 }
@@ -84,7 +88,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -102,13 +106,13 @@ export async function POST(request: Request) {
     const stripe = platformStripe();
     try {
       const account = await stripe.accounts.retrieve(
-        payload.creatorStripeAccountId,
+        payload.creatorStripeAccountId
       );
       creatorStripeAccountId = account.id;
     } catch {
       return NextResponse.json(
         { error: "Connected account not found" },
-        { status: 404 },
+        { status: 404 }
       );
     }
   }
@@ -120,7 +124,7 @@ export async function POST(request: Request) {
   if (platformCommissionPercent + marketerCommissionPercent > 1) {
     return NextResponse.json(
       { error: "Combined commission percent cannot exceed 100%" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -133,9 +137,7 @@ export async function POST(request: Request) {
       ...(payload.refundWindowDays !== undefined
         ? { refundWindowDays: payload.refundWindowDays }
         : {}),
-      ...(creatorStripeAccountId
-        ? { creatorStripeAccountId }
-        : {}),
+      ...(creatorStripeAccountId ? { creatorStripeAccountId } : {}),
       platformCommissionPercent: platformCommissionPercent.toString(),
       marketerCommissionPercent: marketerCommissionPercent.toString(),
       ...(payload.country ? { country: payload.country } : {}),

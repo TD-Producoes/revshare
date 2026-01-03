@@ -119,12 +119,14 @@ export function NotificationPreferencesCard({
             />
           </div>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={!hasChanges || updatePreferences.isPending}
-        >
-          {updatePreferences.isPending ? "Saving..." : "Save preferences"}
-        </Button>
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges || updatePreferences.isPending}
+          >
+            {updatePreferences.isPending ? "Saving..." : "Save preferences"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

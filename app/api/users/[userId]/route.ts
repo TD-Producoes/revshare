@@ -35,7 +35,7 @@ export async function GET(
       onboardingData: true,
       metadata: true,
       visibility: true,
-    } as any,
+    },
   });
 
   if (!user) {
@@ -102,7 +102,8 @@ export async function PATCH(
   let metadata = parseUserMetadata(user.metadata);
 
   if (metadataUpdate) {
-    const { bio, location, website, specialties, focusArea, socialMedia } = metadataUpdate;
+    const { bio, location, website, specialties, focusArea, socialMedia } =
+      metadataUpdate;
 
     // Update basic profile fields
     if (bio !== undefined) {
@@ -178,7 +179,7 @@ export async function PATCH(
 
   const updated = await prisma.user.update({
     where: { id: userId },
-    data: { 
+    data: {
       metadata: metadata as Prisma.InputJsonValue,
       ...(visibility ? { visibility } : {}),
     },
@@ -194,7 +195,7 @@ export async function PATCH(
       onboardingData: true,
       metadata: true,
       visibility: true,
-    } as any,
+    },
   });
 
   return NextResponse.json({ data: updated });
