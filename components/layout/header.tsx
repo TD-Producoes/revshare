@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/lib/hooks/notifications";
-import { ChevronDown, Zap, Sun, Moon, Bell } from "lucide-react";
+import { ChevronDown, Zap, Sun, Moon, Bell, Settings } from "lucide-react";
 
 export function Header() {
   const router = useRouter();
@@ -36,6 +36,8 @@ export function Header() {
   const unreadCount = notificationsPayload?.unreadCount ?? 0;
   const notificationsPath =
     user?.role === "creator" ? "/creator/notifications" : "/marketer/notifications";
+  const settingsPath =
+    user?.role === "creator" ? "/creator/settings" : "/marketer/settings";
 
   if (!authUserId || !user) return null;
 
@@ -193,6 +195,16 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => router.push(settingsPath)}
+          >
+            <Settings className="h-4 w-4" />
+            <span className="sr-only">Settings</span>
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -7,6 +7,14 @@ import { ArrowLeft, MessageSquare, PauseCircle, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { MarketerOverviewTab } from "@/components/creator/marketer-tabs/overview-tab";
 import { MarketerMetricsTab } from "@/components/creator/marketer-tabs/metrics-tab";
 import { useCreatorMarketerMetrics } from "@/lib/hooks/creator";
@@ -16,6 +24,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
+  const [activeTab, setActiveTab] = useState("overview");
   const { data: metrics } = useCreatorMarketerMetrics(
     marketerId,
     selectedProjectId,
@@ -37,11 +46,36 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
     customersCount: 0,
   };
   const timeline = metrics?.timeline ?? [];
+  const activeTabLabel = { overview: "Overview", metrics: "Metrics" }[
+    activeTab
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/creator/marketers">
+                  Marketers
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  href={`/creator/marketers/${marketerId}`}
+                  onClick={() => setActiveTab("overview")}
+                >
+                  {marketer?.name ?? "Marketer"}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{activeTabLabel}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/creator/marketers">
@@ -74,7 +108,11 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <div className="border-b">
           <TabsList variant="line" className="h-auto bg-transparent p-0">
             <TabsTrigger className="px-3 py-2 text-sm" value="overview">

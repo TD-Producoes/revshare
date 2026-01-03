@@ -52,6 +52,14 @@ import { VisibilityMode } from "@prisma/client";
 import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -146,6 +154,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   >([]);
   const [productsOpen, setProductsOpen] = useState(false);
   const [marketersOpen, setMarketersOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
   const [templateForm, setTemplateForm] = useState({
     name: "",
     description: "",
@@ -179,6 +188,14 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const isStripeConnected = Boolean(apiProject?.creatorStripeAccountId);
   const projectCurrency =
     typeof apiProject?.currency === "string" ? apiProject.currency : "USD";
+  const activeTabLabel = {
+    overview: "Overview",
+    metrics: "Metrics",
+    coupons: "Coupons",
+    marketers: "Marketers",
+    activity: "Activity",
+    settings: "Settings",
+  }[activeTab] ?? "Overview";
 
   useEffect(() => {
     if (!isTemplateOpen) {
@@ -494,6 +511,26 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/creator/projects">Projects</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  href={`/creator/projects/${projectId}`}
+                  onClick={() => setActiveTab("overview")}
+                >
+                  {resolvedProject.name}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{activeTabLabel}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/creator/projects">
@@ -522,7 +559,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       </div>
 
       {/* Project Info Card */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <div className="border-b">
           <TabsList variant="line" className="h-auto bg-transparent p-0">
             <TabsTrigger className="px-3 py-2 text-sm" value="overview">

@@ -19,7 +19,6 @@ import {
   Users,
   FileText,
   Search,
-  Settings,
   CreditCard,
   Bell,
   History,
@@ -34,14 +33,36 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const creatorNavItems: NavItem[] = [
-  { title: "Dashboard", href: "/creator", icon: LayoutDashboard },
-  { title: "Projects", href: "/creator/projects", icon: FolderKanban },
-  { title: "Marketers", href: "/creator/marketers", icon: Users },
-  { title: "Offers", href: "/creator/offers", icon: FileText },
-  { title: "Payouts", href: "/creator/payouts", icon: CreditCard },
-  { title: "Notifications", href: "/creator/notifications", icon: Bell },
-  { title: "Audit Log", href: "/creator/events", icon: History },
+type NavSection = {
+  label?: string;
+  items: NavItem[];
+};
+
+const creatorNavSections: NavSection[] = [
+  {
+    items: [{ title: "Dashboard", href: "/creator", icon: LayoutDashboard }],
+  },
+  {
+    label: "Manage",
+    items: [
+      { title: "Projects", href: "/creator/projects", icon: FolderKanban },
+      { title: "Marketers", href: "/creator/marketers", icon: Users },
+      { title: "Applications", href: "/creator/applications", icon: FileText },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { title: "Payouts", href: "/creator/payouts", icon: CreditCard },
+      { title: "Audit Log", href: "/creator/events", icon: History },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { title: "Notifications", href: "/creator/notifications", icon: Bell },
+    ],
+  },
 ];
 
 const marketerNavItems: NavItem[] = [
@@ -101,14 +122,7 @@ export function Sidebar() {
 
   if (!user) return null;
 
-  const navItems =
-    user.role === "creator" ? creatorNavItems : marketerNavItems;
-
-  const settingsItem: NavItem = {
-    title: "Settings",
-    href: `/${user.role}/settings`,
-    icon: Settings,
-  };
+  const isCreator = user.role === "creator";
 
   const isActiveLink = (href: string) =>
     pathname === href ||
@@ -122,24 +136,36 @@ export function Sidebar() {
           isCollapsed ? "w-12" : "w-48"
         )}
       >
-        <nav className="flex flex-1 flex-col gap-1 p-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.href}
-              item={item}
-              isActive={isActiveLink(item.href)}
-              isCollapsed={isCollapsed}
-            />
-          ))}
+        <nav className="flex flex-1 flex-col gap-2 p-2">
+          {isCreator
+            ? creatorNavSections.map((section, sectionIndex) => (
+                <div key={section.label ?? sectionIndex} className="space-y-1">
+                  {section.label && !isCollapsed ? (
+                    <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                      {section.label}
+                    </p>
+                  ) : null}
+                  {section.items.map((item) => (
+                    <NavLink
+                      key={item.href}
+                      item={item}
+                      isActive={isActiveLink(item.href)}
+                      isCollapsed={isCollapsed}
+                    />
+                  ))}
+                </div>
+              ))
+            : marketerNavItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  isActive={isActiveLink(item.href)}
+                  isCollapsed={isCollapsed}
+                />
+              ))}
         </nav>
 
         <div className="border-t border-border p-2">
-          <NavLink
-            item={settingsItem}
-            isActive={pathname.includes("/settings")}
-            isCollapsed={isCollapsed}
-          />
-
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <Button
