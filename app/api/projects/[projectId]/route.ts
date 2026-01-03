@@ -107,11 +107,30 @@ export async function GET(
   }
 
   const isOwner = authUser?.id === project.userId;
-  if (project.visibility === "PRIVATE" && !isOwner) {
+
+  // Check if user is a marketer with an approved contract for this project
+  let hasContract = false;
+  if (authUser?.id && !isOwner) {
+    const contract = await prisma.contract.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: authUser.id,
+        },
+      },
+      select: { status: true },
+    });
+    hasContract = contract?.status === "APPROVED";
+  }
+
+  // Allow access if user is owner OR has an approved contract
+  const hasAccess = isOwner || hasContract;
+  if (project.visibility === "PRIVATE" && !hasAccess) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  const redacted = redactProjectData(project, isOwner);
+  // Marketers with contracts should see full project details (like owners)
+  const redacted = redactProjectData(project, hasAccess);
 
   return NextResponse.json({ data: redacted });
 }

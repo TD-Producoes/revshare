@@ -41,14 +41,31 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // If project is PRIVATE, only owner can see stats
+  // If project is PRIVATE, only owner or marketers with contracts can see stats
   const supabase = await createClient();
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
   const isOwner = authUser?.id === project.userId;
 
-  if (project.visibility === "PRIVATE" && !isOwner) {
+  // Check if user is a marketer with an approved contract for this project
+  let hasContract = false;
+  if (authUser?.id && !isOwner) {
+    const contract = await prisma.contract.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: authUser.id,
+        },
+      },
+      select: { status: true },
+    });
+    hasContract = contract?.status === "APPROVED";
+  }
+
+  // Allow access if user is owner OR has an approved contract
+  const hasAccess = isOwner || hasContract;
+  if (project.visibility === "PRIVATE" && !hasAccess) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -180,29 +197,30 @@ export async function GET(
       : null;
 
   const stats: PublicProjectStats = {
-    // Return -1 for hidden stats (not owner and visibility setting is false)
-    // Return null for missing data (owner can see but no data exists)
+    // Return -1 for hidden stats (not owner/contract holder and visibility setting is false)
+    // Return null for missing data (owner/contract holder can see but no data exists)
     // Return actual value when visible
-    activeMarketers: project.showStats || isOwner ? activeMarketers : -1,
-    totalPurchases: project.showStats || isOwner ? purchaseCount : -1,
+    // Marketers with contracts should see all stats (like owners)
+    activeMarketers: project.showStats || hasAccess ? activeMarketers : -1,
+    totalPurchases: project.showStats || hasAccess ? purchaseCount : -1,
     avgCommissionPercent:
-      project.showAvgCommission || isOwner
+      project.showAvgCommission || hasAccess
         ? Math.round(Number(avgCommissionPercent))
         : -1,
-    avgPaidCommission: project.showStats || isOwner ? avgPaidCommission : -1,
+    avgPaidCommission: project.showStats || hasAccess ? avgPaidCommission : -1,
     totalRevenue:
-      project.showRevenue || isOwner
+      project.showRevenue || hasAccess
         ? (totalRevenueAgg._sum.amount ?? 0) / 100
         : -1,
     affiliateRevenue:
-      project.showRevenue || isOwner
+      project.showRevenue || hasAccess
         ? (affiliateRevenueAgg._sum.amount ?? 0) / 100
         : -1,
     mrr:
-      project.showMrr || isOwner
+      project.showMrr || hasAccess
         ? (last30DaysRevenue._sum.amount ?? 0) / 100
         : -1,
-    revenueTimeline: project.showRevenue || isOwner ? revenueTimeline : null,
+    revenueTimeline: project.showRevenue || hasAccess ? revenueTimeline : null,
   };
 
   return NextResponse.json({ data: stats });
