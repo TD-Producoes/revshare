@@ -308,15 +308,19 @@ export default function Home() {
                           <Avatar className="h-10 w-10 shrink-0">
                             <AvatarImage
                               src={marketer.image || undefined}
-                              alt={marketer.name}
+                              alt={marketer.name || "Anonymous"}
                             />
                             <AvatarFallback>
-                              {marketer.name.charAt(0)}
+                              {marketer.name?.charAt(0) || "A"}
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <p className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                              {marketer.name}
+                            <p
+                              className={`font-semibold text-foreground group-hover:text-primary transition-colors truncate ${
+                                !marketer.name ? "blur-xs opacity-60" : ""
+                              }`}
+                            >
+                              {marketer.name || "Anonymous Marketer"}
                             </p>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span className="truncate">{marketer.focus}</span>
@@ -404,7 +408,13 @@ export default function Home() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                              <p
+                                className={`font-semibold text-foreground group-hover:text-primary transition-colors ${
+                                  project.name === "Anonymous Project"
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
                                 {project.name}
                               </p>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">

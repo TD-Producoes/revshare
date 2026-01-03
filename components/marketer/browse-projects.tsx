@@ -231,7 +231,15 @@ export function BrowseProjects() {
                       {revSharePercent !== null ? `${revSharePercent}%` : "-"} rev share
                     </Badge>
                   </div>
-                  <CardTitle className="mt-2">{project.name}</CardTitle>
+                  <CardTitle
+                    className={`mt-2 ${
+                      project.name === "Anonymous Project"
+                        ? "blur-xs opacity-60"
+                        : ""
+                    }`}
+                  >
+                    {project.name}
+                  </CardTitle>
                   <CardDescription className="line-clamp-2">
                     {project.description || "No description yet."}
                   </CardDescription>

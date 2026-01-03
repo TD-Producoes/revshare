@@ -255,88 +255,154 @@ export default function FounderProfilePage({
                     No projects yet
                   </div>
                 ) : (
-                  projects.map((project) => (
-                    <Link
-                      key={project.id}
-                      href={`/projects/${project.id}`}
-                      className="group"
-                    >
-                      <Card className="border-border/50 bg-background/50 hover:border-primary/50 transition-colors">
-                        <CardContent className="p-6 py-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-center gap-4 flex-1">
-                              <Avatar className="h-14 w-14 rounded-xl">
-                                <AvatarImage
-                                  src={project.logoUrl}
-                                  alt={project.name}
-                                />
-                                <AvatarFallback className="rounded-xl">
-                                  {project.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h3 className="text-lg font-semibold group-hover:text-primary transition-colors">
-                                    {project.name}
-                                  </h3>
-                                  <Badge variant="outline" className="text-xs">
-                                    {project.category}
-                                  </Badge>
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                  <div>
-                                    <p className="text-muted-foreground text-xs mb-0.5">
-                                      Revenue
-                                    </p>
-                                    <p className="font-semibold">
-                                      {formatCurrency(project.revenue)}
-                                    </p>
+                  projects.map((project) => {
+                    // Helper function to check if a value is hidden (-1 means hidden by visibility settings)
+                    const isHidden = (value: number | -1): boolean => {
+                      return value === -1;
+                    };
+
+                    // Helper function to get display value (return null if hidden, otherwise return the value)
+                    const getDisplayValue = (value: number | -1): number | null => {
+                      if (isHidden(value)) return null;
+                      return value;
+                    };
+
+                    // Check if project is anonymous
+                    const isAnonymous = project.name === "Anonymous Project";
+
+                    return (
+                      <Link
+                        key={project.id}
+                        href={`/projects/${project.id}`}
+                        className="group"
+                      >
+                        <Card className="border-border/50 bg-background/50 hover:border-primary/50 transition-colors">
+                          <CardContent className="p-6 py-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-center gap-4 flex-1">
+                                <Avatar className="h-14 w-14 rounded-xl">
+                                  <AvatarImage
+                                    src={project.logoUrl}
+                                    alt={project.name}
+                                  />
+                                  <AvatarFallback className="rounded-xl">
+                                    {project.name.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h3
+                                      className={`text-lg font-semibold group-hover:text-primary transition-colors ${
+                                        isAnonymous ? "blur-xs opacity-60" : ""
+                                      }`}
+                                    >
+                                      {project.name}
+                                    </h3>
+                                    <Badge variant="outline" className="text-xs">
+                                      {project.category}
+                                    </Badge>
                                   </div>
-                                  <div>
-                                    <p className="text-muted-foreground text-xs mb-0.5">
-                                      MRR
-                                    </p>
-                                    <p className="font-semibold">
-                                      {formatCurrency(project.mrr)}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-muted-foreground text-xs mb-0.5">
-                                      Marketers
-                                    </p>
-                                    <p className="font-semibold flex items-center gap-1">
-                                      <Users className="h-3.5 w-3.5" />
-                                      {project.marketers}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-muted-foreground text-xs mb-0.5">
-                                      Sales
-                                    </p>
-                                    <p className="font-semibold flex items-center gap-1">
-                                      <ShoppingBag className="h-3.5 w-3.5" />
-                                      {project.sales}
-                                    </p>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                      <p className="text-muted-foreground text-xs mb-0.5">
+                                        Revenue
+                                      </p>
+                                      <p
+                                        className={`font-semibold transition-all ${
+                                          isHidden(project.revenue)
+                                            ? "blur-xs opacity-60"
+                                            : ""
+                                        }`}
+                                      >
+                                        {getDisplayValue(project.revenue) != null
+                                          ? formatCurrency(
+                                              getDisplayValue(project.revenue) ?? 0
+                                            )
+                                          : "—"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground text-xs mb-0.5">
+                                        MRR
+                                      </p>
+                                      <p
+                                        className={`font-semibold transition-all ${
+                                          isHidden(project.mrr)
+                                            ? "blur-xs opacity-60"
+                                            : ""
+                                        }`}
+                                      >
+                                        {getDisplayValue(project.mrr) != null
+                                          ? formatCurrency(
+                                              getDisplayValue(project.mrr) ?? 0
+                                            )
+                                          : "—"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground text-xs mb-0.5">
+                                        Marketers
+                                      </p>
+                                      <p
+                                        className={`font-semibold flex items-center gap-1 transition-all ${
+                                          isHidden(project.marketers)
+                                            ? "blur-xs opacity-60"
+                                            : ""
+                                        }`}
+                                      >
+                                        <Users className="h-3.5 w-3.5" />
+                                        {getDisplayValue(project.marketers) != null
+                                          ? getDisplayValue(project.marketers)
+                                          : "—"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground text-xs mb-0.5">
+                                        Sales
+                                      </p>
+                                      <p
+                                        className={`font-semibold flex items-center gap-1 transition-all ${
+                                          isHidden(project.sales)
+                                            ? "blur-xs opacity-60"
+                                            : ""
+                                        }`}
+                                      >
+                                        <ShoppingBag className="h-3.5 w-3.5" />
+                                        {getDisplayValue(project.sales) != null
+                                          ? getDisplayValue(project.sales)
+                                          : "—"}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
+                              <div className="text-right">
+                                <p className="text-sm text-muted-foreground mb-1">
+                                  Commissions
+                                </p>
+                                <p
+                                  className={`text-lg font-bold text-emerald-600 transition-all ${
+                                    isHidden(project.commissions)
+                                      ? "blur-xs opacity-60"
+                                      : ""
+                                  }`}
+                                >
+                                  {getDisplayValue(project.commissions) != null
+                                    ? formatCurrency(
+                                        getDisplayValue(project.commissions) ?? 0
+                                      )
+                                    : "—"}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Since {formatDate(project.createdAt)}
+                                </p>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground mb-1">
-                                Commissions
-                              </p>
-                              <p className="text-lg font-bold text-emerald-600">
-                                {formatCurrency(project.commissions)}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Since {formatDate(project.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -398,9 +464,25 @@ export default function FounderProfilePage({
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{projects[0].name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatCurrency(projects[0].revenue)} revenue
+                        <p
+                          className={`font-medium text-sm ${
+                            projects[0].name === "Anonymous Project"
+                              ? "blur-xs opacity-60"
+                              : ""
+                          }`}
+                        >
+                          {projects[0].name}
+                        </p>
+                        <p
+                          className={`text-xs text-muted-foreground transition-all ${
+                            projects[0].revenue === -1
+                              ? "blur-xs opacity-60"
+                              : ""
+                          }`}
+                        >
+                          {projects[0].revenue === -1
+                            ? "—"
+                            : `${formatCurrency(projects[0].revenue)} revenue`}
                         </p>
                       </div>
                     </div>

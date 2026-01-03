@@ -25,7 +25,6 @@ import {
 } from "@/lib/hooks/marketer";
 import { parseUserMetadata } from "@/lib/services/user-metadata";
 import {
-  ArrowRight,
   ArrowUpRight,
   Award,
   Calendar,
@@ -543,8 +542,24 @@ export default function MarketerProfilePage() {
               <CardContent>
                 <div className="space-y-4">
                   {projects.map((project: (typeof projects)[0]) => {
+                    // Helper function to check if a value is hidden (-1 means hidden by visibility settings)
+                    const isHidden = (value: number | -1): boolean => {
+                      return value === -1;
+                    };
+
+                    // Helper function to get display value (return null if hidden, otherwise return the value)
+                    const getDisplayValue = (value: number | -1): number | null => {
+                      if (isHidden(value)) return null;
+                      return value;
+                    };
+
+                    const isAnonymous = project.name === "Anonymous Project";
+                    const revenue = getDisplayValue(project.revenue) ?? 0;
                     const percentage =
-                      (project.revenue / stats.totalRevenue) * 100;
+                      stats.totalRevenue > 0
+                        ? (revenue / stats.totalRevenue) * 100
+                        : 0;
+
                     return (
                       <div key={project.id} className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
@@ -559,18 +574,35 @@ export default function MarketerProfilePage() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium">{project.name}</p>
+                              <Link
+                                href={`/projects/${project.id}`}
+                                className={`font-medium transition-all hover:text-primary ${
+                                  isAnonymous ? "blur-xs opacity-60" : ""
+                                }`}
+                              >
+                                {project.name}
+                              </Link>
                               <p className="text-xs text-muted-foreground">
                                 {project.category}
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold">
-                              {formatCurrency(project.revenue)}
+                            <p
+                              className={`font-semibold transition-all ${
+                                isHidden(project.revenue)
+                                  ? "blur-xs opacity-60"
+                                  : ""
+                              }`}
+                            >
+                              {isHidden(project.revenue)
+                                ? "—"
+                                : formatCurrency(project.revenue)}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {percentage.toFixed(1)}%
+                              {isHidden(project.revenue)
+                                ? "—"
+                                : `${percentage.toFixed(1)}%`}
                             </p>
                           </div>
                         </div>
@@ -602,9 +634,16 @@ export default function MarketerProfilePage() {
                 <CardContent>
                   <div className="space-y-4">
                     {metrics.projectMetrics.map((projectMetric) => {
+                      // Helper function to check if a value is hidden (-1 means hidden by visibility settings)
+                      const isHidden = (value: number | -1): boolean => {
+                        return value === -1;
+                      };
+
                       const project = projects.find(
                         (p) => p.id === projectMetric.projectId
                       );
+                      const isAnonymous =
+                        projectMetric.projectName === "Anonymous Project";
                       return (
                         <div
                           key={projectMetric.projectId}
@@ -621,9 +660,14 @@ export default function MarketerProfilePage() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-semibold">
+                              <Link
+                                href={`/projects/${projectMetric.projectId}`}
+                                className={`font-semibold transition-all hover:text-primary ${
+                                  isAnonymous ? "blur-xs opacity-60" : ""
+                                }`}
+                              >
                                 {projectMetric.projectName}
-                              </p>
+                              </Link>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
@@ -631,46 +675,86 @@ export default function MarketerProfilePage() {
                               <p className="text-xs text-muted-foreground mb-1">
                                 Project Revenue
                               </p>
-                              <p className="font-semibold">
-                                {formatCurrency(
-                                  projectMetric.totalProjectRevenue
-                                )}
+                              <p
+                                className={`font-semibold transition-all ${
+                                  isHidden(projectMetric.totalProjectRevenue)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalProjectRevenue)
+                                  ? "—"
+                                  : formatCurrency(
+                                      projectMetric.totalProjectRevenue
+                                    )}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 Affiliate Revenue
                               </p>
-                              <p className="font-semibold text-blue-600">
-                                {formatCurrency(
-                                  projectMetric.totalAffiliateRevenue
-                                )}
+                              <p
+                                className={`font-semibold text-blue-600 transition-all ${
+                                  isHidden(projectMetric.totalAffiliateRevenue)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalAffiliateRevenue)
+                                  ? "—"
+                                  : formatCurrency(
+                                      projectMetric.totalAffiliateRevenue
+                                    )}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 Commission Owed
                               </p>
-                              <p className="font-semibold text-purple-600">
-                                {formatCurrency(
-                                  projectMetric.totalCommissionOwed
-                                )}
+                              <p
+                                className={`font-semibold text-purple-600 transition-all ${
+                                  isHidden(projectMetric.totalCommissionOwed)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalCommissionOwed)
+                                  ? "—"
+                                  : formatCurrency(
+                                      projectMetric.totalCommissionOwed
+                                    )}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 Purchases
                               </p>
-                              <p className="font-semibold">
-                                {projectMetric.totalPurchases.toLocaleString()}
+                              <p
+                                className={`font-semibold transition-all ${
+                                  isHidden(projectMetric.totalPurchases)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalPurchases)
+                                  ? "—"
+                                  : projectMetric.totalPurchases.toLocaleString()}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">
                                 Customers
                               </p>
-                              <p className="font-semibold">
-                                {projectMetric.totalCustomers.toLocaleString()}
+                              <p
+                                className={`font-semibold transition-all ${
+                                  isHidden(projectMetric.totalCustomers)
+                                    ? "blur-xs opacity-60"
+                                    : ""
+                                }`}
+                              >
+                                {isHidden(projectMetric.totalCustomers)
+                                  ? "—"
+                                  : projectMetric.totalCustomers.toLocaleString()}
                               </p>
                             </div>
                           </div>
@@ -688,61 +772,98 @@ export default function MarketerProfilePage() {
                 Active Partnerships
               </h3>
               <div className="grid gap-4">
-                {projects.map((project: (typeof projects)[0]) => (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}`}
-                    className="group"
-                  >
-                    <Card className="border-border/50 bg-background/50 hover:border-primary/50 transition-colors">
-                      <CardContent className="px-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-center gap-4 flex-1">
-                            <Avatar className="h-12 w-12 rounded-xl">
-                              <AvatarImage
-                                src={project.logoUrl ?? undefined}
-                                alt={project.name}
-                              />
-                              <AvatarFallback className="rounded-xl">
-                                {project.name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-semibold group-hover:text-primary transition-colors">
-                                  {project.name}
-                                </h4>
-                                <Badge variant="outline" className="text-xs">
-                                  {project.category}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  {formatCurrency(project.revenue)} generated
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  {formatCurrency(project.earnings)} earned
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <ShoppingBag className="h-3.5 w-3.5" />
-                                  {project.sales} sales
-                                </span>
+                {projects.map((project: (typeof projects)[0]) => {
+                  // Helper function to check if a value is hidden (-1 means hidden by visibility settings)
+                  const isHidden = (value: number | -1): boolean => {
+                    return value === -1;
+                  };
+
+                  const isAnonymous = project.name === "Anonymous Project";
+
+                  return (
+                    <Link
+                      key={project.id}
+                      href={`/projects/${project.id}`}
+                      className="group"
+                    >
+                      <Card className="border-border/50 bg-background/50 hover:border-primary/50 transition-colors">
+                        <CardContent className="px-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-4 flex-1">
+                              <Avatar className="h-12 w-12 rounded-xl">
+                                <AvatarImage
+                                  src={project.logoUrl ?? undefined}
+                                  alt={project.name}
+                                />
+                                <AvatarFallback className="rounded-xl">
+                                  {project.name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4
+                                    className={`font-semibold group-hover:text-primary transition-colors ${
+                                      isAnonymous ? "blur-xs opacity-60" : ""
+                                    }`}
+                                  >
+                                    {project.name}
+                                  </h4>
+                                  <Badge variant="outline" className="text-xs">
+                                    {project.category}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                  <span
+                                    className={`flex items-center gap-1 transition-all ${
+                                      isHidden(project.revenue)
+                                        ? "blur-xs opacity-60"
+                                        : ""
+                                    }`}
+                                  >
+                                    {isHidden(project.revenue)
+                                      ? "—"
+                                      : `${formatCurrency(project.revenue)} generated`}
+                                  </span>
+                                  <span
+                                    className={`flex items-center gap-1 transition-all ${
+                                      isHidden(project.earnings)
+                                        ? "blur-xs opacity-60"
+                                        : ""
+                                    }`}
+                                  >
+                                    {isHidden(project.earnings)
+                                      ? "—"
+                                      : `${formatCurrency(project.earnings)} earned`}
+                                  </span>
+                                  <span
+                                    className={`flex items-center gap-1 transition-all ${
+                                      isHidden(project.sales)
+                                        ? "blur-xs opacity-60"
+                                        : ""
+                                    }`}
+                                  >
+                                    <ShoppingBag className="h-3.5 w-3.5" />
+                                    {isHidden(project.sales)
+                                      ? "—"
+                                      : `${project.sales} sales`}
+                                  </span>
+                                </div>
                               </div>
                             </div>
+                            <div className="text-right">
+                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                {project.commission}% commission
+                              </Badge>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Since {formatDate(project.joinedDate)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                              {project.commission}% commission
-                            </Badge>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Since {formatDate(project.joinedDate)}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
 
@@ -872,9 +993,12 @@ export default function MarketerProfilePage() {
                           className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-muted/20"
                         >
                           <div>
-                            <p className="font-medium text-sm">
+                            <Link
+                              href={`/projects/${commission.projectId}`}
+                              className="font-medium text-sm hover:text-primary transition-colors"
+                            >
                               {commission.project}
-                            </p>
+                            </Link>
                             <p className="text-xs text-muted-foreground">
                               {commission.sales} sales •{" "}
                               {new Date(commission.date).toLocaleDateString()}

@@ -240,14 +240,15 @@ export type PublicMarketerProfile = {
     name: string;
     category: string | null;
     logoUrl: string | null;
-    revenue: number;
-    earnings: number;
-    sales: number;
+    revenue: number | -1; // -1 means hidden by visibility settings
+    earnings: number | -1; // -1 means hidden by visibility settings
+    sales: number | -1; // -1 means hidden by visibility settings
     commission: number;
     joinedDate: string;
   }>;
   recentCommissions: Array<{
     id: string;
+    projectId: string;
     project: string;
     amount: number;
     date: string;
@@ -281,11 +282,11 @@ export type PublicMarketerProfile = {
     projectMetrics: Array<{
       projectId: string;
       projectName: string;
-      totalProjectRevenue: number;
-      totalAffiliateRevenue: number;
-      totalCommissionOwed: number;
-      totalPurchases: number;
-      totalCustomers: number;
+      totalProjectRevenue: number | -1; // -1 means hidden by visibility settings
+      totalAffiliateRevenue: number | -1; // -1 means hidden by visibility settings
+      totalCommissionOwed: number | -1; // -1 means hidden by visibility settings
+      totalPurchases: number | -1; // -1 means hidden by visibility settings
+      totalCustomers: number | -1; // -1 means hidden by visibility settings
     }>;
   };
 };
@@ -310,7 +311,7 @@ export function usePublicMarketerProfile(marketerId?: string | null) {
 
 export type LeaderboardMarketer = {
   id: string;
-  name: string;
+  name: string | null; // Can be null for GHOST mode
   focus: string | null;
   revenue: number;
   commission: number;
