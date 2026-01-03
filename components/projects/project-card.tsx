@@ -21,6 +21,11 @@ export type ProjectCardData = {
 
 type ProjectCardProps = {
   project: ProjectCardData;
+  /**
+   * Base path for the project link (e.g., "/projects" for public, "/marketer/projects" for dashboard)
+   * Defaults to "/projects"
+   */
+  basePath?: string;
 };
 
 function formatCurrency(value: number | null): string {
@@ -53,9 +58,12 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  basePath = "/projects",
+}: ProjectCardProps) {
   return (
-    <Link href={`/projects/${project.id}`}>
+    <Link href={`${basePath}/${project.id}`}>
       <Card className="group h-full transition-all hover:shadow-lg hover:border-primary/50">
         <CardContent className="p-6 py-2 flex flex-col h-full">
           {/* Main Content */}

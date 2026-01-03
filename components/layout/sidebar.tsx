@@ -26,6 +26,7 @@ import {
   TrendingUp,
   PanelLeftClose,
   PanelLeft,
+  FolderOpen,
 } from "lucide-react";
 
 interface NavItem {
@@ -48,6 +49,7 @@ const marketerNavItems: NavItem[] = [
   { title: "Dashboard", href: "/marketer", icon: LayoutDashboard },
   { title: "My Offers", href: "/marketer/offers", icon: FileText },
   { title: "Browse", href: "/marketer/browse", icon: Search },
+  { title: "Project Directory", href: "/marketer/projects", icon: FolderOpen },
   { title: "Metrics", href: "/marketer/metrics", icon: TrendingUp },
   { title: "Earnings", href: "/marketer/earnings", icon: CreditCard },
   { title: "Notifications", href: "/marketer/notifications", icon: Bell },
