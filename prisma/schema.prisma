@@ -41,6 +41,7 @@ model User {
   testimonialsReceived     Testimonial[]           @relation("MarketerTestimonials")
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
+  visibility               VisibilityMode          @default(PUBLIC)
 }
 
 model Project {
@@ -75,6 +76,10 @@ model Project {
   testimonials              Testimonial[]
   createdAt                 DateTime               @default(now())
   updatedAt                 DateTime               @updatedAt
+  visibility                VisibilityMode         @default(PUBLIC)
+  showMrr                   Boolean                @default(true)
+  showRevenue               Boolean                @default(true)
+  showStats                 Boolean                @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -493,4 +498,10 @@ model Testimonial {
   @@index([creatorId])
   @@index([marketerId])
   @@index([projectId])
+}
+
+enum VisibilityMode {
+  PUBLIC
+  GHOST
+  PRIVATE
 }
