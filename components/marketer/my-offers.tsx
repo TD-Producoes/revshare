@@ -10,7 +10,13 @@ import { useContractsForMarketer } from "@/lib/hooks/contracts";
 import Link from "next/link";
 import { MyOffersTable } from "./my-offers-table";
 
-export function MyOffers() {
+export function MyOffers({
+  title = "My Offers",
+  description = "Track your affiliate partnerships and performance.",
+}: {
+  title?: string;
+  description?: string;
+}) {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
   const { data: contracts = [], isLoading: isContractsLoading } =
@@ -39,10 +45,8 @@ export function MyOffers() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">My Offers</h1>
-        <p className="text-muted-foreground">
-          Track your affiliate partnerships and performance.
-        </p>
+        <h1 className="text-2xl font-bold">{title}</h1>
+        <p className="text-muted-foreground">{description}</p>
       </div>
 
       <Tabs defaultValue="active" className="space-y-4">

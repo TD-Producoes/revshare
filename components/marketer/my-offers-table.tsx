@@ -310,7 +310,7 @@ export function MyOffersTable({
                 // Route to offer detail page if approved, otherwise to project directory
                 const projectHref =
                   contract.status === "approved"
-                    ? `/marketer/offers/${contract.projectId}`
+                    ? `/marketer/applications/${contract.projectId}`
                     : `/marketer/projects/${contract.projectId}`;
 
                 return (
@@ -666,7 +666,7 @@ export function MyOffersTable({
               // Route to offer detail page if contract is approved, otherwise to project directory
               const projectHref =
                 contract?.status === "approved"
-                  ? `/marketer/offers/${project.id}`
+                  ? `/marketer/applications/${project.id}`
                   : `/marketer/projects/${project.id}`;
 
               const metrics = getMarketerProjectMetrics(

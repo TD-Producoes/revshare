@@ -25,7 +25,6 @@ import {
   TrendingUp,
   PanelLeftClose,
   PanelLeft,
-  FolderOpen,
 } from "lucide-react";
 
 interface NavItem {
@@ -66,15 +65,40 @@ const creatorNavSections: NavSection[] = [
   },
 ];
 
-const marketerNavItems: NavItem[] = [
-  { title: "Dashboard", href: "/marketer", icon: LayoutDashboard },
-  { title: "My Offers", href: "/marketer/offers", icon: FileText },
-  { title: "Browse", href: "/marketer/browse", icon: Search },
-  { title: "Project Directory", href: "/marketer/projects", icon: FolderOpen },
-  { title: "Metrics", href: "/marketer/metrics", icon: TrendingUp },
-  { title: "Earnings", href: "/marketer/earnings", icon: CreditCard },
-  { title: "Notifications", href: "/marketer/notifications", icon: Bell },
-  { title: "Audit Log", href: "/marketer/events", icon: History },
+const marketerNavSections: NavSection[] = [
+  {
+    items: [{ title: "Dashboard", href: "/marketer", icon: LayoutDashboard }],
+  },
+  {
+    label: "Discover",
+    items: [
+      { title: "Projects", href: "/marketer/projects", icon: Search },
+    ],
+  },
+  {
+    label: "Manage",
+    items: [
+      { title: "Applications", href: "/marketer/applications", icon: FileText },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [{ title: "Metrics", href: "/marketer/metrics", icon: TrendingUp }],
+  },
+  {
+    label: "Finance",
+    items: [
+      { title: "Earnings", href: "/marketer/earnings", icon: CreditCard },
+      { title: "Payouts", href: "/marketer/payouts", icon: CreditCard },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { title: "Notifications", href: "/marketer/notifications", icon: Bell },
+      { title: "Audit Log", href: "/marketer/events", icon: History },
+    ],
+  },
 ];
 
 function NavLink({
@@ -139,32 +163,25 @@ export function Sidebar() {
         )}
       >
         <nav className="flex flex-1 flex-col gap-2 p-2">
-          {isCreator
-            ? creatorNavSections.map((section, sectionIndex) => (
-                <div key={section.label ?? sectionIndex} className="space-y-1">
-                  {section.label && !isCollapsed ? (
-                    <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-                      {section.label}
-                    </p>
-                  ) : null}
-                  {section.items.map((item) => (
-                    <NavLink
-                      key={item.href}
-                      item={item}
-                      isActive={isActiveLink(item.href)}
-                      isCollapsed={isCollapsed}
-                    />
-                  ))}
-                </div>
-              ))
-            : marketerNavItems.map((item) => (
-                <NavLink
-                  key={item.href}
-                  item={item}
-                  isActive={isActiveLink(item.href)}
-                  isCollapsed={isCollapsed}
-                />
-              ))}
+          {(isCreator ? creatorNavSections : marketerNavSections).map(
+            (section, sectionIndex) => (
+              <div key={section.label ?? sectionIndex} className="space-y-1">
+                {section.label && !isCollapsed ? (
+                  <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                    {section.label}
+                  </p>
+                ) : null}
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    isActive={isActiveLink(item.href)}
+                    isCollapsed={isCollapsed}
+                  />
+                ))}
+              </div>
+            ),
+          )}
         </nav>
 
         <div className="border-t border-border p-2">
