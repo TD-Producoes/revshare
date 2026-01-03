@@ -4,7 +4,7 @@ import { use } from "react";
 
 import { CreatorMarketerDetail } from "@/components/creator/marketer-detail";
 
-export default function CreatorMarketerPage({
+export default function CreatorAffiliatePage({
   params,
 }: {
   params: Promise<{ marketerId: string }>;
@@ -12,3 +12,4 @@ export default function CreatorMarketerPage({
   const { marketerId } = use(params);
   return <CreatorMarketerDetail marketerId={marketerId} />;
 }
+

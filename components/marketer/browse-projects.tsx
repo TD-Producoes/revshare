@@ -23,6 +23,7 @@ import { Search, Percent, Timer, Check, Clock } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useProjects } from "@/lib/hooks/projects";
+import { isAnonymousName } from "@/lib/utils/anonymous";
 import {
   useContractsForMarketer,
   useCreateContract,
@@ -233,7 +234,7 @@ export function BrowseProjects() {
                   </div>
                   <CardTitle
                     className={`mt-2 ${
-                      project.name === "Anonymous Project"
+                      isAnonymousName(project.name)
                         ? "blur-xs opacity-60"
                         : ""
                     }`}

@@ -239,7 +239,7 @@ export function OffersManagement() {
               </span>
             </div>
             <Link
-              href="/creator/marketers"
+              href="/creator/affiliates"
               className="mt-2 inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
               Once approved, marketers will appear in Marketers →

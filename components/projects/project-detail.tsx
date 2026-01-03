@@ -27,7 +27,11 @@ import Link from "next/link";
 import { useProjectProfile } from "@/lib/hooks/projects";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
-import { useContractsForMarketer, useCreateContract } from "@/lib/hooks/contracts";
+import {
+  useContractsForMarketer,
+  useCreateContract,
+} from "@/lib/hooks/contracts";
+import { getAvatarFallback, isAnonymousName } from "@/lib/utils/anonymous";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -177,10 +181,10 @@ export function ProjectDetail({
       !hasInitializedDialog.current
     ) {
       hasInitializedDialog.current = true;
-      
+
       // Check if user is already promoting
       const contractStatus = getContractStatus();
-      
+
       // Initialize dialog with project data - use setTimeout to avoid setState in effect
       setTimeout(() => {
         // If already approved, just open dialog (will show message)
@@ -189,7 +193,9 @@ export function ProjectDetail({
           const defaultCommission = getRevSharePercent(
             profileData.project.marketerCommissionPercent
           );
-          setCommissionInput(defaultCommission !== null ? String(defaultCommission) : "");
+          setCommissionInput(
+            defaultCommission !== null ? String(defaultCommission) : ""
+          );
           setRefundWindowInput(
             profileData.project.refundWindowDays != null
               ? String(profileData.project.refundWindowDays)
@@ -208,7 +214,15 @@ export function ProjectDetail({
         : window.location.pathname;
       router.replace(newUrl, { scroll: false });
     }
-  }, [profileData, searchParams, isPrivate, currentUser?.role, router, getRevSharePercent, getContractStatus]);
+  }, [
+    profileData,
+    searchParams,
+    isPrivate,
+    currentUser?.role,
+    router,
+    getRevSharePercent,
+    getContractStatus,
+  ]);
 
   // Handle opening the apply dialog
   const handleOpenApply = () => {
@@ -220,11 +234,13 @@ export function ProjectDetail({
 
     // Private page: open dialog directly
     if (!profileData?.project) return;
-    
+
     const defaultCommission = getRevSharePercent(
       profileData.project.marketerCommissionPercent
     );
-    setCommissionInput(defaultCommission !== null ? String(defaultCommission) : "");
+    setCommissionInput(
+      defaultCommission !== null ? String(defaultCommission) : ""
+    );
     setRefundWindowInput(
       profileData.project.refundWindowDays != null
         ? String(profileData.project.refundWindowDays)
@@ -234,6 +250,11 @@ export function ProjectDetail({
     setFormError(null);
     setIsDialogOpen(true);
   };
+
+  function getProjectAvatarUrl(name: string, logoUrl?: string | null): string {
+    if (logoUrl) return logoUrl;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&size=128`;
+  }
 
   // Handle submitting the contract application
   const handleSubmitContract = async () => {
@@ -349,7 +370,7 @@ export function ProjectDetail({
             </Button>
             <h1
               className={`text-2xl font-bold ${
-                project.name === "Anonymous Project" ? "blur-xs opacity-60" : ""
+                isAnonymousName(project.name) ? "blur-xs opacity-60" : ""
               }`}
             >
               {project.name}
@@ -431,9 +452,7 @@ export function ProjectDetail({
                 <BreadcrumbItem>
                   <BreadcrumbPage
                     className={
-                      project.name === "Anonymous Project"
-                        ? "blur-xs opacity-60"
-                        : ""
+                      isAnonymousName(project.name) ? "blur-xs opacity-60" : ""
                     }
                   >
                     {project.name}
@@ -443,19 +462,27 @@ export function ProjectDetail({
             </Breadcrumb>
             <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
               <div className="flex gap-6 items-center">
-                <Avatar className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-sm border-2 border-primary/20">
-                  {project.logoUrl && (
-                    <AvatarImage src={project.logoUrl} alt={project.name} />
-                  )}
-                  <AvatarFallback className="rounded-2xl text-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-                    {getInitials(project.name)}
-                  </AvatarFallback>
-                </Avatar>
+                {isAnonymousName(project.name) ? (
+                  // Show spy icon for GHOST marketers
+                  <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-muted border-2 border-border shadow-sm">
+                    {getAvatarFallback(project.name, "h-10 w-10 md:h-12 md:w-12")}
+                  </div>
+                ) : (
+                  <Avatar className="h-full w-full rounded-lg">
+                    <AvatarImage
+                      src={getProjectAvatarUrl(project.name, project.logoUrl)}
+                      alt={project.name}
+                    />
+                    <AvatarFallback className="rounded-lg text-sm font-bold">
+                      {getAvatarFallback(project.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
                     <h1
                       className={`text-3xl md:text-4xl font-bold tracking-tight transition-all ${
-                        project.name === "Anonymous Project"
+                        isAnonymousName(project.name)
                           ? "blur-xs opacity-60"
                           : ""
                       }`}
@@ -535,13 +562,7 @@ export function ProjectDetail({
       )}
 
       {/* Main Content */}
-      <div
-        className={
-          isPrivate
-            ? "space-y-6"
-            : "mx-auto max-w-7xl px-6 py-6"
-        }
-      >
+      <div className={isPrivate ? "space-y-6" : "mx-auto max-w-7xl px-6 py-6"}>
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           {/* Left Column: Main Content */}
           <div className="space-y-10">
@@ -554,9 +575,7 @@ export function ProjectDetail({
                   <div className="rounded-lg border border-border bg-card p-4">
                     <div
                       className={`text-2xl font-semibold mb-1 transition-all ${
-                        isHidden(stats.totalRevenue)
-                          ? "blur-xs opacity-60"
-                          : ""
+                        isHidden(stats.totalRevenue) ? "blur-xs opacity-60" : ""
                       }`}
                     >
                       {getDisplayValue(stats.totalRevenue) != null
@@ -579,7 +598,10 @@ export function ProjectDetail({
                       }`}
                     >
                       {getDisplayValue(stats.mrr) != null
-                        ? formatCurrency(getDisplayValue(stats.mrr) ?? 0, currency)
+                        ? formatCurrency(
+                            getDisplayValue(stats.mrr) ?? 0,
+                            currency
+                          )
                         : "—"}
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -824,7 +846,10 @@ export function ProjectDetail({
                       const metadata = parseUserMetadata(user.metadata);
                       const xProfile = metadata.socialMedia?.x;
                       const avatarUrl = xProfile?.handle
-                        ? `https://unavatar.io/x/${xProfile.handle.replace(/^@/, "")}`
+                        ? `https://unavatar.io/x/${xProfile.handle.replace(
+                            /^@/,
+                            ""
+                          )}`
                         : null;
 
                       return (
@@ -886,10 +911,7 @@ export function ProjectDetail({
                   </p>
                 </div>
                 <DialogFooter>
-                  <Button
-                    type="button"
-                    onClick={() => setIsDialogOpen(false)}
-                  >
+                  <Button type="button" onClick={() => setIsDialogOpen(false)}>
                     Close
                   </Button>
                 </DialogFooter>
@@ -913,7 +935,9 @@ export function ProjectDetail({
                       min={0}
                       step="0.5"
                       value={commissionInput}
-                      onChange={(event) => setCommissionInput(event.target.value)}
+                      onChange={(event) =>
+                        setCommissionInput(event.target.value)
+                      }
                       placeholder="20"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -927,7 +951,9 @@ export function ProjectDetail({
                       type="number"
                       min={0}
                       value={refundWindowInput}
-                      onChange={(event) => setRefundWindowInput(event.target.value)}
+                      onChange={(event) =>
+                        setRefundWindowInput(event.target.value)
+                      }
                       placeholder="30"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -939,7 +965,9 @@ export function ProjectDetail({
                     <Textarea
                       id="message"
                       value={applicationMessage}
-                      onChange={(event) => setApplicationMessage(event.target.value)}
+                      onChange={(event) =>
+                        setApplicationMessage(event.target.value)
+                      }
                       placeholder="Introduce yourself or share why you're a great fit."
                       rows={3}
                     />
@@ -964,7 +992,9 @@ export function ProjectDetail({
                     onClick={handleSubmitContract}
                     disabled={createContract.isPending || !project}
                   >
-                    {createContract.isPending ? "Submitting..." : "Submit Request"}
+                    {createContract.isPending
+                      ? "Submitting..."
+                      : "Submit Request"}
                   </Button>
                 </DialogFooter>
               </>
@@ -975,4 +1005,3 @@ export function ProjectDetail({
     </div>
   );
 }
-

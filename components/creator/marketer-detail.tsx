@@ -57,17 +57,17 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/creator/marketers">
-                  Marketers
+                <BreadcrumbLink href="/creator/affiliates">
+                  Affiliates
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbLink
-                  href={`/creator/marketers/${marketerId}`}
+                  href={`/creator/affiliates/${marketerId}`}
                   onClick={() => setActiveTab("overview")}
                 >
-                  {marketer?.name ?? "Marketer"}
+                  {marketer?.name ?? "Affiliate"}
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -78,14 +78,14 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
           </Breadcrumb>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/creator/marketers">
+              <Link href="/creator/affiliates">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
             <h1 className="text-2xl font-bold">
-              {marketer?.name ?? "Marketer"}
+              {marketer?.name ?? "Affiliate"}
             </h1>
-            <Badge variant="secondary">Marketer</Badge>
+            <Badge variant="secondary">Affiliate</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             {marketer?.email ?? "No email on file"}

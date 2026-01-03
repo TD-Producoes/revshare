@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DollarSign, MapPin, Target, EyeOff } from "lucide-react";
+import { DollarSign, MapPin, Target } from "lucide-react";
+import { getAvatarFallback, isAnonymousName } from "@/lib/utils/anonymous";
 
 export type MarketerCardData = {
   id: string;
@@ -21,6 +22,7 @@ export type MarketerCardData = {
 
 type MarketerCardProps = {
   marketer: MarketerCardData;
+  basePath?: string; // Base path for marketer links (e.g., "/marketers" for public, "/creator/discover-marketers" for dashboard)
 };
 
 function formatCurrency(value: number | null): string {
@@ -45,38 +47,29 @@ function getMarketerAvatarUrl(name: string | null, avatarUrl?: string | null): s
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&size=128`;
 }
 
-function getInitials(name: string | null): string {
-  if (!name) return "??";
-  return name
-    .split(" ")
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
-export function MarketerCard({ marketer }: MarketerCardProps) {
+export function MarketerCard({ marketer, basePath = "/marketers" }: MarketerCardProps) {
   return (
-    <Link href={`/marketers/${marketer.id}`}>
+    <Link href={`${basePath}/${marketer.id}`}>
       <Card className="group h-full transition-all hover:shadow-lg hover:border-primary/50">
         <CardContent className="p-6 py-2 flex flex-col h-full">
           {/* Main Content */}
           <div className="flex-1">
             {/* Avatar Section */}
             <div className="mb-3 flex h-16 w-16 items-center justify-center">
-              {!marketer.name ? (
+              {isAnonymousName(marketer.name) ? (
                 // Show spy icon for GHOST marketers
                 <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted border-2 border-border">
-                  <EyeOff className="h-8 w-8 text-muted-foreground" />
+                  {getAvatarFallback(marketer.name, "h-8 w-8")}
                 </div>
               ) : (
                 <Avatar className="h-full w-full rounded-lg">
                   <AvatarImage
                     src={getMarketerAvatarUrl(marketer.name, marketer.avatarUrl)}
-                    alt={marketer.name}
+                    alt={marketer.name || "Anonymous"}
                   />
                   <AvatarFallback className="rounded-lg text-sm font-bold">
-                    {getInitials(marketer.name)}
+                    {getAvatarFallback(marketer.name)}
                   </AvatarFallback>
                 </Avatar>
               )}
@@ -85,7 +78,7 @@ export function MarketerCard({ marketer }: MarketerCardProps) {
             {/* Name */}
             <h3 
               className={`mb-2 text-xl font-bold text-foreground group-hover:text-primary transition-all ${
-                !marketer.name ? "blur-xs opacity-60" : ""
+                isAnonymousName(marketer.name) ? "blur-xs opacity-60" : ""
               }`}
             >
               {marketer.name ?? "Anonymous Marketer"}

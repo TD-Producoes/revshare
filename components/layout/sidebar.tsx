@@ -43,10 +43,16 @@ const creatorNavSections: NavSection[] = [
     items: [{ title: "Dashboard", href: "/creator", icon: LayoutDashboard }],
   },
   {
+    label: "Discover",
+    items: [
+      { title: "Marketers", href: "/creator/discover-marketers", icon: Search },
+    ],
+  },
+  {
     label: "Manage",
     items: [
       { title: "Projects", href: "/creator/projects", icon: FolderKanban },
-      { title: "Marketers", href: "/creator/marketers", icon: Users },
+      { title: "Affiliates", href: "/creator/affiliates", icon: Users },
       { title: "Applications", href: "/creator/applications", icon: FileText },
     ],
   },
