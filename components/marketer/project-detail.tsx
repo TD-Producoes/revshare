@@ -219,9 +219,9 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/marketer/offers" className="flex items-center gap-2">
+            <Link href="/marketer/applications" className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Back to offers
+              Back to applications
             </Link>
           </Button>
           <div>

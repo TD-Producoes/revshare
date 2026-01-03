@@ -42,6 +42,28 @@ export type MarketerAdjustmentsResponse = {
   pendingTotal: number;
 };
 
+export type MarketerTransfer = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  stripeTransferId: string | null;
+  failureReason: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  projects: string[];
+};
+
+export type MarketerTransfersResponse = {
+  totals: {
+    paid: number;
+    pending: number;
+    failed: number;
+  };
+  currency: string | null;
+  transfers: MarketerTransfer[];
+};
+
 export type MarketerProjectStats = {
   projectId: string;
   projectName: string;
@@ -155,6 +177,22 @@ export function useMarketerAdjustments(userId?: string | null) {
         pendingTotal:
           typeof payload?.pendingTotal === "number" ? payload.pendingTotal : 0,
       };
+    },
+  });
+}
+
+export function useMarketerTransfers(userId?: string | null) {
+  return useQuery<MarketerTransfersResponse>({
+    queryKey: ["marketer-transfers", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(`/api/marketer/transfers?userId=${userId}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch transfers.");
+      }
+      const payload = await response.json();
+      return payload?.data as MarketerTransfersResponse;
     },
   });
 }
