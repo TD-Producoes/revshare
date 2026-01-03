@@ -116,7 +116,7 @@ export default function FounderProfilePage({
       </div>
 
       {/* Header / Hero Section */}
-      <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-32 lg:pb-16 overflow-hidden">
+      <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-24 lg:pb-16 overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.02)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)] pointer-events-none" />
 
         <div className="mx-auto max-w-7xl px-6 relative z-10">
@@ -249,7 +249,7 @@ export default function FounderProfilePage({
                 </Badge>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 grid">
                 {projects.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No projects yet
@@ -262,7 +262,7 @@ export default function FounderProfilePage({
                       className="group"
                     >
                       <Card className="border-border/50 bg-background/50 hover:border-primary/50 transition-colors">
-                        <CardContent className="p-6">
+                        <CardContent className="p-6 py-4">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex items-center gap-4 flex-1">
                               <Avatar className="h-14 w-14 rounded-xl">
