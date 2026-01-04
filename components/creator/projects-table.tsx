@@ -33,11 +33,9 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead className="text-right">Price</TableHead>
             <TableHead className="text-right">Rev Share</TableHead>
             <TableHead className="text-right">MRR</TableHead>
-            <TableHead className="text-right">Subscribers</TableHead>
+            <TableHead className="text-right">Customers</TableHead>
             <TableHead className="text-right">Affiliate Revenue</TableHead>
             <TableHead className="text-right">Marketers</TableHead>
             <TableHead></TableHead>
@@ -46,20 +44,16 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
         <TableBody>
           {projects.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                 No projects yet. Create your first project to get started.
               </TableCell>
             </TableRow>
           ) : (
             projects.map((project) => {
-              const hasPrice =
-                typeof project.price === "number" &&
-                Number.isFinite(project.price);
               const hasRevShare =
                 typeof project.revSharePercent === "number" &&
                 Number.isFinite(project.revSharePercent);
               const hasMetrics = Boolean(project.metrics);
-              const isSubscription = project.pricingModel === "subscription";
               const hasMarketers = typeof project.marketerCount === "number";
 
               return (
@@ -72,27 +66,14 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                       {project.name}
                     </Link>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {project.category ?? "-"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {hasPrice ? formatCurrency(project.price!) : "-"}
-                    {hasPrice && isSubscription && (
-                      <span className="text-muted-foreground text-xs">/mo</span>
-                    )}
-                  </TableCell>
                   <TableCell className="text-right">
                     {hasRevShare ? `${project.revSharePercent}%` : "-"}
                   </TableCell>
                   <TableCell className="text-right">
-                    {isSubscription && hasMetrics
-                      ? formatCurrency(project.metrics!.mrr)
-                      : "-"}
+                    {hasMetrics ? formatCurrency(project.metrics!.mrr) : "-"}
                   </TableCell>
                   <TableCell className="text-right">
-                    {isSubscription && hasMetrics
+                    {hasMetrics
                       ? formatNumber(project.metrics!.activeSubscribers)
                       : "-"}
                   </TableCell>

@@ -60,6 +60,10 @@ export type CreatorDashboardProject = {
 export type CreatorDashboard = {
   totals: CreatorDashboardTotals;
   chart: Array<{ date: string; revenue: number; affiliateRevenue: number }>;
+  trends?: {
+    totalRevenue?: number | null;
+    mrr?: number | null;
+  };
   projects: CreatorDashboardProject[];
 };
 
