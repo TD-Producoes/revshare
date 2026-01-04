@@ -400,3 +400,47 @@ export function useProjectsFilterOptions() {
     },
   });
 }
+
+export type Reward = {
+  id: string;
+  name: string;
+  description?: string | null;
+  milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
+  milestoneValue: number;
+  rewardType:
+    | "DISCOUNT_COUPON"
+    | "FREE_SUBSCRIPTION"
+    | "PLAN_UPGRADE"
+    | "ACCESS_PERK";
+  rewardLabel?: string | null;
+  rewardPercentOff?: number | null;
+  rewardDurationMonths?: number | null;
+  fulfillmentType: "AUTO_COUPON" | "MANUAL";
+  earnLimit: "ONCE_PER_MARKETER" | "MULTIPLE";
+  availabilityType: "UNLIMITED" | "FIRST_N";
+  availabilityLimit?: number | null;
+  visibility: "PUBLIC" | "PRIVATE";
+  status: "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED";
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Hook to fetch public rewards for a project
+ * Returns only active, public rewards visible to marketers
+ */
+export function useProjectRewards(projectId?: string | null) {
+  return useQuery<Reward[]>({
+    queryKey: ["project-rewards", projectId ?? "none"],
+    enabled: Boolean(projectId),
+    queryFn: async () => {
+      if (!projectId) return [];
+      const response = await fetch(`/api/projects/${projectId}/rewards`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        return [];
+      }
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
