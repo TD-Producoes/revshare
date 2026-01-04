@@ -14,9 +14,8 @@ import {
   Wallet,
   FileSearch,
   TrendingUp,
-  Activity,
-  ChevronRight,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import React, { useRef, useState } from "react";
@@ -45,8 +44,8 @@ function FeatureSection({
 
   return (
     <section ref={sectionRef} className="relative z-10 py-20 overflow-hidden">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="grid lg:grid-cols-2 gap-8 items-center">
           <div className={`space-y-6 ${reversed ? 'lg:order-2' : ''}`}>
             <h2 className="text-[28px] md:text-[32px] font-semibold tracking-tight leading-tight text-black text-balance">
               {title}
@@ -335,59 +334,48 @@ function HeroDashboardCards() {
   );
 }
 
-// New component revealed inside the white circle
-function RevealedGrid({ progress }: { progress: any }) {
-  const opacity = useTransform(progress, [0.4, 0.7], [0, 1]);
-  const scale = useTransform(progress, [0.4, 0.8], [0.95, 1]);
-  const y = useTransform(progress, [0.4, 0.8], [20, 0]);
+// Browser Window Preview revealed inside the white circle
+function BrowserPreview({ progress }: { progress: any }) {
+  const opacity = useTransform(progress, [0.4, 0.6], [0, 1]);
+  const scale = useTransform(progress, [0.4, 0.7], [0.8, 0.9]);
+  const y = useTransform(progress, [0.4, 0.7], [40, 0]);
 
   return (
     <motion.div
       style={{ opacity, scale, y }}
-      className="absolute inset-0 flex flex-col items-center justify-center z-30 pt-16"
+      className="absolute inset-0 flex flex-col items-center justify-center z-30 pt-20 px-6"
     >
-      <div className="max-w-5xl w-full px-6 text-center mb-12">
-        <Badge variant="outline" className="mb-4 bg-primary/5 text-primary border-primary/20">Marketplace Discovery</Badge>
-        <h2 className="text-3xl font-bold text-black tracking-tight mb-4">High-performance programs, revealed.</h2>
-        <p className="text-black/60 max-w-lg mx-auto text-sm leading-relaxed">
-          Skip the gatekeepers. Immediately browse thousands of projects with verified recurring revenue and real-time payout tracking.
-        </p>
-      </div>
-
-      <div className="max-w-6xl w-full px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { name: "FlowMetrics AI", cat: "Productivity", comm: "30%", rev: "$120k", growth: "+14%" },
-          { name: "DesignStack", cat: "Design", comm: "25%", rev: "$450k", growth: "+8%" },
-          { name: "DevConnect", cat: "Infrastructure", comm: "20%", rev: "$2.4M", growth: "+22%" }
-        ].map((item, i) => (
-          <div key={i} className="bg-white border border-border/60 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group flex flex-col">
-            <div className="flex justify-between items-start mb-6">
-              <div className="h-10 w-10 rounded-lg bg-gray-50 border border-border/40 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-black" />
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] font-bold text-black/40 uppercase tracking-widest">Commission</div>
-                <div className="text-sm font-bold text-emerald-500">{item.comm}</div>
-              </div>
+      <div className="w-full max-w-4xl group">
+        <div className="bg-white rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.1)] border border-border/40 overflow-hidden transform-gpu transition-all duration-700">
+          {/* macOS Browser Header */}
+          <div className="h-10 bg-gray-50/50 border-b border-border/40 flex items-center px-4 gap-2">
+            <div className="flex gap-1.5 grayscale opacity-40">
+              <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
+              <div className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+              <div className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
             </div>
-            <div className="space-y-1 mb-6">
-              <h3 className="font-bold text-black flex items-center group-hover:text-primary transition-colors">
-                {item.name}
-                <ChevronRight className="h-3 w-3 ml-1 opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0" />
-              </h3>
-              <p className="text-xs text-black/50">{item.cat}</p>
-            </div>
-            <div className="mt-auto flex justify-between items-end pt-4 border-t border-border/40">
-              <div>
-                <div className="text-[9px] font-bold text-black/30 uppercase tracking-widest">Market Rev.</div>
-                <div className="text-xs font-bold text-black">{item.rev}</div>
-              </div>
-              <div className="bg-emerald-500/10 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded">
-                {item.growth}
+            <div className="flex-1 flex justify-center">
+              <div className="h-6 w-1/2 bg-white rounded-md border border-border/40 flex items-center px-3 gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500/20" />
+                <div className="h-1.5 w-24 bg-gray-100 rounded-full" />
               </div>
             </div>
           </div>
-        ))}
+          {/* Main Dashboard Image */}
+          <div className="relative aspect-[16/10] overflow-hidden bg-white">
+            <Image
+              src="/marketer-dashboard.png"
+              alt="Marketer Dashboard"
+              fill
+              className="object-cover object-left-top scale-100"
+              priority
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-12 text-center">
+        <h2 className="text-2xl font-bold text-black tracking-tight mb-2">Everything in one place. No exceptions.</h2>
       </div>
     </motion.div>
   );
@@ -402,16 +390,10 @@ export default function ForMarketers() {
     offset: ["start start", "end end"]
   });
 
-  // Reveal scale - from center
-  const revealScale = useTransform(scrollYProgress, [0, 0.45], [0, 1.2]); // Cap it slightly so it stays central
-  // Full expansion scale
-  const fullExpansionScale = useTransform(scrollYProgress, [0.45, 0.9], [1.2, 8]);
-
   const heroOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0]);
   const heroContentScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.95]);
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    // Keep navbar white/transparent until reveal is far enough (shifted from 0.85 to 0.6)
     if (latest > 0.6) {
       setNavbarForceTransparent(false);
     } else {
@@ -496,7 +478,7 @@ export default function ForMarketers() {
           </div>
 
           {/* CONTENT INSIDE THE REVEAL */}
-          <RevealedGrid progress={scrollYProgress} />
+          <BrowserPreview progress={scrollYProgress} />
         </div>
       </div>
 
