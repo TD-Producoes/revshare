@@ -63,14 +63,14 @@ const parseOptionalDate = (value?: string | null) => {
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
   const parsed = rewardInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -93,7 +93,7 @@ export async function POST(
   ) {
     return NextResponse.json(
       { error: "availabilityLimit is required when availability is capped" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -103,7 +103,7 @@ export async function POST(
   ) {
     return NextResponse.json(
       { error: "rewardPercentOff is required for discount rewards" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -112,16 +112,21 @@ export async function POST(
     (!payload.rewardDurationMonths || payload.rewardDurationMonths < 1)
   ) {
     return NextResponse.json(
-      { error: "rewardDurationMonths is required for free subscription rewards" },
-      { status: 400 },
+      {
+        error: "rewardDurationMonths is required for free subscription rewards",
+      },
+      { status: 400 }
     );
   }
 
   const { date: startsAtInput, valid: startsAtValid } = parseOptionalDate(
-    payload.startsAt,
+    payload.startsAt
   );
   if (!startsAtValid) {
-    return NextResponse.json({ error: "Invalid startsAt date" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid startsAt date" },
+      { status: 400 }
+    );
   }
   const startsAt = startsAtInput ?? new Date();
 
@@ -136,7 +141,9 @@ export async function POST(
       rewardType: payload.rewardType,
       rewardLabel: buildRewardLabel(payload),
       rewardPercentOff:
-        payload.rewardType === "DISCOUNT_COUPON" ? payload.rewardPercentOff : null,
+        payload.rewardType === "DISCOUNT_COUPON"
+          ? payload.rewardPercentOff
+          : null,
       rewardDurationMonths:
         payload.rewardType === "FREE_SUBSCRIPTION"
           ? payload.rewardDurationMonths
@@ -145,7 +152,9 @@ export async function POST(
       earnLimit: payload.earnLimit,
       availabilityType: payload.availabilityType,
       availabilityLimit:
-        payload.availabilityType === "FIRST_N" ? payload.availabilityLimit : null,
+        payload.availabilityType === "FIRST_N"
+          ? payload.availabilityLimit
+          : null,
       visibility: payload.visibility,
       status: "DRAFT",
     },
@@ -171,31 +180,43 @@ export async function POST(
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
   const { searchParams } = new URL(request.url);
   const creatorId = searchParams.get("creatorId");
 
-  if (!creatorId) {
-    return NextResponse.json({ error: "creatorId is required" }, { status: 400 });
-  }
-
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, visibility: true },
   });
 
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  if (project.userId !== creatorId) {
-    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+
+  // If creatorId is provided, this is a creator request - return all rewards
+  if (creatorId) {
+    if (project.userId !== creatorId) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    const rewards = await prisma.reward.findMany({
+      where: { projectId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ data: rewards });
   }
 
+  // Public request - only return active, public rewards
   const rewards = await prisma.reward.findMany({
-    where: { projectId },
-    orderBy: { createdAt: "desc" },
+    where: {
+      projectId,
+      status: "ACTIVE",
+      visibility: "PUBLIC",
+    },
+    orderBy: { milestoneValue: "asc" },
   });
 
   return NextResponse.json({ data: rewards });
@@ -203,7 +224,7 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
   const body = await request.json();
@@ -213,11 +234,15 @@ export async function PATCH(
   if (!parsed.success && !statusParsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error?.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
   const payload = parsed.success ? parsed.data : statusParsed.data;
+
+  if (!payload) {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -273,7 +298,7 @@ export async function PATCH(
   ) {
     return NextResponse.json(
       { error: "availabilityLimit is required when availability is capped" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -283,7 +308,7 @@ export async function PATCH(
   ) {
     return NextResponse.json(
       { error: "rewardPercentOff is required for discount rewards" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -292,16 +317,20 @@ export async function PATCH(
     (!fullPayload.rewardDurationMonths || fullPayload.rewardDurationMonths < 1)
   ) {
     return NextResponse.json(
-      { error: "rewardDurationMonths is required for free subscription rewards" },
-      { status: 400 },
+      {
+        error: "rewardDurationMonths is required for free subscription rewards",
+      },
+      { status: 400 }
     );
   }
 
-  const { date: updateStartsAt, valid: updateStartsAtValid } = parseOptionalDate(
-    fullPayload.startsAt,
-  );
+  const { date: updateStartsAt, valid: updateStartsAtValid } =
+    parseOptionalDate(fullPayload.startsAt);
   if (!updateStartsAtValid) {
-    return NextResponse.json({ error: "Invalid startsAt date" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid startsAt date" },
+      { status: 400 }
+    );
   }
 
   const updated = await prisma.reward.update({
