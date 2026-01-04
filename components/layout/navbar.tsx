@@ -24,21 +24,51 @@ import { Menu, ChartPie, Sparkles, LayoutDashboard } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 
-export function Navbar() {
+export function Navbar({
+  isTransparent = false,
+  forceTransparent = false
+}: {
+  isTransparent?: boolean,
+  forceTransparent?: boolean
+}) {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
+  const [isScrolled, setIsScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isTransparent) return;
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isTransparent]);
+
   const isAuthed = Boolean(currentUser);
   const isLoadingUser = isAuthLoading || isUserLoading;
   const dashboardHref =
     currentUser?.role === "marketer" ? "/marketer" : "/creator";
   const dashboardLabel = isAuthed ? "Dashboard" : "Signup";
 
+  const isTransparentActive = (isTransparent && !isScrolled) || forceTransparent;
+
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className={cn(
+      "fixed top-0 z-50 w-full transition-all duration-300",
+      isTransparentActive
+        ? "border-b-transparent bg-transparent"
+        : "border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+    )}>
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-6">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Link href="/" className={cn(
+            "flex items-center gap-2 font-bold text-xl transition-colors",
+            isTransparentActive ? "text-white" : "text-foreground"
+          )}>
+            <div className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+              isTransparentActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+            )}>
               <ChartPie strokeWidth={3} className="h-4 w-4" />
             </div>
             <span>RevShare</span>
@@ -49,7 +79,9 @@ export function Navbar() {
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger>Product</NavigationMenuTrigger>
+                  <NavigationMenuTrigger className={isTransparentActive ? "text-white/80 hover:text-white bg-transparent hover:bg-white/10" : ""}>
+                    Product
+                  </NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                       <li className="row-span-3">
@@ -79,7 +111,9 @@ export function Navbar() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>
+                  <NavigationMenuTrigger className={isTransparentActive ? "text-white/80 hover:text-white bg-transparent hover:bg-white/10" : ""}>
+                    Solutions
+                  </NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
                       {components.map((component) => (
@@ -95,18 +129,24 @@ export function Navbar() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                    <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                  <Link href="/projects">
+                  <NavigationMenuLink asChild className={cn(
+                    navigationMenuTriggerStyle(),
+                    isTransparentActive && "text-white/80 hover:text-white bg-transparent hover:bg-white/10"
+                  )}>
+                    <Link href="/projects">
                       Projects
-                  </Link>
-                    </NavigationMenuLink>
+                    </Link>
+                  </NavigationMenuLink>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                    <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                  <Link href="/marketers">
+                  <NavigationMenuLink asChild className={cn(
+                    navigationMenuTriggerStyle(),
+                    isTransparentActive && "text-white/80 hover:text-white bg-transparent hover:bg-white/10"
+                  )}>
+                    <Link href="/marketers">
                       Marketers
-                  </Link>
-                    </NavigationMenuLink>
+                    </Link>
+                  </NavigationMenuLink>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
@@ -116,11 +156,26 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             {!isAuthed && (
-              <Button variant="ghost" size="sm" asChild className="hidden md:flex">
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className={cn(
+                  "hidden md:flex",
+                  isTransparentActive && "text-white hover:text-white hover:bg-white/10"
+                )}
+              >
                 <Link href="/login">Sign In</Link>
               </Button>
             )}
-            <Button size="sm" className="hidden md:flex" asChild>
+            <Button
+              size="sm"
+              className={cn(
+                "hidden md:flex",
+                isTransparentActive && "bg-orange-500 hover:bg-orange-600 text-white border-none shadow-lg shadow-orange-500/20"
+              )}
+              asChild
+            >
               <Link href={isAuthed ? dashboardHref : "/signup"}>
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 {dashboardLabel}
@@ -130,7 +185,14 @@ export function Navbar() {
 
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="lg:hidden">
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn(
+                  "lg:hidden",
+                  isTransparentActive && "text-white border-white/20 bg-white/10"
+                )}
+              >
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
@@ -177,6 +239,11 @@ const components: { title: string; href: string; description: string }[] = [
     title: "Marketers",
     href: "/marketers",
     description: "Discover talented marketers to promote your products.",
+  },
+  {
+    title: "For Marketers",
+    href: "/product/for-marketers",
+    description: "Discover how you can earn with high-quality revenue-share programs.",
   },
 ];
 
