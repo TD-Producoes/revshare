@@ -257,7 +257,9 @@ export function ProjectDetail({
 
   function getProjectAvatarUrl(name: string, logoUrl?: string | null): string {
     if (logoUrl) return logoUrl;
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&size=128`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      name
+    )}&background=random&size=128`;
   }
 
   // Handle submitting the contract application
@@ -469,7 +471,10 @@ export function ProjectDetail({
                 {isAnonymousName(project.name) ? (
                   // Show spy icon for GHOST marketers
                   <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-muted border-2 border-border shadow-sm">
-                    {getAvatarFallback(project.name, "h-10 w-10 md:h-12 md:w-12")}
+                    {getAvatarFallback(
+                      project.name,
+                      "h-10 w-10 md:h-12 md:w-12"
+                    )}
                   </div>
                 ) : (
                   <Avatar className="flex h-20 w-20 md:h-24 md:w-24 rounded-lg">
@@ -765,7 +770,9 @@ export function ProjectDetail({
                             ? getDisplayValue(stats.totalPurchases)
                             : "—"}
                         </div>
-                        <div className="text-xs text-muted-foreground">Sales</div>
+                        <div className="text-xs text-muted-foreground">
+                          Sales
+                        </div>
                       </div>
                       <div>
                         <div
