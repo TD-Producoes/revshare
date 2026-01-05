@@ -43,18 +43,18 @@ function FeatureSection({
   });
 
   return (
-    <section ref={sectionRef} className="relative z-10 py-20 overflow-hidden">
+    <section ref={sectionRef} className="relative z-10 py-10 overflow-hidden">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="grid lg:grid-cols-2 gap-8 items-center">
-          <div className={`space-y-6 ${reversed ? 'lg:order-2' : ''}`}>
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className={`space-y-6 ${reversed ? 'lg:order-2' : 'lg:order-1'}`}>
             <h2 className="text-[28px] md:text-[32px] font-semibold tracking-tight leading-tight text-black text-balance">
               {title}
             </h2>
-            <p className="text-base text-black/70 max-w-[90%] leading-relaxed">
+            <p className="text-base text-black leading-relaxed">
               {description}
             </p>
           </div>
-          <div className={`relative flex justify-center items-center ${reversed ? 'lg:order-1' : ''}`}>
+          <div className={`relative flex items-center ${reversed ? 'lg:order-1 justify-start' : 'lg:order-2 justify-end'}`}>
             {visual(scrollYProgress)}
           </div>
         </div>
@@ -343,7 +343,7 @@ function BrowserPreview({ progress }: { progress: any }) {
   return (
     <motion.div
       style={{ opacity, scale, y }}
-      className="absolute inset-0 flex flex-col items-center justify-center z-30 pt-20 px-6"
+      className="absolute inset-0 flex flex-col items-center justify-center z-30 pt-20 px-6 pointer-events-none"
     >
       <div className="w-full max-w-4xl group">
         <div className="bg-white rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.1)] border border-border/40 overflow-hidden transform-gpu transition-all duration-700">
@@ -392,6 +392,7 @@ export default function ForMarketers() {
 
   const heroOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0]);
   const heroContentScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.95]);
+  const heroPointerEvents = useTransform(scrollYProgress, [0, 0.45], ["auto", "none"] as any);
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
     if (latest > 0.6) {
@@ -413,13 +414,13 @@ export default function ForMarketers() {
             <div className="absolute bottom-[-15%] left-1/2 -translate-x-1/2 w-[120vw] h-[120vw] rounded-full border border-white/[0.03]" />
             <div className="absolute bottom-[-5%] left-1/2 -translate-x-1/2 w-[90vw] h-[90vw] rounded-full border border-white/[0.05]" />
             <div className="absolute bottom-[5%] left-1/2 -translate-x-1/2 w-[65vw] h-[65vw] rounded-full border border-white/[0.08]" />
-            <div className="absolute bottom-[20%] left-1/2 -translate-x-1/2 w-[35vw] h-[35vw] rounded-full bg-[#FFB347]/10 blur-[100px]" />
+
           </motion.div>
 
-          {/* Hero Content that fades out */}
+          {/* Hero Content that fades out - Higher Z-INDEX (40) initially */}
           <motion.div
-            style={{ opacity: heroOpacity, scale: heroContentScale }}
-            className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-10 pt-20"
+            style={{ opacity: heroOpacity, scale: heroContentScale, pointerEvents: heroPointerEvents }}
+            className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-40 pt-20"
           >
             <div className="flex flex-col items-center space-y-8">
               <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/50 tracking-wide uppercase">
@@ -469,15 +470,15 @@ export default function ForMarketers() {
             </div>
           </motion.div>
 
-          {/* CIRCULAR REVEAL OVERLAY */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          {/* CIRCULAR REVEAL OVERLAY - Z-INDEX (30) */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
             <motion.div
               style={{ scale: useTransform(scrollYProgress, [0, 0.45, 0.9], [0, 1.2, 10]) }}
               className="w-[100vw] h-[100vw] rounded-full bg-white will-change-transform"
             />
           </div>
 
-          {/* CONTENT INSIDE THE REVEAL */}
+          {/* CONTENT INSIDE THE REVEAL - Z-INDEX (20) and POINTER-EVENTS-NONE */}
           <BrowserPreview progress={scrollYProgress} />
         </div>
       </div>
