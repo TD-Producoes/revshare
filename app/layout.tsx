@@ -4,6 +4,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import * as React from "react";
+import { RouteChangeTransition } from "@/components/layout/route-change-transition";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans" });
