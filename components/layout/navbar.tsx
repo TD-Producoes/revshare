@@ -56,8 +56,8 @@ export function Navbar({
     <header className={cn(
       "fixed top-0 z-50 w-full transition-all duration-300",
       isTransparentActive
-        ? "border-b-transparent bg-transparent"
-        : "border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        ? "border-b-transparent bg-transparent mt-10"
+        : "border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 mt-0"
     )}>
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-6">
         <div className="flex items-center gap-6">
@@ -79,28 +79,41 @@ export function Navbar({
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className={isTransparentActive ? "text-white/80 hover:text-white bg-transparent hover:bg-white/10" : ""}>
+                  <NavigationMenuTrigger className={cn(
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10 data-[state=open]:!bg-white/10 data-[state=open]:text-white"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80 data-[state=open]:!bg-amber-50/80 data-[state=open]:text-foreground"
+                  )}>
                     Product
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-                      <li className="row-span-3">
+                    <ul className="grid gap-3 p-6 md:w-[500px] lg:w-[600px] lg:grid-cols-[210px_1fr]">
+                      <li className="row-span-4">
                         <NavigationMenuLink asChild>
                           <Link
                             href="/"
-                            className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
+                            className="flex h-full w-full select-none flex-col justify-end rounded-[1.5rem] bg-amber-50/40 p-6 no-underline outline-none transition-all hover:bg-amber-100/40 group"
                           >
-                            <Sparkles className="h-6 w-6 text-primary" />
-                            <div className="mb-2 mt-4 text-lg font-medium">
+                            <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                              <Sparkles className="h-5 w-5 text-amber-500" />
+                            </div>
+                            <div className="mb-2 text-[15px] font-bold tracking-tight text-black">
                               RevShare Market
                             </div>
-                            <p className="text-sm leading-tight text-muted-foreground">
+                            <p className="text-[12px] leading-relaxed text-black/40">
                               The #1 marketplace for creators and marketers to
                               collaborate.
                             </p>
                           </Link>
                         </NavigationMenuLink>
                       </li>
+                      <ListItem href="/" title="For Founders">
+                        Scale your revenue with a commission-only army of sellers. Automated and compliant.
+                      </ListItem>
+                      <ListItem href="/product/for-marketers" title="For Marketers">
+                        Find high-quality SaaS products to promote. Track your performance and earnings.
+                      </ListItem>
                       <ListItem href="/projects" title="Projects Directory">
                         Browse all available projects and find partnerships.
                       </ListItem>
@@ -111,11 +124,16 @@ export function Navbar({
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className={isTransparentActive ? "text-white/80 hover:text-white bg-transparent hover:bg-white/10" : ""}>
+                  <NavigationMenuTrigger className={cn(
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10 data-[state=open]:!bg-white/10 data-[state=open]:text-white"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80 data-[state=open]:!bg-amber-50/80 data-[state=open]:text-foreground"
+                  )}>
                     Solutions
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
+                    <ul className="grid w-[400px] gap-3 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                       {components.map((component) => (
                         <ListItem
                           key={component.title}
@@ -131,7 +149,10 @@ export function Navbar({
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild className={cn(
                     navigationMenuTriggerStyle(),
-                    isTransparentActive && "text-white/80 hover:text-white bg-transparent hover:bg-white/10"
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
                   )}>
                     <Link href="/projects">
                       Projects
@@ -141,7 +162,10 @@ export function Navbar({
                 <NavigationMenuItem>
                   <NavigationMenuLink asChild className={cn(
                     navigationMenuTriggerStyle(),
-                    isTransparentActive && "text-white/80 hover:text-white bg-transparent hover:bg-white/10"
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
                   )}>
                     <Link href="/marketers">
                       Marketers
@@ -171,8 +195,10 @@ export function Navbar({
             <Button
               size="sm"
               className={cn(
-                "hidden md:flex",
-                isTransparentActive && "bg-orange-500 hover:bg-orange-600 text-white border-none shadow-lg shadow-orange-500/20"
+                "hidden md:flex transition-all duration-300",
+                isTransparentActive
+                  ? "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/20"
+                  : "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/10"
               )}
               asChild
             >
@@ -257,13 +283,13 @@ const ListItem = React.forwardRef<
         <a
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+            "block select-none space-y-1.5 rounded-2xl p-4 leading-none no-underline outline-none transition-all hover:bg-amber-50/50 group",
             className
           )}
           {...props}
         >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+          <div className="text-[13px] font-bold leading-none tracking-tight text-black group-hover:text-amber-600 transition-colors">{title}</div>
+          <p className="line-clamp-2 text-[12px] leading-relaxed text-black/40">
             {children}
           </p>
         </a>

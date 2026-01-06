@@ -19,6 +19,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import React, { useRef, useState } from "react";
+import { ComparisonSection } from "@/components/sections/comparison-section";
 
 // Helper components for the features sections
 function FeatureSection({
@@ -434,7 +435,7 @@ export default function ForMarketers() {
               </h1>
 
               <p className="max-w-xl text-base md:text-lg text-white/50 leading-relaxed mx-auto">
-                Skip the DMs. Browse verified revenue-share programs, track performance in real-time, and get paid automatically via Stripe.
+                Stop hunting for affiliate links. Browse verified programs, track your performance with full transparency, and earn recurring commissions as your sales grow.
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
@@ -485,6 +486,7 @@ export default function ForMarketers() {
 
       {/* Main Content Area (White Background) */}
       <div className="relative z-40 bg-white">
+        <ComparisonSection />
         {/* Features Area */}
         <FeatureSection
           badge="Discovery"
