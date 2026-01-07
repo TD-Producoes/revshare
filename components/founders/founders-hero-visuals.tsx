@@ -7,7 +7,7 @@ import { CheckCircle2, TrendingUp, Users, ShieldCheck, Wallet } from "lucide-rea
 
 export function FoundersHeroCards() {
   return (
-    <div className="flex flex-col md:flex-row items-end gap-5 max-w-5xl w-full px-4 mb-[-20px] scale-90 md:scale-100 transform-gpu">
+    <div className="flex flex-col md:flex-row items-end gap-5 max-w-5xl w-full px-4 mb-[-20px] scale-75 md:scale-80 transform-gpu">
       {/* Card 1: Revenue Chart */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}

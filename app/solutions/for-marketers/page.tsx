@@ -243,7 +243,7 @@ function ExpandingCardSection() {
 // Hero Dashboard Components
 function HeroDashboardCards() {
   return (
-    <div className="flex flex-col md:flex-row items-end gap-5 max-w-5xl w-full px-4 mb-[-20px] scale-90 md:scale-100 transform-gpu">
+    <div className="flex flex-col md:flex-row items-end gap-5 max-w-5xl w-full px-4 mb-[-20px] scale-75 md:scale-80 transform-gpu">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -447,7 +447,7 @@ export default function ForMarketers() {
           {/* Hero Content that fades out - Higher Z-INDEX (40) initially */}
           <motion.div
             style={{ opacity: heroOpacity, scale: heroContentScale, pointerEvents: heroPointerEvents }}
-            className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-40 pt-20"
+            className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-40 pt-[290px]"
           >
             <div className="flex flex-col items-center space-y-8 text-center">
               <motion.div

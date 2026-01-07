@@ -130,7 +130,7 @@ export default function ForFounders() {
           {/* Hero Content */}
           <motion.div
             style={{ opacity: heroOpacity, scale: heroContentScale, pointerEvents: heroPointerEvents }}
-            className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-40 pt-20"
+            className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-40 pt-[290px]"
           >
             <div className="flex flex-col items-center space-y-8">
               <motion.div
