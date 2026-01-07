@@ -26,10 +26,14 @@ import { useUser } from "@/lib/hooks/users";
 
 export function Navbar({
   isTransparent = false,
-  forceTransparent = false
+  forceTransparent = false,
+  isDashboardHidden = false,
+  theme = 'default'
 }: {
-  isTransparent?: boolean,
-  forceTransparent?: boolean
+  isTransparent?: boolean;
+  forceTransparent?: boolean;
+  isDashboardHidden?: boolean;
+  theme?: 'default' | 'founders';
 }) {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
@@ -54,12 +58,15 @@ export function Navbar({
 
   return (
     <header className={cn(
-      "fixed top-0 z-50 w-full transition-all duration-300",
+      "fixed top-0 z-50 w-full transition-all duration-500",
       isTransparentActive
         ? "border-b-transparent bg-transparent mt-10"
         : "border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 mt-0"
     )}>
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-6">
+      <div className={cn(
+        "mx-auto flex h-14 items-center justify-between px-4 lg:px-6 transition-all duration-500",
+        isTransparentActive ? "max-w-6xl" : "max-w-7xl"
+      )}>
         <div className="flex items-center gap-6">
           <Link href="/" className={cn(
             "flex items-center gap-2 font-bold text-xl transition-colors",
@@ -108,7 +115,7 @@ export function Navbar({
                           </Link>
                         </NavigationMenuLink>
                       </li>
-                      <ListItem href="/" title="For Founders">
+                      <ListItem href="/product/for-founders" title="For Founders">
                         Scale your revenue with a commission-only army of sellers. Automated and compliant.
                       </ListItem>
                       <ListItem href="/product/for-marketers" title="For Marketers">
@@ -164,7 +171,7 @@ export function Navbar({
                     navigationMenuTriggerStyle(),
                     "!bg-transparent transition-all duration-300 rounded-2xl",
                     isTransparentActive
-                      ? "text-white/80 hover:text-white hover:!bg-white/10"
+                      ? "text-white hover:text-white hover:!bg-white/10"
                       : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
                   )}>
                     <Link href="/marketers">
@@ -178,36 +185,39 @@ export function Navbar({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            {!isAuthed && (
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className={cn(
-                  "hidden md:flex",
-                  isTransparentActive && "text-white hover:text-white hover:bg-white/10"
-                )}
-              >
-                <Link href="/login">Sign In</Link>
-              </Button>
-            )}
-            <Button
-              size="sm"
-              className={cn(
-                "hidden md:flex transition-all duration-300",
-                isTransparentActive
-                  ? "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/20"
-                  : "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/10"
+          {!isDashboardHidden && (
+            <div className="flex items-center gap-2">
+              {!isAuthed && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className={cn(
+                    "hidden md:flex",
+                    isTransparentActive && "text-white hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <Link href="/login">Sign In</Link>
+                </Button>
               )}
-              asChild
-            >
-              <Link href={isAuthed ? dashboardHref : "/signup"}>
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                {dashboardLabel}
-              </Link>
-            </Button>
-          </div>
+              <Button
+                size="sm"
+                className={cn(
+                  "hidden md:flex transition-all duration-300",
+                  isTransparentActive
+                    ? theme === 'founders'
+                      ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710] font-bold rounded-full border-none shadow-none px-4 h-8"
+                      : "bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                    : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-lg px-3 shadow-amber-500/10"
+                )}
+                asChild
+              >
+                <Link href={isAuthed ? dashboardHref : "/signup"}>
+                  {dashboardLabel}
+                </Link>
+              </Button>
+            </div>
+          )}
 
           <Sheet>
             <SheetTrigger asChild>

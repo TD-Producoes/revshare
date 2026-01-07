@@ -19,50 +19,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import React, { useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { ComparisonSection } from "@/components/sections/comparison-section";
+import { FeatureSection } from "@/components/sections/feature-section";
 
-// Helper components for the features sections
-function FeatureSection({
-  badge,
-  title,
-  description,
-  items,
-  visual,
-  reversed = false
-}: {
-  badge: string,
-  title: string,
-  description: string,
-  items: string[],
-  visual: (progress: any) => React.ReactNode,
-  reversed?: boolean
-}) {
-  const sectionRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start end", "end start"],
-  });
-
-  return (
-    <section ref={sectionRef} className="relative z-10 py-10 overflow-hidden">
-      <div className="mx-auto max-w-5xl px-6">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
-          <div className={`space-y-6 ${reversed ? 'lg:order-2' : 'lg:order-1'}`}>
-            <h2 className="text-[28px] md:text-[32px] font-semibold tracking-tight leading-tight text-black text-balance">
-              {title}
-            </h2>
-            <p className="text-base text-black leading-relaxed">
-              {description}
-            </p>
-          </div>
-          <div className={`relative flex items-center ${reversed ? 'lg:order-1 justify-start' : 'lg:order-2 justify-end'}`}>
-            {visual(scrollYProgress)}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
+// Helper components for the features sections move to shared components/sections/feature-section.tsx
 
 // Visual component inspired by the provided image (minimal, tokens in a circle)
 function CircularVisual({ children, color = "bg-primary/5" }: { children: React.ReactNode, color?: string }) {
@@ -283,54 +244,91 @@ function ExpandingCardSection() {
 function HeroDashboardCards() {
   return (
     <div className="flex flex-col md:flex-row items-end gap-5 max-w-5xl w-full px-4 mb-[-20px] scale-90 md:scale-100 transform-gpu">
-      <div className="flex-1 bg-[#4A3728]/80 border border-white/5 rounded-xl p-5 text-left shadow-2xl backdrop-blur-lg">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="flex-1 bg-[#4A3728]/80 border border-white/5 rounded-xl p-5 text-left shadow-2xl backdrop-blur-lg"
+      >
         <div className="flex items-center justify-between mb-5">
           <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Cash Flow</div>
           <div className="text-[10px] text-[#FFB347] font-bold">+9.5%</div>
         </div>
         <div className="flex items-end gap-1 h-32 mb-4">
-          <div className="h-[40%] w-2 bg-[#FFB347]/10 rounded-t-sm" />
-          <div className="h-[60%] w-2 bg-[#FFB347]/20 rounded-t-sm" />
-          <div className="h-[50%] w-2 bg-[#FFB347]/15 rounded-t-sm" />
-          <div className="h-[80%] w-2 bg-[#FFB347]/40 rounded-t-sm" />
-          <div className="h-[100%] w-2 bg-[#FFB347]/80 rounded-t-sm" />
-          <div className="h-[90%] w-2 bg-[#FFB347]/60 rounded-t-sm" />
+          {[0.4, 0.6, 0.5, 0.8, 1, 0.9].map((h, i) => (
+            <motion.div
+              key={i}
+              initial={{ height: 0 }}
+              animate={{ height: `${h * 100}%` }}
+              transition={{ duration: 1, delay: 0.8 + (i * 0.1), ease: [0.21, 0.47, 0.32, 0.98] }}
+              className="w-2 bg-[#FFB347]/40 rounded-t-sm"
+            />
+          ))}
           <div className="h-full flex-1" />
         </div>
-      </div>
+      </motion.div>
 
-      <div className="w-full md:w-[260px] bg-[#5C4533] border border-white/10 rounded-xl p-6 flex flex-col items-center shadow-2xl z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="w-full md:w-[260px] bg-[#5C4533] border border-white/10 rounded-xl p-6 flex flex-col items-center shadow-2xl z-10"
+      >
         <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Revenue</div>
         <div className="text-[11px] text-white/20 mb-4">November 2024</div>
         <div className="relative h-24 w-24 mb-4">
           <svg className="h-full w-full" viewBox="0 0 36 36">
             <path className="text-white/5" strokeDasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="2.5" />
-            <path className="text-[#FFB347]" strokeDasharray="75, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            <motion.path
+              initial={{ strokeDasharray: "0, 100" }}
+              animate={{ strokeDasharray: "75, 100" }}
+              transition={{ duration: 1.5, delay: 1, ease: "easeInOut" }}
+              className="text-[#FFB347]"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-2 w-2 rounded-full bg-[#FFB347] shadow-[0_0_10px_#FFB347]" />
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.5, delay: 1.5 }}
+              className="h-2 w-2 rounded-full bg-[#FFB347] shadow-[0_0_10px_#FFB347]"
+            />
           </div>
         </div>
         <div className="text-3xl font-bold text-white">$2.8M</div>
-      </div>
+      </motion.div>
 
-      <div className="flex-1 bg-[#4A3728]/80 border border-white/5 rounded-xl p-5 text-left shadow-2xl backdrop-blur-lg">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="flex-1 bg-[#4A3728]/80 border border-white/5 rounded-xl p-5 text-left shadow-2xl backdrop-blur-lg"
+      >
         <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-4">Performance</div>
         <div className="space-y-3">
-          <div className="flex justify-between items-center text-[11px]">
-            <span className="text-white/40">Revenue</span>
-            <span className="text-white/80 font-medium">$5.5M</span>
-          </div>
-          <div className="flex justify-between items-center text-[11px]">
-            <span className="text-white/40">Commission</span>
-            <span className="text-[#FFB347] font-medium">$1.0M</span>
-          </div>
-          <div className="flex justify-between items-center text-[11px]">
-            <span className="text-white/40">Active Offers</span>
-            <span className="text-white/80 font-medium">124</span>
-          </div>
+          {[
+            { label: "Revenue", value: "$5.5M", color: "text-white/80" },
+            { label: "Commission", value: "$1.0M", color: "text-[#FFB347]" },
+            { label: "Active Offers", value: "124", color: "text-white/80" }
+          ].map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 1.2 + (i * 0.1) }}
+              className="flex justify-between items-center text-[11px]"
+            >
+              <span className="text-white/40">{item.label}</span>
+              <span className={cn(item.color, "font-medium")}>{item.value}</span>
+            </motion.div>
+          ))}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -385,6 +383,7 @@ function BrowserPreview({ progress }: { progress: any }) {
 export default function ForMarketers() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [navbarForceTransparent, setNavbarForceTransparent] = useState(true);
+  const [navbarHideDashboard, setNavbarHideDashboard] = useState(false);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -396,6 +395,13 @@ export default function ForMarketers() {
   const heroPointerEvents = useTransform(scrollYProgress, [0, 0.45], ["auto", "none"] as any);
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    // Hide dashboard button when the circle reveal is passing through the top-right corner
+    if (latest > 0.35 && latest < 0.6) {
+      setNavbarHideDashboard(true);
+    } else {
+      setNavbarHideDashboard(false);
+    }
+
     if (latest > 0.6) {
       setNavbarForceTransparent(false);
     } else {
@@ -405,17 +411,37 @@ export default function ForMarketers() {
 
   return (
     <main className="relative bg-white selection:bg-primary/10">
-      <Navbar isTransparent forceTransparent={navbarForceTransparent} />
+      <Navbar isTransparent forceTransparent={navbarForceTransparent} isDashboardHidden={navbarHideDashboard} />
 
       {/* Hero with Reveal Animation */}
       <div ref={containerRef} className="relative h-[250vh]">
         <div className="sticky top-0 h-screen w-full overflow-hidden bg-[#3D2B1F]">
-          {/* Background circles fade out */}
-          <motion.div style={{ opacity: heroOpacity }} className="absolute inset-0">
-            <div className="absolute bottom-[-15%] left-1/2 -translate-x-1/2 w-[120vw] h-[120vw] rounded-full border border-white/[0.03]" />
-            <div className="absolute bottom-[-5%] left-1/2 -translate-x-1/2 w-[90vw] h-[90vw] rounded-full border border-white/[0.05]" />
-            <div className="absolute bottom-[5%] left-1/2 -translate-x-1/2 w-[65vw] h-[65vw] rounded-full border border-white/[0.08]" />
-
+          {/* Background circles with parallax and expansion entrance */}
+          <motion.div style={{ opacity: heroOpacity }} className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Outer Circle */}
+            <motion.div
+              style={{ y: useTransform(scrollYProgress, [0, 0.45], [0, -100]) }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.5, delay: 0.4, ease: [0.21, 0.47, 0.32, 0.98] }}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[120vw] h-[120vw] rounded-full border border-white/[0.03] border-dashed"
+            />
+            {/* Middle Circle */}
+            <motion.div
+              style={{ y: useTransform(scrollYProgress, [0, 0.45], [0, -60]) }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.5, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[90vw] rounded-full border border-white/[0.05]"
+            />
+            {/* Inner Circle */}
+            <motion.div
+              style={{ y: useTransform(scrollYProgress, [0, 0.45], [0, -30]) }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.5, delay: 0, ease: [0.21, 0.47, 0.32, 0.98] }}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[65vw] h-[65vw] rounded-full border border-white/[0.08]"
+            />
           </motion.div>
 
           {/* Hero Content that fades out - Higher Z-INDEX (40) initially */}
@@ -423,22 +449,75 @@ export default function ForMarketers() {
             style={{ opacity: heroOpacity, scale: heroContentScale, pointerEvents: heroPointerEvents }}
             className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-40 pt-20"
           >
-            <div className="flex flex-col items-center space-y-8">
-              <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/50 tracking-wide uppercase">
-                Marketer Alpha
-              </Badge>
+            <div className="flex flex-col items-center space-y-8 text-center">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/50 tracking-wide uppercase">
+                  Marketer Alpha
+                </Badge>
+              </motion.div>
 
-              <h1 className="text-[44px] md:text-[62px] font-semibold tracking-tighter leading-[1.05] text-white text-balance">
-                Market what you love. <br />
-                Get paid what you're
-                <span className="text-[#FFB347]"> worth.</span>
-              </h1>
+              <motion.h1
+                className="text-[44px] md:text-[62px] tracking-tighter leading-[1.05] text-white text-balance"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  visible: {
+                    transition: {
+                      staggerChildren: 0.08,
+                      delayChildren: 0.2
+                    }
+                  }
+                }}
+              >
+                {"Market what you love. Get paid what you're".split(" ").map((word, i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block mr-[0.2em] last:mr-0"
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      visible: { opacity: 1, y: 0 }
+                    }}
+                    transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+                  >
+                    {word}
+                  </motion.span>
+                ))}
+                <span className="text-[#FFB347]">
+                  {"worth.".split(" ").map((word, i) => (
+                    <motion.span
+                      key={i}
+                      className="inline-block ml-[0.2em]"
+                      variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        visible: { opacity: 1, y: 0 }
+                      }}
+                      transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+                    >
+                      {word}
+                    </motion.span>
+                  ))}
+                </span>
+              </motion.h1>
 
-              <p className="max-w-xl text-base md:text-lg text-white/50 leading-relaxed mx-auto">
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+                className="max-w-xl text-base md:text-lg text-white/50 leading-relaxed mx-auto"
+              >
                 Stop hunting for affiliate links. Browse verified programs, track your performance with full transparency, and earn recurring commissions as your sales grow.
-              </p>
+              </motion.p>
 
-              <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 1, ease: [0.21, 0.47, 0.32, 0.98] }}
+                className="flex flex-wrap items-center justify-center gap-4 pt-2"
+              >
                 <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold border-none transition-all" asChild>
                   <Link href="/projects">
                     Explore programs
@@ -448,9 +527,14 @@ export default function ForMarketers() {
                 <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
                   <Link href="/signup">Create profile</Link>
                 </Button>
-              </div>
+              </motion.div>
 
-              <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-[12px] text-white/30 pt-6 font-medium">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1, delay: 1.4 }}
+                className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-[12px] text-white/30 pt-6 font-medium"
+              >
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-[#FFB347]/40" />
                   <span>Zero fees</span>
@@ -463,7 +547,7 @@ export default function ForMarketers() {
                   <CheckCircle2 className="h-3.5 w-3.5 text-[#FFB347]/40" />
                   <span>Stripe Payouts</span>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             <div className="mt-16 w-full flex justify-center pb-12">
