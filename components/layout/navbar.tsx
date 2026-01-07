@@ -115,17 +115,17 @@ export function Navbar({
                           </Link>
                         </NavigationMenuLink>
                       </li>
-                      <ListItem href="/product/for-founders" title="For Founders">
-                        Scale your revenue with a commission-only army of sellers. Automated and compliant.
+                      <ListItem href="/how-it-works" title="How it works">
+                        End-to-end flow: tracking → refunds → payouts
                       </ListItem>
-                      <ListItem href="/product/for-marketers" title="For Marketers">
-                        Find high-quality SaaS products to promote. Track your performance and earnings.
+                      <ListItem href="/rewards" title="Rewards & Milestones">
+                        Performance-based incentives beyond commissions
                       </ListItem>
-                      <ListItem href="/projects" title="Projects Directory">
-                        Browse all available projects and find partnerships.
+                      <ListItem href="/integrations" title="Integrations">
+                        Stripe, Shopify, SaaS, subscriptions, mobile apps
                       </ListItem>
-                      <ListItem href="/marketers" title="Marketers Directory">
-                        Discover talented marketers to promote your products.
+                      <ListItem href="/trust" title="Trust & Payments">
+                        Refund windows, payouts, audit logs, Stripe Connect
                       </ListItem>
                     </ul>
                   </NavigationMenuContent>
@@ -140,16 +140,13 @@ export function Navbar({
                     Solutions
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-3 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                      {components.map((component) => (
-                        <ListItem
-                          key={component.title}
-                          title={component.title}
-                          href={component.href}
-                        >
-                          {component.description}
-                        </ListItem>
-                      ))}
+                    <ul className="grid w-[400px] gap-3 p-6 md:w-[500px] md:grid-cols-1 lg:w-[400px]">
+                      <ListItem href="/solutions/for-founders" title="For Founders">
+                        Scale your revenue with a commission-only army of sellers.
+                      </ListItem>
+                      <ListItem href="/solutions/for-marketers" title="For Marketers">
+                        Find high-quality SaaS products to promote. Earn recurring revenue.
+                      </ListItem>
                     </ul>
                   </NavigationMenuContent>
                 </NavigationMenuItem>
@@ -278,7 +275,7 @@ const components: { title: string; href: string; description: string }[] = [
   },
   {
     title: "For Marketers",
-    href: "/product/for-marketers",
+    href: "/solutions/for-marketers",
     description: "Discover how you can earn with high-quality revenue-share programs.",
   },
 ];
