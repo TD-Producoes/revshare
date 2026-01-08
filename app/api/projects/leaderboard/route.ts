@@ -8,12 +8,18 @@ import { VisibilityMode } from "@prisma/client";
 export type LeaderboardProject = {
   id: string;
   name: string;
+  description: string | null;
   category: string | null;
   logoUrl: string | null;
   revenue: number; // Total revenue in dollars
   marketers: number; // Active marketers count
   commission: number; // Total commission paid in dollars
   growth: string; // Growth percentage as string (e.g., "+20%")
+  founder: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  } | null;
 };
 
 export async function GET() {
@@ -22,12 +28,20 @@ export async function GET() {
     select: {
       id: true,
       name: true,
+      description: true,
       category: true,
       logoUrl: true,
       visibility: true,
       showRevenue: true,
       showStats: true,
       userId: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          metadata: true,
+        },
+      },
     },
   });
 
@@ -126,15 +140,31 @@ export async function GET() {
         growth = "+100%"; // New project with revenue
       }
 
+      // Get founder image from metadata if available
+      let founderImage = null;
+      if (project.user?.metadata && typeof project.user.metadata === "object") {
+        const metadata = project.user.metadata as Record<string, any>;
+        if (metadata.socialMedia?.x?.handle) {
+          const handle = metadata.socialMedia.x.handle.replace(/^@/, "");
+          founderImage = `https://unavatar.io/x/${handle}`;
+        }
+      }
+
       return {
         id: redacted.id,
         name: redacted.name, // Will be "Anonymous Project" for GHOST mode
+        description: redacted.description,
         category: redacted.category ?? "Other",
         logoUrl: redacted.logoUrl, // Will be null for GHOST mode
         revenue: totalRevenue,
         marketers: activeMarketersCount,
         commission,
         growth,
+        founder: redacted.visibility === VisibilityMode.GHOST ? null : {
+          id: project.user?.id,
+          name: project.user?.name ?? "Annonymous",
+          image: founderImage,
+        },
       };
     })
   );

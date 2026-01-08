@@ -33,7 +33,7 @@ function ComparisonCard({ before, after, index }: ComparisonItemProps) {
 
         {/* Before Section */}
         <div className="space-y-2 opacity-40 group">
-          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Previously</div>
+          <div className="text-[10px] font-bold text-white/40 mb-1">Previously</div>
           <div className="flex items-center gap-3">
             <X className="h-4 w-4 text-white/40" />
             <span className="text-base text-white/60 line-through decoration-white/20">{before}</span>

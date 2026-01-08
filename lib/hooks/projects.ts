@@ -158,12 +158,18 @@ export function useProject(id?: string | null) {
 export type LeaderboardProject = {
   id: string;
   name: string;
+  description: string | null;
   category: string | null;
   logoUrl: string | null;
   revenue: number;
   marketers: number;
   commission: number;
   growth: string;
+  founder: {
+    id: string | null;
+    name: string | null;
+    image: string | null;
+  } | null;
 };
 
 export function useProjectsLeaderboard() {
