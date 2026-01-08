@@ -58,7 +58,7 @@ export default function SettingsPage() {
     null,
   );
   const [isSavingPayment, setIsSavingPayment] = useState(false);
-  const paymentElementRef = useRef<HTMLDivElement | null>(null);
+  const paymentElementRef = useRef<HTMLDivElement>(null!);
   const [currencyError, setCurrencyError] = useState<string | null>(null);
   const [savingCurrencyId, setSavingCurrencyId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("account");

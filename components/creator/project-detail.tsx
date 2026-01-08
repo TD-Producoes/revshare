@@ -80,7 +80,7 @@ function buildAffiliateRows(
 ) {
   const couponMap = new Map<
     string,
-    { marketerId: string; marketerName: string; codes: string[] }
+    { marketerId: string; marketerName: string; codes: string[]; refundWindowDays?: number | null }
   >();
 
   projectCoupons.forEach((coupon) => {
@@ -88,7 +88,7 @@ function buildAffiliateRows(
     const existing = couponMap.get(marketerId) ?? {
       marketerId,
       marketerName: coupon.marketer.name,
-      codes: [],
+      codes: [] as string[],
       refundWindowDays: coupon.refundWindowDays,
     };
     existing.codes.push(coupon.code);

@@ -10,6 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/shared/stat-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useQueryClient } from "@tanstack/react-query";
 import { MarketerPurchasesTab } from "@/components/marketer/project-tabs/purchases-tab";
 import { MarketerPromoCodesTab } from "@/components/marketer/project-tabs/promo-codes-tab";

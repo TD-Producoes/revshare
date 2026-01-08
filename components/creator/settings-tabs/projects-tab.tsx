@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 type ProjectRow = {
   id: string;
   name: string;
-  currency: string | null;
+  currency?: string | null;
 };
 
 type ProjectsTabProps = {

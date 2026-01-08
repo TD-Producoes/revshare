@@ -13,7 +13,7 @@ type OnboardingRequirement = {
 };
 
 type PayoutsTabProps = {
-  stripeConnectedAccountId: string | null;
+  stripeConnectedAccountId?: string | null;
   onboardingStatus?: string | null;
   onboardingData?: {
     requirements?: {

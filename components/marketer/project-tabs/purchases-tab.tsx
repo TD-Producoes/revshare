@@ -16,7 +16,7 @@ import type { MarketerPurchase } from "@/lib/hooks/marketer";
 type PurchasesTabProps = {
   purchases: MarketerPurchase[];
   currency: string;
-  getStatusBadge: (status: string, commissionStatus: string) => JSX.Element;
+  getStatusBadge: (status: string, commissionStatus: string) => React.ReactElement;
 };
 
 export function MarketerPurchasesTab({
