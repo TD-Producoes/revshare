@@ -18,6 +18,8 @@ import { getAvatarFallback, isAnonymousName } from "@/lib/utils/anonymous";
 import {
   ArrowRight,
   ArrowUpRight,
+  ArrowUp,
+  ArrowDown,
   CheckCircle2,
   Users,
   Zap,
@@ -27,6 +29,24 @@ import Image from "next/image";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import React, { useRef, useState } from "react";
 import { ComparisonSection } from "@/components/sections/comparison-section";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Skeleton Loader for Leaderboard Tables
+function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number, columns?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <tr key={i} className="border-b border-black/[0.03] last:border-none">
+          {Array.from({ length: columns }).map((_, j) => (
+            <td key={j} className="py-5 px-2">
+              <Skeleton className={j === 0 ? "h-4 w-4" : j === 1 ? "h-5 w-40" : "h-5 w-20 ms-auto"} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
 
 // Browser Preview component for consistency
 function BrowserPreview() {
@@ -61,6 +81,32 @@ function BrowserPreview() {
     </div>
   );
 }
+
+// Helper to get a consistent pastel color based on a string
+const getPastelColor = (name: string) => {
+  const colors = [
+    'bg-blue-50',
+    'bg-green-50',
+    'bg-purple-50',
+    'bg-rose-50',
+    'bg-amber-50',
+    'bg-cyan-50',
+    'bg-indigo-50',
+    'bg-teal-50',
+  ];
+  const textColors = [
+    'text-blue-600',
+    'text-green-600',
+    'text-purple-600',
+    'text-rose-600',
+    'text-amber-600',
+    'text-cyan-600',
+    'text-indigo-600',
+    'text-teal-600',
+  ];
+  const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  return { bg: colors[index], text: textColors[index] };
+};
 
 // Helper components for the features sections
 function FeatureSection({
@@ -275,92 +321,157 @@ export default function Home() {
 
         {/* Leaderboard Section */}
         <section className="py-24">
-          <div className="mx-auto max-w-5xl px-6">
-            <div className="mb-20 flex items-center justify-between">
+          <div className="mx-auto max-w-4xl px-6">
+            <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black">Leaderboard</h2>
-              <Link href="/projects" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 font-medium text-sm transition-colors">
-                View full directory <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="flex items-center gap-8">
+                <Link href="/marketers" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 font-bold text-xs transition-colors">
+                  Marketers <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+                <Link href="/projects" className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-bold text-xs transition-colors">
+                  Projects <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
 
-            <div className="grid gap-12 lg:grid-cols-2">
-              {/* Marketers */}
-              <div className="space-y-8">
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] px-2">Top Marketers</div>
-                <div className="space-y-3">
-                  {topMarketers.slice(0, 5).map((marketer, i) => (
-                    <Link
-                      key={marketer.id}
-                      href={`/marketers/${marketer.id}`}
-                      className="flex items-center justify-between p-5 rounded-[1.8rem] bg-amber-50/40 transition-all hover:bg-amber-100/40 group block"
-                    >
-                      <div className="flex items-center gap-5">
-                        <span className="text-[10px] font-bold text-amber-300 w-4">{i + 1}</span>
-                        <div className="flex items-center gap-4">
-                          <Avatar className="h-12 w-12 border-none bg-amber-100 shadow-none">
-                            <AvatarImage src={marketer.image || undefined} />
-                            <AvatarFallback className="text-amber-500 text-[11px] font-extrabold">
-                              {getAvatarFallback(marketer.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className={`font-bold text-[15px] leading-tight text-black ${isAnonymousName(marketer.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
-                              {marketer.name || "Anonymous"}
-                            </p>
-                            <div className="flex flex-col mt-0.5">
-                              <p className="text-[11px] text-amber-400/80 font-bold uppercase tracking-wider leading-relaxed">{marketer.focus}</p>
-                              <p className="text-[10px] text-black/20 font-medium">revshare.pm/{marketer.id}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-[15px] text-black tracking-tight">{formatCurrency(marketer.revenue)}</p>
-                        <p className="text-[10px] text-emerald-500 font-extrabold mt-1 tracking-wide uppercase">{marketer.trend}</p>
-                      </div>
-                    </Link>
-                  ))}
+            <div className="space-y-16">
+              {/* Projects Table Card */}
+              <div className="bg-[#F9F8F6] rounded-[2.5rem] p-8 md:p-10">
+                <div className="text-[11px] font-bold text-gray-500 px-2 mb-8 uppercase tracking-widest">Top Startups</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-black/5">
+                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60 w-12">#</th>
+                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60">Startup</th>
+                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60">Founder</th>
+                        <th className="text-right pb-6 px-2 text-xs font-bold text-black/60">MRR</th>
+                        <th className="text-right pb-6 px-2 text-xs font-bold text-black/60 w-32">MoM Growth</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-black/[0.03]">
+                      {isLoadingProjects ? (
+                        <TableSkeleton rows={5} columns={5} />
+                      ) : (
+                        topProjects.slice(0, 10).map((project, i) => (
+                          <tr key={project.id} className="group hover:bg-white/50 transition-colors">
+                            <td className="py-4 px-2">
+                              <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
+                            </td>
+                            <td className="py-4 px-2">
+                              <Link href={`/projects/${project.id}`} className="flex items-center gap-4">
+                                <div className={`h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.name || "Project").bg}`}>
+                                  <Avatar className="h-full w-full border-none shadow-none rounded-none">
+                                    <AvatarImage src={getProjectAvatarUrl(project.name, project.logoUrl)} />
+                                    <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(project.name || "Project").text}`}>
+                                      {getAvatarFallback(project.name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className={`font-bold text-[15px] leading-tight text-black flex items-center gap-2 ${isAnonymousName(project.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
+                                    {project.name}
+                                    {project.revenue > 10000 && (
+                                      <Badge className="bg-amber-100/80 text-amber-700 hover:bg-amber-100 border-none text-[8px] font-bold px-1.5 h-4">top</Badge>
+                                    )}
+                                  </p>
+                                  <p className="text-[12px] text-gray-500 truncate max-w-[200px] md:max-w-[300px] mt-1">
+                                    {project.description || "Leading the future of digital innovation."}
+                                  </p>
+                                </div>
+                              </Link>
+                            </td>
+                            <td className="py-4 px-2">
+                              {project.founder ? (
+                                <Link href={`/founders/${project.founder.id}`} className="flex items-center gap-2">
+                                  <div className={`h-6 w-6 rounded-lg overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.founder.name || "U").bg}`}>
+                                    <Avatar className="h-full w-full border-none shadow-none rounded-none">
+                                      <AvatarImage src={project.founder.image || undefined} />
+                                      <AvatarFallback className={`text-[8px] font-extrabold ${getPastelColor(project.founder.name || "U").text}`}>
+                                        {getAvatarFallback(project.founder.name ?? "U")}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </div>
+                                  <span className="text-[14px] font-medium text-gray-700">{project.founder.name}</span>
+                                </Link>
+                              ) : (
+                                <span className="text-[14px] text-gray-300">-</span>
+                              )}
+                            </td>
+                            <td className="py-4 px-2 text-right">
+                              <p className="font-bold text-[15px] text-black tracking-tight">{formatCurrency(project.revenue)}</p>
+                            </td>
+                            <td className="py-4 px-2 text-right">
+                              <div className={`inline-flex items-center gap-1 text-[12px] font-bold ${project.growth.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
+                                {project.growth.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                {project.growth.replace(/[+-]/, "")}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              {/* Projects */}
-              <div className="space-y-8">
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] px-2">Top Projects</div>
-                <div className="space-y-3">
-                  {topProjects.slice(0, 5).map((project, i) => (
-                    <Link
-                      key={project.id}
-                      href={`/projects/${project.id}`}
-                      className="flex items-center justify-between p-5 rounded-[1.8rem] bg-orange-50/40 transition-all hover:bg-orange-100/40 group block"
-                    >
-                      <div className="flex items-center gap-5">
-                        <span className="text-[10px] font-bold text-orange-300 w-4">{i + 1}</span>
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 rounded-2xl overflow-hidden bg-orange-100 flex items-center justify-center shrink-0">
-                            <Avatar className="h-full w-full border-none shadow-none rounded-none">
-                              <AvatarImage src={getProjectAvatarUrl(project.name, project.logoUrl)} />
-                              <AvatarFallback className="text-orange-500 text-[11px] font-extrabold">
-                                {getAvatarFallback(project.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                          </div>
-                          <div>
-                            <p className={`font-bold text-[15px] leading-tight text-black ${isAnonymousName(project.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
-                              {project.name}
-                            </p>
-                            <div className="flex flex-col mt-0.5">
-                              <p className="text-[11px] text-orange-400/80 font-bold uppercase tracking-wider leading-relaxed">{project.category}</p>
-                              <p className="text-[10px] text-black/20 font-medium">revshare.pm/{project.id}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-[15px] text-black tracking-tight">{formatCurrency(project.revenue)}</p>
-                        <p className="text-[10px] text-emerald-500 font-extrabold mt-1 tracking-wide uppercase">{project.growth}</p>
-                      </div>
-                    </Link>
-                  ))}
+              {/* Marketers Table Card */}
+              <div className="bg-[#F9F8F6] rounded-[2.5rem] p-8 md:p-10">
+                <div className="text-[11px] font-bold text-gray-500 px-2 mb-8 uppercase tracking-widest">Top Marketers</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-black/5">
+                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60 w-12">#</th>
+                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60">Marketer</th>
+                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60">Focus</th>
+                        <th className="text-right pb-6 px-2 text-xs font-bold text-black/60">Revenue</th>
+                        <th className="text-right pb-6 px-2 text-xs font-bold text-black/60 w-32">Trend</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-black/[0.03]">
+                      {isLoadingMarketers ? (
+                        <TableSkeleton rows={5} columns={5} />
+                      ) : (
+                        topMarketers.slice(0, 5).map((marketer, i) => (
+                          <tr key={marketer.id} className="group hover:bg-white/50 transition-colors">
+                            <td className="py-4 px-2">
+                              <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
+                            </td>
+                            <td className="py-4 px-2">
+                              <Link href={`/marketers/${marketer.id}`} className="flex items-center gap-4">
+                                <div className={`h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(marketer.name || "Anonymous").bg}`}>
+                                  <Avatar className="h-full w-full border-none shadow-none rounded-none">
+                                    <AvatarImage src={marketer.image || undefined} />
+                                    <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(marketer.name || "Anonymous").text}`}>
+                                      {getAvatarFallback(marketer.name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                                <div>
+                                  <p className={`font-bold text-[15px] leading-tight text-black ${isAnonymousName(marketer.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
+                                    {marketer.name || "Anonymous"}
+                                  </p>
+                                </div>
+                              </Link>
+                            </td>
+                            <td className="py-4 px-2">
+                              <p className="text-[12px] text-gray-600 font-medium">{marketer.focus}</p>
+                            </td>
+                            <td className="py-4 px-2 text-right">
+                              <p className="font-bold text-[15px] text-black tracking-tight">{formatCurrency(marketer.revenue)}</p>
+                            </td>
+                            <td className="py-4 px-2 text-right">
+                              <div className={`inline-flex items-center gap-1 text-[12px] font-bold ${marketer.trend.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
+                                {marketer.trend.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                {marketer.trend.replace(/[+-]/, "")}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -379,7 +490,7 @@ export default function Home() {
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <p className="text-2xl font-bold text-black tracking-tight">{stat.value}</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{stat.label}</p>
+                  <p className="text-[10px] font-bold text-gray-400 mt-1">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -522,11 +633,11 @@ export default function Home() {
                 </div>
                 <div className="mt-8 space-y-2">
                   <div className="p-3 bg-white rounded-xl shadow-sm border border-black/5">
-                    <p className="text-[9px] font-bold text-amber-500/60 uppercase">Sales</p>
+                    <p className="text-[9px] font-bold text-amber-500/60">Sales</p>
                     <p className="text-sm font-bold text-black">$124.5k</p>
                   </div>
                   <div className="p-3 bg-amber-500 rounded-xl text-white">
-                    <p className="text-[9px] font-bold text-white/60 uppercase">Earnings</p>
+                    <p className="text-[9px] font-bold text-white/60">Earnings</p>
                     <p className="text-sm font-bold text-white">$2.8k</p>
                   </div>
                 </div>
@@ -555,9 +666,9 @@ export default function Home() {
         <section className="py-24 bg-white border-t border-gray-50">
           <div className="mx-auto max-w-5xl px-6">
             <div className="mb-16 max-w-2xl">
-              <Badge variant="outline" className="rounded-full border-amber-500/10 bg-amber-50/50 px-3 py-1 text-[11px] font-bold text-amber-600 tracking-wide uppercase mb-4">
-                Enterprise Ready
-              </Badge>
+            <Badge variant="outline" className="rounded-full border-amber-500/10 bg-amber-50/50 px-3 py-1 text-[11px] font-bold text-amber-600 mb-4">
+              Enterprise Ready
+            </Badge>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black mb-4">
                 Built for global scale
               </h2>
@@ -650,7 +761,7 @@ export default function Home() {
                 <Link href="/signup">Get Started Now</Link>
               </Button>
             </div>
-            <p className="mt-6 text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
+            <p className="mt-6 text-[10px] text-gray-400 font-bold">
               Join the growing network of 1,200+ partners
             </p>
           </div>
@@ -664,10 +775,10 @@ export default function Home() {
               </div>
               <span className="font-bold text-lg tracking-tight">RevShare</span>
             </div>
-            <p className="text-[11px] text-gray-400 uppercase font-bold tracking-widest">
+            <p className="text-[11px] text-gray-400 font-bold">
               © 2026 RevShare Marketplace
             </p>
-            <div className="flex gap-6 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+            <div className="flex gap-6 text-[11px] font-bold text-gray-400">
               <Link href="/privacy" className="hover:text-black transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-black transition-colors">Terms</Link>
             </div>
