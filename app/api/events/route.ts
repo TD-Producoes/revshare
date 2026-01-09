@@ -3,9 +3,9 @@ import { z } from "zod";
 import { EventType, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 const querySchema = z.object({
-  userId: z.string().min(1),
   role: z.enum(["creator", "marketer"]).optional(),
   projectId: z.string().min(1).optional(),
   actor: z.string().min(1).optional(),
@@ -15,9 +15,18 @@ const querySchema = z.object({
 });
 
 export async function GET(request: Request) {
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const parsed = querySchema.safeParse({
-    userId: searchParams.get("userId"),
     role: searchParams.get("role") ?? undefined,
     projectId: searchParams.get("projectId") ?? undefined,
     actor: searchParams.get("actor") ?? undefined,
@@ -33,7 +42,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const { userId, role, projectId, actor, eventType } = parsed.data;
+  const { role, projectId, actor, eventType } = parsed.data;
+  const userId = authUser.id;
   const pageSize = parsed.data.pageSize ?? 20;
   const page = parsed.data.page ?? 1;
 

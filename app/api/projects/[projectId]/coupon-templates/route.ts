@@ -4,9 +4,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 import { notificationMessages } from "@/lib/notifications/messages";
+import { createClient } from "@/lib/supabase/server";
 
 const templateInput = z.object({
-  creatorId: z.string().min(1),
   name: z.string().min(2),
   description: z.string().optional(),
   percentOff: z.number().int().min(1).max(100),
@@ -20,7 +20,6 @@ const templateInput = z.object({
 });
 
 const templateUpdateInput = z.object({
-  creatorId: z.string().min(1),
   templateId: z.string().min(1),
   name: z.string().min(2),
   description: z.string().optional(),
@@ -44,9 +43,48 @@ export async function GET(
   const { projectId } = await params;
   const { searchParams } = new URL(request.url);
   const includeAll = searchParams.get("includeAll") === "true";
-  const marketerId = searchParams.get("marketerId");
+
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Check if user is the project owner
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { userId: true },
+  });
+
+  if (!project) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  const isOwner = project.userId === authUser.id;
   const now = new Date();
-  const isMarketerView = Boolean(marketerId);
+
+  // If not owner, must be a marketer with approved contract
+  let isMarketerView = false;
+  if (!isOwner) {
+    const contract = await prisma.contract.findUnique({
+      where: {
+        projectId_userId: {
+          projectId,
+          userId: authUser.id,
+        },
+      },
+      select: { status: true },
+    });
+
+    if (!contract || contract.status !== "APPROVED") {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+    isMarketerView = true;
+  }
 
   const templates = await prisma.couponTemplate.findMany({
     where: {
@@ -84,7 +122,7 @@ export async function GET(
         const allowed = Array.isArray(template.allowedMarketerIds)
           ? template.allowedMarketerIds
           : [];
-        return allowed.length === 0 || allowed.includes(marketerId);
+        return allowed.length === 0 || allowed.includes(authUser.id);
       })
     : templates;
 
@@ -96,6 +134,17 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   const { projectId } = await params;
+
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const parsed = templateInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -123,7 +172,7 @@ export async function POST(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  if (project.userId !== payload.creatorId) {
+  if (project.userId !== authUser.id) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
   if (!project.creatorStripeAccountId) {
@@ -206,7 +255,7 @@ export async function POST(
     await tx.event.create({
       data: {
         type: "COUPON_TEMPLATE_CREATED",
-        actorId: payload.creatorId,
+        actorId: authUser.id,
         projectId: project.id,
         subjectType: "CouponTemplate",
         subjectId: createdTemplate.id,
@@ -251,6 +300,17 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   const { projectId } = await params;
+
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const parsed = templateUpdateInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -269,7 +329,7 @@ export async function PATCH(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  if (project.userId !== payload.creatorId) {
+  if (project.userId !== authUser.id) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
   if (!project.creatorStripeAccountId) {

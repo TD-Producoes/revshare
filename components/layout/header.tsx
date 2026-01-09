@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/lib/hooks/notifications";
-import { ChevronDown, Zap, Sun, Moon, Bell, Settings } from "lucide-react";
+import { ChevronDown, Zap, Sun, Moon, Bell, Settings, PieChart } from "lucide-react";
 
 export function Header() {
   const router = useRouter();
@@ -99,9 +99,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-12 items-center px-4">
         <div className="flex items-center gap-2 font-semibold">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-            <Zap className="h-3.5 w-3.5 text-primary-foreground" />
-          </div>
+          <PieChart className="h-3.5 w-3.5" />
           <span className="text-base">RevShare</span>
         </div>
 
@@ -115,6 +113,16 @@ export function Header() {
             <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => router.push(settingsPath)}
+          >
+            <Settings className="h-4 w-4" />
+            <span className="sr-only">Settings</span>
           </Button>
 
           <DropdownMenu>
@@ -187,16 +195,6 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => router.push(settingsPath)}
-          >
-            <Settings className="h-4 w-4" />
-            <span className="sr-only">Settings</span>
-          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

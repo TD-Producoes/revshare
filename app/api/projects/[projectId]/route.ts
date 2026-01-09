@@ -7,7 +7,6 @@ import { redactProjectData } from "@/lib/services/visibility";
 
 const updateSchema = z
   .object({
-    userId: z.string().min(1),
     name: z.string().min(1).optional(),
     description: z.string().optional(),
     category: z.string().min(1).optional(),
@@ -148,6 +147,16 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> }
 ) {
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const parsed = updateSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -169,7 +178,7 @@ export async function PATCH(
     },
   });
 
-  if (!project || project.userId !== payload.userId) {
+  if (!project || project.userId !== authUser.id) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 

@@ -3,10 +3,10 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { notificationMessages } from "@/lib/notifications/messages";
+import { createClient } from "@/lib/supabase/server";
 
 const createContractInput = z.object({
   projectId: z.string().min(1),
-  userId: z.string().min(1),
   commissionPercent: z.number().min(0).max(100),
   message: z.string().max(2000).optional(),
   refundWindowDays: z.number().int().min(0).max(3650).optional(),
@@ -21,31 +21,33 @@ function matchesPercent(a: number, b: number) {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const creatorId = searchParams.get("creatorId");
-  const userId = searchParams.get("userId");
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
-  if (!creatorId && !userId) {
-    return NextResponse.json(
-      { error: "creatorId or userId is required" },
-      { status: 400 }
-    );
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (userId) {
-    const marketer = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true },
-    });
-    if (!marketer || marketer.role !== "marketer") {
-      return NextResponse.json(
-        { error: "Marketer not found" },
-        { status: 404 }
-      );
-    }
+  const { searchParams } = new URL(request.url);
+  const role = searchParams.get("role");
 
+  // Get authenticated user details
+  const user = await prisma.user.findUnique({
+    where: { id: authUser.id },
+    select: { id: true, role: true },
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // If user is marketer, return their contracts
+  if (user.role === "marketer") {
     const contracts = await prisma.contract.findMany({
-      where: { userId, user: { role: "marketer" } },
+      where: { userId: user.id, user: { role: "marketer" } },
       orderBy: { createdAt: "desc" },
       include: {
         project: {
@@ -80,24 +82,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ data });
   }
 
-  if (!creatorId) {
-    return NextResponse.json(
-      { error: "creatorId is required" },
-      { status: 400 }
-    );
-  }
-
-  const creator = await prisma.user.findUnique({
-    where: { id: creatorId },
-    select: { id: true, role: true },
-  });
-
-  if (!creator || creator.role !== "creator") {
-    return NextResponse.json({ error: "Creator not found" }, { status: 404 });
+  // If user is creator, return contracts for their projects
+  if (user.role !== "creator") {
+    return NextResponse.json({ error: "Invalid user role" }, { status: 403 });
   }
 
   const creatorProjects = await prisma.project.findMany({
-    where: { userId: creatorId },
+    where: { userId: user.id },
     select: { id: true },
   });
 
@@ -143,6 +134,16 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const parsed = createContractInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -154,7 +155,7 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   const [marketer, project] = await Promise.all([
     prisma.user.findUnique({
-      where: { id: payload.userId },
+      where: { id: authUser.id },
       select: {
         id: true,
         role: true,
@@ -190,7 +191,7 @@ export async function POST(request: Request) {
     where: {
       projectId_userId: {
         projectId: payload.projectId,
-        userId: payload.userId,
+        userId: authUser.id,
       },
     },
     select: { id: true },

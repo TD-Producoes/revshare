@@ -3,10 +3,11 @@
 import { useMemo } from "react";
 import { ProjectsTable } from "./projects-table";
 import { CreateProjectForm } from "./create-project-form";
-import { useProjects, type ApiProject } from "@/lib/hooks/projects";
 import { useAuthUserId } from "@/lib/hooks/auth";
+import { useUser } from "@/lib/hooks/users";
+import { useCreatorDashboard } from "@/lib/hooks/creator";
 
-function toPercent(value: ApiProject["marketerCommissionPercent"]) {
+function toPercent(value: string | number | null | undefined) {
   const numeric =
     typeof value === "string" || typeof value === "number"
       ? Number(value)
@@ -17,23 +18,44 @@ function toPercent(value: ApiProject["marketerCommissionPercent"]) {
 
 export function ProjectsList() {
   const { data: authUserId } = useAuthUserId();
-  const { data: projects = [] } = useProjects(authUserId);
+  const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
+  const { data, isLoading: isDashboardLoading } = useCreatorDashboard(
+    currentUser?.id,
+  );
 
   const projectsWithMetrics = useMemo(() => {
-    return projects.map((project) => {
-      const revSharePercent = toPercent(project.marketerCommissionPercent);
+    return (
+      data?.projects?.map((project) => {
+        const revSharePercent = toPercent(project.marketerCommissionPercent);
 
-      return {
-        id: project.id,
-        name: project.name,
-        userId: project.userId,
-        ...(revSharePercent !== null ? { revSharePercent } : {}),
-        metrics: null,
-        marketerCount: null,
-        category: project.category ?? "Other",
-      };
-    });
-  }, [projects]);
+        return {
+          id: project.id,
+          name: project.name,
+          userId: project.userId,
+          ...(revSharePercent !== null ? { revSharePercent } : {}),
+          metrics: project.metrics,
+          marketerCount: project.marketerCount,
+          category: project.category ?? "Other",
+        };
+      }) ?? []
+    );
+  }, [data?.projects]);
+
+  if (isUserLoading || isDashboardLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!currentUser || currentUser.role !== "creator") {
+    return (
+      <div className="text-muted-foreground">
+        This section is only available to creators.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

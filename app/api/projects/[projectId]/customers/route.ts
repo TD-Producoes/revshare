@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { createClient } from "@/lib/supabase/server";
 
 const customerInput = z.object({
   email: z.string().email(),
@@ -13,6 +14,16 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const parsed = customerInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -25,6 +36,7 @@ export async function POST(
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
+      userId: true,
       creatorStripeAccountId: true,
     },
   });
@@ -32,6 +44,11 @@ export async function POST(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
+
+  if (project.userId !== authUser.id) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
   if (!project.creatorStripeAccountId) {
     return NextResponse.json(
       { error: "Creator Stripe account not set" },

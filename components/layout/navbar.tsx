@@ -33,7 +33,7 @@ export function Navbar({
   isTransparent?: boolean;
   forceTransparent?: boolean;
   isDashboardHidden?: boolean;
-  theme?: 'default' | 'founders';
+  theme?: 'default' | 'founders' | 'how-it-works' | 'trust' | 'rewards' | 'integrations' | 'marketplace';
 }) {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
@@ -110,20 +110,26 @@ export function Navbar({
                           </Link>
                         </NavigationMenuLink>
                       </li>
-                      <ListItem href="/product/revshare-vs-affiliate-networks" title="RevShare vs Affiliates">
+                      <ListItem href="/product/how-it-works" title="How RevShare Works">
+                        The full lifecycle: tracking → refunds → payouts → rewards.
+                      </ListItem>
+                      <ListItem href="/product/revshare-vs-affiliate-networks" title="RevShare vs Affiliate Networks">
                         A better way to build revenue-share partnerships.
                       </ListItem>
-                      <ListItem href="/how-it-works" title="How it works">
-                        End-to-end flow: tracking → refunds → payouts
+                      <ListItem href="/product/revshare-vs-affiliate-marketing" title="RevShare vs Affiliate Marketing">
+                        Recurring value vs one-time affiliate bounties.
                       </ListItem>
-                      <ListItem href="/rewards" title="Rewards & Milestones">
-                        Performance-based incentives beyond commissions
+                      <ListItem href="/product/trust" title="Trust, Payments & Refunds">
+                        Refund windows, Stripe Connect, and immutable audit logs.
                       </ListItem>
-                      <ListItem href="/integrations" title="Integrations">
-                        Stripe, Shopify, SaaS, subscriptions, mobile apps
+                      <ListItem href="/product/rewards" title="Rewards & Milestones">
+                        Performance-based incentives beyond flat commissions.
                       </ListItem>
-                      <ListItem href="/trust" title="Trust & Payments">
-                        Refund windows, payouts, audit logs, Stripe Connect
+                      <ListItem href="/product/integrations" title="Integrations">
+                        Stripe, Shopify, SaaS, subscriptions, mobile apps.
+                      </ListItem>
+                      <ListItem href="/product/marketplace" title="Public Marketplace">
+                        Our open directory for projects and verified marketers.
                       </ListItem>
                     </ul>
                   </NavigationMenuContent>
@@ -202,7 +208,17 @@ export function Navbar({
                   isTransparentActive
                     ? theme === 'founders'
                       ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710] font-bold rounded-full border-none shadow-none px-4 h-8"
-                      : "bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                      : theme === 'how-it-works'
+                        ? "bg-[#818CF8] hover:bg-[#717CF8] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                        : theme === 'trust'
+                          ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                          : theme === 'rewards'
+                            ? "bg-[#F59E0B] hover:bg-[#D97706] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                            : theme === 'integrations'
+                              ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                              : theme === 'marketplace'
+                                ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                : "bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
                     : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-lg px-3 shadow-amber-500/10"
                 )}
                 asChild

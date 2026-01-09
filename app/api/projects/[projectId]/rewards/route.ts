@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 const rewardInput = z.object({
-  creatorId: z.string().min(1),
   name: z.string().min(2),
   description: z.string().optional(),
   milestoneType: z.enum(["NET_REVENUE", "COMPLETED_SALES", "ACTIVE_CUSTOMERS"]),
@@ -31,7 +31,6 @@ const rewardUpdateInput = rewardInput.extend({
 });
 
 const rewardStatusInput = z.object({
-  creatorId: z.string().min(1),
   rewardId: z.string().min(1),
   status: z.enum(["DRAFT", "ACTIVE", "PAUSED", "ARCHIVED"]),
 });
@@ -66,6 +65,17 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
+
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const parsed = rewardInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -83,7 +93,7 @@ export async function POST(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  if (project.userId !== payload.creatorId) {
+  if (project.userId !== authUser.id) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
@@ -163,7 +173,7 @@ export async function POST(
   await prisma.event.create({
     data: {
       type: "REWARD_CREATED",
-      actorId: payload.creatorId,
+      actorId: authUser.id,
       projectId: project.id,
       subjectType: "Reward",
       subjectId: reward.id,
@@ -184,7 +194,7 @@ export async function GET(
 ) {
   const { projectId } = await params;
   const { searchParams } = new URL(request.url);
-  const creatorId = searchParams.get("creatorId");
+  const includeAll = searchParams.get("includeAll") === "true";
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -195,9 +205,18 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // If creatorId is provided, this is a creator request - return all rewards
-  if (creatorId) {
-    if (project.userId !== creatorId) {
+  // If includeAll is requested, authenticate and check ownership
+  if (includeAll) {
+    const supabase = await createClient();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (project.userId !== authUser.id) {
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
@@ -227,6 +246,17 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
+
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await request.json();
   const parsed = rewardUpdateInput.safeParse(body);
   const statusParsed = rewardStatusInput.safeParse(body);
@@ -252,7 +282,7 @@ export async function PATCH(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  if (project.userId !== payload.creatorId) {
+  if (project.userId !== authUser.id) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
@@ -272,7 +302,7 @@ export async function PATCH(
     await prisma.event.create({
       data: {
         type: "REWARD_STATUS_CHANGED",
-        actorId: payload.creatorId,
+        actorId: authUser.id,
         projectId: project.id,
         subjectType: "Reward",
         subjectId: updated.id,
@@ -366,7 +396,7 @@ export async function PATCH(
   await prisma.event.create({
     data: {
       type: "REWARD_UPDATED",
-      actorId: fullPayload.creatorId,
+      actorId: authUser.id,
       projectId: project.id,
       subjectType: "Reward",
       subjectId: updated.id,

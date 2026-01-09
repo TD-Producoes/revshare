@@ -286,9 +286,9 @@ export function OffersManagement() {
             </div>
             <Link
               href="/creator/affiliates"
-              className="mt-2 inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              className="mt-2 inline-flex text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
-              Once approved, marketers will appear in Marketers →
+              Once approved, marketers will appear in Affiliates →
             </Link>
           </CardContent>
         </Card>

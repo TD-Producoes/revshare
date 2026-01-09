@@ -26,6 +26,8 @@ import {
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
+import { useNotifications } from "@/lib/hooks/notifications";
+import { useContractsForCreator } from "@/lib/hooks/contracts";
 
 interface NavItem {
   title: string;
@@ -111,16 +113,18 @@ function NavLink({
   item,
   isActive,
   isCollapsed,
+  signalCount,
 }: {
   item: NavItem;
   isActive: boolean;
   isCollapsed: boolean;
+  signalCount?: number;
 }) {
   const linkContent = (
     <Link
       href={item.href}
       className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        "relative flex items-center gap-3 rounded-md px-3 py-2 text-xs transition-colors",
         isCollapsed && "justify-center px-2",
         isActive
           ? "bg-secondary text-secondary-foreground font-medium"
@@ -129,6 +133,18 @@ function NavLink({
     >
       <item.icon className={cn("h-4 w-4 shrink-0", isActive && "text-foreground")} />
       {!isCollapsed && <span>{item.title}</span>}
+      {signalCount && signalCount > 0 ? (
+        <span
+          className={cn(
+            "flex items-center justify-center rounded-full bg-red-500 text-white font-bold",
+            isCollapsed
+              ? "absolute right-2 top-2 h-2 w-2"
+              : "ml-auto h-4 min-w-[1rem] px-1 text-[10px]"
+          )}
+        >
+          {!isCollapsed && (signalCount > 99 ? "99+" : signalCount)}
+        </span>
+      ) : null}
     </Link>
   );
 
@@ -160,6 +176,13 @@ export function Sidebar() {
     pathname === href ||
     (href !== "/creator" && href !== "/marketer" && pathname.startsWith(href));
 
+  // Fetch signals
+  const { data: notifications } = useNotifications(authUserId);
+  const { data: contracts } = useContractsForCreator(authUserId);
+
+  const unreadNotificationsCount = notifications?.unreadCount ?? 0;
+  const pendingApplicationsCount = contracts?.filter(c => c.status === "pending").length ?? 0;
+
   return (
     <TooltipProvider>
       <aside
@@ -177,14 +200,23 @@ export function Sidebar() {
                     {section.label}
                   </p>
                 ) : null}
-                {section.items.map((item) => (
-                  <NavLink
-                    key={item.href}
-                    item={item}
-                    isActive={isActiveLink(item.href)}
-                    isCollapsed={isCollapsed}
-                  />
-                ))}
+                {section.items.map((item) => {
+                  let signalCount = 0;
+                  if (item.title === "Notifications") {
+                    signalCount = unreadNotificationsCount;
+                  } else if (item.title === "Applications" && isCreator) {
+                    signalCount = pendingApplicationsCount;
+                  }
+                  return (
+                    <NavLink
+                      key={item.href}
+                      item={item}
+                      isActive={isActiveLink(item.href)}
+                      isCollapsed={isCollapsed}
+                      signalCount={signalCount}
+                    />
+                  );
+                })}
               </div>
             ),
           )}
@@ -207,7 +239,7 @@ export function Sidebar() {
                 ) : (
                   <>
                     <PanelLeftClose className="h-4 w-4" />
-                    <span className="ml-3 text-sm">Collapse</span>
+                    <span className="ml-3 text-xs">Collapse</span>
                   </>
                 )}
               </Button>

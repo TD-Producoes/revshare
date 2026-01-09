@@ -3,18 +3,13 @@
 import { motion, useScroll, useMotionValueEvent, useTransform } from "framer-motion";
 import Link from "next/link";
 import React, { useRef } from "react";
-import { ArrowUpRight, Zap, CheckCircle2, Search, LayoutGrid, ShieldCheck, Wallet, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Globe, Users, BarChart3, Search, LayoutGrid, Zap, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
 import { FeatureSection } from "@/components/sections/feature-section";
-import { ComparisonTable } from "@/components/sections/comparison-table";
-import { PainPointsSection } from "@/components/sections/pain-points-section";
-import Image from "next/image";
 
-
-
-export default function RevShareVsAffiliates() {
+export default function MarketplacePage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isTransparent, setIsTransparent] = React.useState(true);
 
@@ -26,7 +21,6 @@ export default function RevShareVsAffiliates() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    // Switch to solid navbar as soon as we leave the hero section
     if (latest > 0.15) {
       setIsTransparent(false);
     } else {
@@ -35,23 +29,22 @@ export default function RevShareVsAffiliates() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-[#BFF2A0]/20">
-      <Navbar isTransparent forceTransparent={isTransparent} theme="founders" />
+    <main className="relative bg-white selection:bg-[#8B5CF6]/20">
+      <Navbar isTransparent forceTransparent={isTransparent} theme="marketplace" />
 
       <div ref={containerRef}>
-        {/* Hero Section - Inspired by Campfire */}
+        {/* Hero Section */}
         <section className="relative pt-32 pb-32 flex flex-col items-center justify-center overflow-hidden bg-white">
-          {/* Expanding Background Circle */}
+          {/* Expanding Background Circle - Violet */}
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 4, opacity: 1 }}
             transition={{ duration: 2.5, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full bg-[#0B1710] z-0"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full bg-[#1E1B4B] z-0"
           />
 
-          {/* Background Decoration - Circles with parallax */}
+          {/* Background Decoration */}
           <motion.div style={{ opacity: heroOpacity }} className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-            {/* Outer Circle */}
             <motion.div
               style={{ y: useTransform(scrollYProgress, [0, 0.2], [0, -100]) }}
               initial={{ scale: 0, opacity: 0 }}
@@ -59,21 +52,12 @@ export default function RevShareVsAffiliates() {
               transition={{ duration: 1.5, delay: 0.4, ease: [0.21, 0.47, 0.32, 0.98] }}
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[120vw] h-[120vw] rounded-full border border-white/[0.03] border-dashed"
             />
-            {/* Middle Circle */}
             <motion.div
               style={{ y: useTransform(scrollYProgress, [0, 0.2], [0, -60]) }}
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 1.5, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[90vw] rounded-full border border-white/[0.05]"
-            />
-            {/* Inner Circle */}
-            <motion.div
-              style={{ y: useTransform(scrollYProgress, [0, 0.2], [0, -30]) }}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1.5, delay: 0, ease: [0.21, 0.47, 0.32, 0.98] }}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[65vw] h-[65vw] rounded-full border border-white/[0.08]"
             />
           </motion.div>
 
@@ -85,7 +69,7 @@ export default function RevShareVsAffiliates() {
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
                 <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/70 tracking-wide uppercase">
-                  Platform Comparison
+                  Category Creation
                 </Badge>
               </motion.div>
 
@@ -102,7 +86,7 @@ export default function RevShareVsAffiliates() {
                 }}
                 className="text-[44px] md:text-[62px] tracking-tighter leading-[1.05] text-white text-balance text-center"
               >
-                {"Built for your next stage of".split(" ").map((word, i) => (
+                {"The open economy of".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-[0.2em] last:mr-0"
@@ -116,8 +100,8 @@ export default function RevShareVsAffiliates() {
                   </motion.span>
                 ))}
                 <br className="hidden md:block" />
-                <span className="text-[#BFF2A0]">
-                  {"growth.".split(" ").map((word, i) => (
+                <span className="text-[#8B5CF6]">
+                  {"partnerships.".split(" ").map((word, i) => (
                     <motion.span
                       key={i}
                       className="inline-block mr-[0.2em] last:mr-0"
@@ -137,9 +121,9 @@ export default function RevShareVsAffiliates() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
-                className="max-w-xl text-base md:text-lg text-white/70 leading-relaxed mx-auto text-center"
+                className="max-w-2xl text-base md:text-lg text-white/70 leading-relaxed mx-auto text-center"
               >
-                Traditional affiliate networks were built for links and cookies. RevShare is built for actual revenue, transparency, and long-term SaaS partnerships.
+                RevShare isn't just a tool; it's a global marketplace. We connect high-growth SaaS founders with verified performance marketers in a transparent, public ecosystem.
               </motion.p>
 
               <motion.div
@@ -148,11 +132,11 @@ export default function RevShareVsAffiliates() {
                 transition={{ duration: 0.8, delay: 1, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="flex flex-wrap items-center justify-center gap-4 pt-2"
               >
-                <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(191,242,160,0.2)]" asChild>
-                  <Link href="/signup">
-                    Get Started
-                    <div className="ml-2 h-7 w-7 rounded-full bg-[#0B1710]/10 flex items-center justify-center group-hover:bg-[#0B1710]/20">
-                      <ArrowUpRight className="h-4 w-4 text-[#0B1710]" />
+                <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(139,92,246,0.2)]" asChild>
+                  <Link href="/projects">
+                    Enter Marketplace
+                    <div className="ml-2 h-7 w-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20">
+                      <ArrowUpRight className="h-4 w-4 text-white" />
                     </div>
                   </Link>
                 </Button>
@@ -161,105 +145,99 @@ export default function RevShareVsAffiliates() {
           </div>
         </section>
 
-        {/* Features Overview */}
+        {/* Features Content */}
         <div className="py-24 space-y-24">
           <FeatureSection
-            badge="Revenue-First"
-            title="Real revenue, not just clicks."
-            description="RevShare tracks actual revenue generated, not just last-touch attribution. Commissions unlock only after the refund window ends — protecting both creators and marketers."
-            items={["Net revenue tracking", "Refund-aware logic", "Secure settlements"]}
+            badge="Discovery"
+            title="Public Project Directory."
+            description="Founders can list their projects and revenue share programs publicly. Marketers can browse, filter by vertical, and apply to programs with a single click."
+            items={["Vertical-based filtering", "Verified revenue stats", "Direct application flow"]}
             visual={(progress) => (
-              <div className="relative w-full max-w-sm aspect-square bg-emerald-500/5 rounded-full flex items-center justify-center p-12 overflow-hidden border border-emerald-500/10">
-                <motion.div
-                  style={{ y: 20, opacity: 1 }}
-                  className="w-full h-full bg-white rounded-3xl shadow-2xl border border-black/5 p-8 flex flex-col gap-6"
-                >
-                  <div className="h-1 w-24 bg-emerald-500/20 rounded" />
-                  <div className="flex-1 space-y-4">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="flex justify-between items-center text-xs">
-                        <div className="h-2 w-32 bg-gray-100 rounded" />
-                        <div className="h-2 w-12 bg-emerald-500/20 rounded" />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="h-12 w-full bg-[#0B1710] rounded-xl flex items-center justify-center">
-                    <ShieldCheck className="h-5 w-5 text-[#BFF2A0]" />
-                  </div>
-                </motion.div>
+              <div className="relative w-full max-w-sm aspect-square bg-[#8B5CF6]/5 rounded-full flex items-center justify-center p-12 overflow-hidden border border-[#8B5CF6]/10">
+                <div className="grid grid-cols-2 gap-4 w-full">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="bg-white rounded-xl shadow-lg border border-black/5 p-4 space-y-2">
+                      <div className="h-6 w-6 rounded bg-violet-100" />
+                      <div className="h-1.5 w-12 bg-gray-100 rounded" />
+                      <div className="h-1 w-8 bg-violet-50 rounded" />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           />
 
           <FeatureSection
             reversed
-            badge="Discovery"
-            title="A real marketplace for partnerships."
-            description="Instead of hidden programs behind network logins, RevShare projects are publicly discoverable. Marketers can showcase verified performance and creators can find the best partners faster."
-            items={["Public leaderboard", "Verified profiles", "Direct applications"]}
+            badge="Reputation"
+            title="Verified Marketer Directory."
+            description="Founders can find the perfect partners by browsing our directory of verified performance marketers. See their historical performance, specialty verticals, and audience stats."
+            items={["Performance leaderboards", "Verified track records", "Direct partner recruitment"]}
             visual={(progress) => (
-              <div className="relative w-full max-w-sm aspect-square bg-[#BFF2A0]/10 rounded-full flex items-center justify-center p-8">
-                <div className="grid grid-cols-2 gap-4 w-full h-full p-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <motion.div
-                      key={i}
-                      className="bg-white rounded-2xl shadow-xl border border-black/5 p-4 flex flex-col items-center justify-center gap-2"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-gray-100" />
-                      <div className="h-1 w-12 bg-emerald-500/20 rounded" />
-                    </motion.div>
-                  ))}
+              <div className="relative w-full max-w-sm aspect-square bg-[#8B5CF6]/5 rounded-full flex items-center justify-center p-8">
+                <div className="w-full bg-white rounded-2xl shadow-xl p-6 border border-black/5 space-y-4">
+                  <div className="flex items-center gap-3 border-b border-black/5 pb-4">
+                    <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-600">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-gray-800">Top Recruiters</p>
+                      <p className="text-[10px] text-gray-400">Weekly Leaderboard</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-gray-50" />
+                          <div className="h-1.5 w-20 bg-gray-100 rounded" />
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-500">+{20 - i}% ROI</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
           />
         </div>
-
-        {/* Pain Points Section - Now appearing later */}
-        <PainPointsSection />
-
-        {/* Comparison Table */}
-        <ComparisonTable />
       </div>
 
       {/* Final CTA */}
       <section className="relative z-10 py-32 text-center bg-gray-50/50">
         <div className="mx-auto max-w-3xl px-6">
           <Badge variant="outline" className="mb-8 rounded-full border-black/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-black/40">
-            Ready to switch?
+            Network Effects
           </Badge>
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-8 leading-tight">
-            Stop coding black boxes. <br />
-            Start <span className="text-[#128045] italic">scaling trust.</span>
+            The world's first <br />
+            <span className="text-[#8B5CF6] italic">revenue-share</span> network.
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="h-14 rounded-full px-10 text-base bg-[#0B1710] text-white hover:bg-black font-bold transition-all shadow-xl">
-              Launch Your Program
+            <Button size="lg" className="h-14 rounded-full px-10 text-base bg-[#1E1B4B] text-white hover:bg-black font-bold transition-all shadow-xl">
+              Join Marketplace
             </Button>
             <Button size="lg" variant="outline" className="h-14 rounded-full px-10 text-base font-bold bg-white hover:bg-gray-50 transition-all border-black/5">
-              Explore Projects
+              Explore Directory
             </Button>
           </div>
-          <p className="mt-12 text-[10px] text-black/30 font-bold uppercase tracking-[0.2em]">
-            No subscriptions. No upfront fees.
-          </p>
         </div>
       </section>
 
       <footer className="relative z-10 border-t border-border/10 py-16 bg-white">
         <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 bg-[#0B1710] rounded flex items-center justify-center">
-              <Zap className="h-3.5 w-3.5 text-white fill-white" />
+            <div className="h-6 w-6 bg-[#1E1B4B] rounded flex items-center justify-center">
+              <Zap className="h-3.5 w-3.5 text-[#8B5CF6] fill-[#8B5CF6]" />
             </div>
             <span className="font-bold text-lg tracking-tight">RevShare</span>
           </div>
-          <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-widest">
+          <p className="text-[11px] text-muted-foreground font-bold">
             © 2026 RevShare Marketplace
           </p>
           <div className="flex gap-6 text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-            <Link href="/privacy" className="hover:text-[#128045] transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-[#128045] transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-[#8B5CF6] transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-[#8B5CF6] transition-colors">Terms</Link>
           </div>
         </div>
       </footer>

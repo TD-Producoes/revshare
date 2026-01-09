@@ -5,11 +5,11 @@ import { generatePromoCode } from "@/lib/codes";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 import { notificationMessages } from "@/lib/notifications/messages";
+import { createClient } from "@/lib/supabase/server";
 
 const claimInput = z.object({
   projectId: z.string().min(1),
   templateId: z.string().min(1),
-  marketerId: z.string().min(1),
   code: z.string().min(3).optional(),
 });
 
@@ -19,6 +19,16 @@ function derivePrefix(name: string) {
 }
 
 export async function POST(request: Request) {
+  // Authenticate user
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const parsed = claimInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -40,7 +50,7 @@ export async function POST(request: Request) {
       },
     }),
     prisma.user.findUnique({
-      where: { id: payload.marketerId },
+      where: { id: authUser.id },
       select: { id: true, role: true, name: true },
     }),
     prisma.couponTemplate.findUnique({
@@ -136,13 +146,20 @@ export async function POST(request: Request) {
         userId: marketer.id,
       },
     },
-    select: { commissionPercent: true },
+    select: { commissionPercent: true, status: true },
   });
 
   if (!contract) {
     return NextResponse.json(
       { error: "Contract not found for marketer" },
       { status: 404 },
+    );
+  }
+
+  if (contract.status !== "APPROVED") {
+    return NextResponse.json(
+      { error: "Contract must be approved to claim coupons" },
+      { status: 403 },
     );
   }
 
