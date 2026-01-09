@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 // Schema for creating a testimonial
 const createTestimonialInput = z.object({
@@ -21,6 +22,12 @@ export async function POST(request: Request) {
   }
 
   const { contractId, creatorId, rating, text } = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, creatorId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
 
   // Verify the creator exists and is a creator
   const creator = await prisma.user.findUnique({
@@ -147,4 +154,3 @@ export async function POST(request: Request) {
     { status: 201 }
   );
 }
-

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const querySchema = z.object({
   creatorId: z.string().min(1),
@@ -21,6 +22,12 @@ export async function GET(request: Request) {
   }
 
   const { creatorId } = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, creatorId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
 
   const projects = await prisma.project.findMany({
     where: { userId: creatorId },

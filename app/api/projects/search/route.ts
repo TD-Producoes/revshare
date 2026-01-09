@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getCountryName } from "@/lib/data/countries";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUserOptional } from "@/lib/auth";
 import { redactProjectData } from "@/lib/services/visibility";
 
 export type SearchProject = {
@@ -35,8 +35,7 @@ function matchesCommissionRange(commission: number, range: string): boolean {
 }
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const authUser = await getAuthUserOptional();
 
   const { searchParams } = new URL(request.url);
 
@@ -176,4 +175,3 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ data: filtered });
 }
-

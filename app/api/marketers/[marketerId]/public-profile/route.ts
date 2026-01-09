@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUserOptional } from "@/lib/auth";
 import {
   redactMarketerData,
   redactProjectData,
@@ -85,10 +85,7 @@ export async function GET(
   { params }: { params: Promise<{ marketerId: string }> }
 ) {
   const { marketerId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const authUser = await getAuthUserOptional();
 
   // Fetch user
   const user = await prisma.user.findUnique({

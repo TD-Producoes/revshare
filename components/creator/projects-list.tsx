@@ -35,8 +35,7 @@ export function ProjectsList() {
           ...(revSharePercent !== null ? { revSharePercent } : {}),
           metrics: project.metrics,
           marketerCount: project.marketerCount,
-          category: project.category ?? "Other",
-        };
+      };
       }) ?? []
     );
   }, [data?.projects]);

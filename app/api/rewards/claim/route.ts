@@ -5,6 +5,7 @@ import { generatePromoCode } from "@/lib/codes";
 import { notificationMessages } from "@/lib/notifications/messages";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const claimInput = z.object({
   rewardEarnedId: z.string().min(1),
@@ -27,6 +28,12 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, payload.marketerId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
 
   const rewardEarned = await prisma.rewardEarned.findUnique({
     where: { id: payload.rewardEarnedId },

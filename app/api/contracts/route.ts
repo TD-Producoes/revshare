@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { notificationMessages } from "@/lib/notifications/messages";
-import { createClient } from "@/lib/supabase/server";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const createContractInput = z.object({
   projectId: z.string().min(1),
@@ -21,14 +21,11 @@ function matchesPercent(a: number, b: number) {
 }
 
 export async function GET(request: Request) {
-  // Authenticate user
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const { searchParams } = new URL(request.url);
@@ -134,14 +131,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  // Authenticate user
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const parsed = createContractInput.safeParse(await request.json());

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const querySchema = z.object({
   days: z.coerce.number().int().min(1).max(365).optional(),
@@ -16,13 +16,11 @@ export async function GET(
   const { searchParams } = new URL(request.url);
 
   // Authenticate user
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   // Verify project ownership

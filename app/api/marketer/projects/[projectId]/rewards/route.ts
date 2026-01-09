@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 type PurchaseRow = {
   amount: number;
@@ -28,11 +29,21 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   const { projectId } = await params;
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
   const { searchParams } = new URL(request.url);
   const marketerId = searchParams.get("userId");
 
   if (!marketerId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  }
+  if (marketerId !== authUser.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const marketer = await prisma.user.findUnique({

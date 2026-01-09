@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { ContractStatus } from "@prisma/client";
 import { notificationMessages } from "@/lib/notifications/messages";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const statusInput = z.object({
   creatorId: z.string().min(1),
@@ -24,6 +25,12 @@ export async function PATCH(
 
   const { contractId } = await params;
   const { creatorId, status } = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, creatorId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
 
   const creator = await prisma.user.findUnique({
     where: { id: creatorId },

@@ -26,6 +26,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import React, { useRef, useState } from "react";

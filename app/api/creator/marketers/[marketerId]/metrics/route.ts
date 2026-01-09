@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const querySchema = z.object({
   days: z.coerce.number().int().min(1).max(365).optional(),
@@ -13,6 +14,12 @@ export async function GET(
   { params }: { params: Promise<{ marketerId: string }> },
 ) {
   const { marketerId } = await params;
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const { searchParams } = new URL(request.url);
   const parsed = querySchema.safeParse({
     days: searchParams.get("days") ?? undefined,
@@ -24,6 +31,35 @@ export async function GET(
       { error: "Invalid query", details: parsed.error.flatten() },
       { status: 400 },
     );
+  }
+
+  const creator = await prisma.user.findUnique({
+    where: { id: authUser.id },
+    select: { id: true, role: true },
+  });
+  if (!creator || creator.role !== "creator") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const creatorProjects = await prisma.project.findMany({
+    where: { userId: creator.id },
+    select: { id: true },
+  });
+  const projectIds = creatorProjects.map((project) => project.id);
+  if (projectIds.length === 0) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const hasAccess = await prisma.contract.findFirst({
+    where: {
+      userId: marketerId,
+      status: "APPROVED",
+      projectId: { in: projectIds },
+    },
+    select: { id: true },
+  });
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const lookbackDays = parsed.data.days ?? 30;

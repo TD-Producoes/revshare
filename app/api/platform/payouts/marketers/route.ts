@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const payoutInput = z.object({
   creatorId: z.string().min(1),
@@ -29,6 +30,12 @@ export async function POST(request: Request) {
   }
 
   const { creatorId } = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, creatorId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const creator = await prisma.user.findUnique({
     where: { id: creatorId },
     select: { id: true, role: true },

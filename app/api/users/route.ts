@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const userInput = z.object({
   id: z.string().min(1),
@@ -20,6 +21,12 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, payload.id);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const role = payload.role ?? "creator";
   const displayName =
     payload.name?.trim() || payload.email.split("@")[0] || "New user";

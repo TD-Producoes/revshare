@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUserOptional } from "@/lib/auth";
 
 export type MarketerTestimonial = {
   id: string;
@@ -20,10 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ marketerId: string }> }
 ) {
   const { marketerId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const authUser = await getAuthUserOptional();
 
   // Verify the marketer exists and check visibility
   const marketer = await prisma.user.findUnique({

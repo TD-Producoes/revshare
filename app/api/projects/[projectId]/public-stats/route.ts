@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUserOptional } from "@/lib/auth";
 
 export type RevenueDataPoint = {
   date: string;
@@ -43,10 +43,7 @@ export async function GET(
   }
 
   // If project is PRIVATE, only owner or marketers with contracts can see stats
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const authUser = await getAuthUserOptional();
   const isOwner = authUser?.id === project.userId;
 
   // Check if user is a marketer with an approved contract for this project

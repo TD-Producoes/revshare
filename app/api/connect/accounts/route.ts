@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { platformStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const connectInput = z.object({
   userId: z.string().min(1),
@@ -38,6 +39,12 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, payload.userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const stripe = platformStripe();
   const displayName =
     payload.name?.trim() || payload.email.split("@")[0] || "New account";
