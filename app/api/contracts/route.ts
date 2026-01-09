@@ -16,6 +16,10 @@ function normalizePercent(value: number) {
   return value > 1 ? value / 100 : value;
 }
 
+function matchesPercent(a: number, b: number) {
+  return Math.abs(a - b) < 0.0001;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const creatorId = searchParams.get("creatorId");
@@ -151,7 +155,13 @@ export async function POST(request: Request) {
   const [marketer, project] = await Promise.all([
     prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, role: true, name: true, email: true },
+      select: {
+        id: true,
+        role: true,
+        name: true,
+        email: true,
+        stripeConnectedAccountId: true,
+      },
     }),
     prisma.project.findUnique({
       where: { id: payload.projectId },
@@ -161,6 +171,9 @@ export async function POST(request: Request) {
         userId: true,
         refundWindowDays: true,
         marketerCommissionPercent: true,
+        autoApproveApplications: true,
+        autoApproveMatchTerms: true,
+        autoApproveVerifiedOnly: true,
       },
     }),
   ]);
@@ -192,6 +205,23 @@ export async function POST(request: Request) {
 
   const commissionPercent = normalizePercent(payload.commissionPercent);
 
+  const requiresMatchingTerms = project.autoApproveMatchTerms;
+  const requiresVerifiedMarketer = project.autoApproveVerifiedOnly;
+  const hasMatchingCommission = matchesPercent(
+    commissionPercent,
+    Number(project.marketerCommissionPercent)
+  );
+  const requestedRefundWindow =
+    payload.refundWindowDays ?? project.refundWindowDays;
+  const hasMatchingRefundWindow =
+    requestedRefundWindow === project.refundWindowDays;
+  const hasVerifiedMarketer = Boolean(marketer.stripeConnectedAccountId);
+  const shouldAutoApprove = project.autoApproveApplications
+    ? (!requiresMatchingTerms ||
+        (hasMatchingCommission && hasMatchingRefundWindow)) &&
+      (!requiresVerifiedMarketer || hasVerifiedMarketer)
+    : false;
+
   const contract = await prisma.$transaction(async (tx) => {
     const createdContract = await tx.contract.create({
       data: {
@@ -201,6 +231,7 @@ export async function POST(request: Request) {
         message: payload.message?.trim() || null,
         refundWindowDays:
           payload.refundWindowDays !== undefined ? payload.refundWindowDays : null,
+        status: shouldAutoApprove ? "APPROVED" : "PENDING",
       },
     });
 
@@ -213,7 +244,7 @@ export async function POST(request: Request) {
         subjectId: createdContract.id,
         data: {
           projectId: project.id,
-          contractStatus: "PENDING",
+          contractStatus: shouldAutoApprove ? "APPROVED" : "PENDING",
           marketerId: marketer.id,
         },
       },

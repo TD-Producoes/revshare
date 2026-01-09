@@ -70,6 +70,9 @@ export async function GET() {
       showMrr: true,
       showRevenue: true,
       showStats: true,
+      autoApproveApplications: true,
+      autoApproveMatchTerms: true,
+      autoApproveVerifiedOnly: true,
     },
     orderBy: { createdAt: "desc" },
   });

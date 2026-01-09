@@ -41,17 +41,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ProjectRewards } from "@/components/projects/project-rewards";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ApplyToPromoteDialog } from "@/components/marketer/apply-to-promote-dialog";
 
 type ProjectDetailProps = {
   /**
@@ -110,6 +101,10 @@ function formatCommission(value: string | number | null | undefined): string {
     return `${Math.round(num * 100)}%`;
   }
   return `${Math.round(num)}%`;
+}
+
+function normalizePercent(value: number) {
+  return value > 1 ? value / 100 : value;
 }
 
 function formatWebsiteUrl(website: string | null | undefined): string | null {
@@ -361,6 +356,86 @@ export function ProjectDetail({
     stats.revenueTimeline &&
     stats.revenueTimeline.some((d) => d.total > 0);
   const currency = project.currency?.toUpperCase() || "USD";
+  const autoApproveAlert = (() => {
+    if (!project.autoApproveApplications) return null;
+
+    const requiresMatchingTerms = project.autoApproveMatchTerms ?? true;
+    const requiresVerifiedMarketer = project.autoApproveVerifiedOnly ?? true;
+    const commissionPercent = Number(commissionInput);
+    const commissionNormalized = Number.isFinite(commissionPercent)
+      ? normalizePercent(commissionPercent)
+      : null;
+    const projectCommission = Number(project.marketerCommissionPercent);
+    const hasMatchingCommission =
+      commissionNormalized !== null &&
+      Number.isFinite(projectCommission) &&
+      Math.abs(commissionNormalized - projectCommission) < 0.0001;
+    const refundWindowValue = refundWindowInput
+      ? Number(refundWindowInput)
+      : project.refundWindowDays ?? null;
+    const hasMatchingRefundWindow =
+      refundWindowValue !== null && refundWindowValue === project.refundWindowDays;
+    const hasVerifiedMarketer = Boolean(currentUser?.stripeConnectedAccountId);
+    const matchesTerms = hasMatchingCommission && hasMatchingRefundWindow;
+    const shouldAutoApprove =
+      (!requiresMatchingTerms || matchesTerms) &&
+      (!requiresVerifiedMarketer || hasVerifiedMarketer);
+
+    return (
+      <Alert variant={shouldAutoApprove ? "default" : "destructive"}>
+        <AlertTitle className="text-sm font-semibold">
+          {shouldAutoApprove
+            ? "This project is auto approving applications."
+            : "Auto approval won't apply for this request."}
+        </AlertTitle>
+        <AlertDescription>
+          {requiresMatchingTerms || requiresVerifiedMarketer ? (
+            <div className="mt-2 grid gap-2 text-xs">
+              {requiresMatchingTerms ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span>Meets commission and refund window.</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      hasMatchingCommission && hasMatchingRefundWindow
+                        ? "bg-emerald-500/10 text-emerald-700"
+                        : "bg-amber-500/10 text-amber-700"
+                    }`}
+                  >
+                    {hasMatchingCommission && hasMatchingRefundWindow
+                      ? "Matched"
+                      : "Not matched"}
+                  </span>
+                </div>
+              ) : null}
+              {requiresVerifiedMarketer ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span>Marketer verified (Stripe connected).</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      hasVerifiedMarketer
+                        ? "bg-emerald-500/10 text-emerald-700"
+                        : "bg-amber-500/10 text-amber-700"
+                    }`}
+                  >
+                    {hasVerifiedMarketer ? "Verified" : "Not verified"}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm">
+              No conditions selected. Your application will auto-approve.
+            </p>
+          )}
+          {!shouldAutoApprove ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your application will be reviewed by the founder.
+            </p>
+          ) : null}
+        </AlertDescription>
+      </Alert>
+    );
+  })();
 
   return (
     <div className="space-y-6 selection:bg-primary/10">
@@ -928,116 +1003,23 @@ export function ProjectDetail({
 
       {/* Apply to Promote Dialog */}
       {currentUser?.role === "marketer" && (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-[420px]">
-            {getContractStatus() === "approved" ? (
-              // Already promoting - show message only
-              <>
-                <DialogHeader>
-                  <DialogTitle>Already Promoting</DialogTitle>
-                  <DialogDescription>
-                    You are already promoting{" "}
-                    <span className="font-medium">{project.name}</span>.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <p className="text-sm text-muted-foreground">
-                    Your application has been approved and you are currently
-                    promoting this project. You can view your performance and
-                    earnings in your dashboard.
-                  </p>
-                </div>
-                <DialogFooter>
-                  <Button type="button" onClick={() => setIsDialogOpen(false)}>
-                    Close
-                  </Button>
-                </DialogFooter>
-              </>
-            ) : (
-              // Show application form
-              <>
-                <DialogHeader>
-                  <DialogTitle>Apply to Promote</DialogTitle>
-                  <DialogDescription>
-                    Request to promote{" "}
-                    <span className="font-medium">{project.name}</span>.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="commission">Commission (%)</Label>
-                    <Input
-                      id="commission"
-                      type="number"
-                      min={0}
-                      step="0.5"
-                      value={commissionInput}
-                      onChange={(event) =>
-                        setCommissionInput(event.target.value)
-                      }
-                      placeholder="20"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      You can negotiate a custom commission for this project.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="refundWindow">Refund window (days)</Label>
-                    <Input
-                      id="refundWindow"
-                      type="number"
-                      min={0}
-                      value={refundWindowInput}
-                      onChange={(event) =>
-                        setRefundWindowInput(event.target.value)
-                      }
-                      placeholder="30"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Commissions become payable after this window passes.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="message">Message</Label>
-                    <Textarea
-                      id="message"
-                      value={applicationMessage}
-                      onChange={(event) =>
-                        setApplicationMessage(event.target.value)
-                      }
-                      placeholder="Introduce yourself or share why you're a great fit."
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Optional message for the creator (max 2000 characters).
-                    </p>
-                  </div>
-                  {formError ? (
-                    <p className="text-sm text-destructive">{formError}</p>
-                  ) : null}
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleSubmitContract}
-                    disabled={createContract.isPending || !project}
-                  >
-                    {createContract.isPending
-                      ? "Submitting..."
-                      : "Submit Request"}
-                  </Button>
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
+        <ApplyToPromoteDialog
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          projectName={project.name}
+          isAlreadyPromoting={getContractStatus() === "approved"}
+          commissionInput={commissionInput}
+          onCommissionChange={setCommissionInput}
+          refundWindowInput={refundWindowInput}
+          onRefundWindowChange={setRefundWindowInput}
+          applicationMessage={applicationMessage}
+          onApplicationMessageChange={setApplicationMessage}
+          onSubmit={handleSubmitContract}
+          isSubmitting={createContract.isPending}
+          submitDisabled={!project}
+          formError={formError}
+          autoApproveAlert={autoApproveAlert}
+        />
       )}
     </div>
   );

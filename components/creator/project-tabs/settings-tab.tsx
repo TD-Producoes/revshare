@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -54,6 +56,9 @@ export function ProjectSettingsTab({
   showRevenue,
   showStats,
   showAvgCommission,
+  autoApproveApplications,
+  autoApproveMatchTerms,
+  autoApproveVerifiedOnly,
 }: {
   projectId: string;
   creatorId: string;
@@ -75,6 +80,9 @@ export function ProjectSettingsTab({
   showRevenue?: boolean;
   showStats?: boolean;
   showAvgCommission?: boolean;
+  autoApproveApplications?: boolean;
+  autoApproveMatchTerms?: boolean;
+  autoApproveVerifiedOnly?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
@@ -102,6 +110,13 @@ export function ProjectSettingsTab({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoApproveEnabled, setAutoApproveEnabled] = useState(
+    autoApproveApplications ?? false
+  );
+  const [autoApproveConditions, setAutoApproveConditions] = useState({
+    requirements: autoApproveMatchTerms ?? true,
+    verifiedMarketer: autoApproveVerifiedOnly ?? true,
+  });
 
   useEffect(() => {
     setForm({
@@ -127,6 +142,11 @@ export function ProjectSettingsTab({
       refundWindowDays:
         refundWindowDays != null ? String(refundWindowDays) : "30",
     });
+    setAutoApproveEnabled(autoApproveApplications ?? false);
+    setAutoApproveConditions({
+      requirements: autoApproveMatchTerms ?? true,
+      verifiedMarketer: autoApproveVerifiedOnly ?? true,
+    });
   }, [
     name,
     description,
@@ -141,6 +161,9 @@ export function ProjectSettingsTab({
     logoUrl,
     imageUrls,
     refundWindowDays,
+    autoApproveApplications,
+    autoApproveMatchTerms,
+    autoApproveVerifiedOnly,
   ]);
 
   const handleSave = async () => {
@@ -171,6 +194,9 @@ export function ProjectSettingsTab({
           refundWindowDays: form.refundWindowDays
             ? Number(form.refundWindowDays)
             : undefined,
+          autoApproveApplications: autoApproveEnabled,
+          autoApproveMatchTerms: autoApproveConditions.requirements,
+          autoApproveVerifiedOnly: autoApproveConditions.verifiedMarketer,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -474,6 +500,78 @@ export function ProjectSettingsTab({
           type="project"
         />
       </div>
+
+      {/* Applications Card */}
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle className="text-base">Applications</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="autoApproveToggle">Auto-approve applications</Label>
+              <p className="text-sm text-muted-foreground">
+                Approve marketers automatically when they apply.
+              </p>
+            </div>
+            <Switch
+              id="autoApproveToggle"
+              checked={autoApproveEnabled}
+              onCheckedChange={(checked) => setAutoApproveEnabled(checked)}
+            />
+          </div>
+
+          {autoApproveEnabled && (
+            <div className="space-y-3 rounded-lg border border-muted bg-muted/30 p-4">
+              <p className="text-sm font-medium">Auto-approve if:</p>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="autoApproveRequirements"
+                  checked={autoApproveConditions.requirements}
+                  onCheckedChange={(checked) =>
+                    setAutoApproveConditions((prev) => ({
+                      ...prev,
+                      requirements: Boolean(checked),
+                    }))
+                  }
+                />
+                <Label
+                  htmlFor="autoApproveRequirements"
+                  className="text-sm font-normal leading-5"
+                >
+                  Application matches project requirements (commission and refund
+                  window).
+                </Label>
+              </div>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="autoApproveVerified"
+                  checked={autoApproveConditions.verifiedMarketer}
+                  onCheckedChange={(checked) =>
+                    setAutoApproveConditions((prev) => ({
+                      ...prev,
+                      verifiedMarketer: Boolean(checked),
+                    }))
+                  }
+                />
+                <Label
+                  htmlFor="autoApproveVerified"
+                  className="text-sm font-normal leading-5"
+                >
+                  Marketer is verified (Stripe connected).
+                </Label>
+              </div>
+              {!autoApproveConditions.requirements &&
+                !autoApproveConditions.verifiedMarketer && (
+                  <p className="text-xs text-muted-foreground">
+                    No conditions selected. Applications will auto-approve
+                    immediately.
+                  </p>
+                )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Save Button - Full Width */}
       <div className="md:col-span-2">
