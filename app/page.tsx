@@ -1,6 +1,7 @@
 "use client";
 
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -924,41 +925,24 @@ export default function Home() {
 
         <ExpandingCardSection />
 
-        {/* Final CTA */}
         <section className="relative z-10 py-24 text-center">
           <div className="mx-auto max-w-2xl px-6">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
               Ready to build the future of <br />
-              <span className="text-amber-400">revenue sharing?</span>
+              <span className="text-amber-500 italic">revenue sharing?</span>
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" className="h-12 rounded-full px-8 text-base shadow-lg shadow-amber-500/20 transition-all font-bold bg-amber-400 text-white" asChild>
+              <Button size="lg" className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all border-none shadow-none" asChild>
                 <Link href="/signup">Get Started Now</Link>
               </Button>
             </div>
-            <p className="mt-6 text-[10px] text-gray-400 font-bold">
+            <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
               Join the growing network of 1,200+ partners
             </p>
           </div>
         </section>
 
-        <footer className="relative z-10 border-t border-gray-100 py-16 bg-gray-50/30">
-          <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 bg-amber-500 rounded flex items-center justify-center">
-                <Zap className="h-3.5 w-3.5 text-white fill-white" />
-              </div>
-              <span className="font-bold text-lg tracking-tight">RevShare</span>
-            </div>
-            <p className="text-[11px] text-gray-400 font-bold">
-              © 2026 RevShare Marketplace
-            </p>
-            <div className="flex gap-6 text-[11px] font-bold text-gray-400">
-              <Link href="/privacy" className="hover:text-black transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-black transition-colors">Terms</Link>
-            </div>
-          </div>
-        </footer>
+        <Footer className="bg-gray-50/30" />
       </div>
     </main >
   );

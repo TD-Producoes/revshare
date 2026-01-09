@@ -1,6 +1,7 @@
 "use client";
 
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { MarketersDirectory } from "@/components/marketers/marketers-directory";
 
 /**
@@ -14,6 +15,7 @@ export default function MarketersDirectoryPage() {
       <div className="mx-auto max-w-7xl pt-24 px-6 py-8">
         <MarketersDirectory isPrivate={false} />
       </div>
+      <Footer className="bg-white" />
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -805,7 +806,8 @@ export default function ForMarketersPage() {
         </motion.div>
       </section>
 
-      <div className="h-24" />
+      <Footer />
+      <div className="h-6" />
     </main>
   );
 }
