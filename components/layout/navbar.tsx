@@ -115,6 +115,9 @@ export function Navbar({
                           </Link>
                         </NavigationMenuLink>
                       </li>
+                      <ListItem href="/product/revshare-vs-affiliate-networks" title="RevShare vs Affiliates">
+                        A better way to build revenue-share partnerships.
+                      </ListItem>
                       <ListItem href="/how-it-works" title="How it works">
                         End-to-end flow: tracking → refunds → payouts
                       </ListItem>
