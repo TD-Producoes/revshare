@@ -112,14 +112,14 @@ export function Navbar({
                       </ListItem>
                       <ListItem
                         href="/product/revshare-vs-affiliate-networks"
-                        title="Networks vs Marketplace"
+                        title="RevShare vs Affiliate Networks"
                         icon={<Network className="text-amber-600 h-5 w-5" />}
                       >
                         Why traditional legacy affiliate networks are failing modern SaaS.
                       </ListItem>
                       <ListItem
                         href="/product/revshare-vs-affiliate-marketing"
-                        title="Concept & Philosophy"
+                        title="RevShare vs Affiliate Marketing"
                         icon={<BarChart3 className="text-amber-600 h-5 w-5" />}
                       >
                         Recurring value vs limited one-time affiliate bounties.

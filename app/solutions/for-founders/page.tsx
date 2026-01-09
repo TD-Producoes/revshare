@@ -8,6 +8,7 @@ import { ArrowUpRight, Zap, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { FoundersHeroCards } from "@/components/founders/founders-hero-visuals";
 import { FoundersComparison } from "@/components/founders/founders-comparison";
 import { FoundersBentoGrid } from "@/components/founders/founders-features";
@@ -292,7 +293,7 @@ export default function ForFounders() {
               <span className="text-[#128045] italic">growth engine?</span>
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all" asChild>
+              <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all border-none shadow-none" asChild>
                 <Link href="/signup?role=creator">Start Scaling Now</Link>
               </Button>
             </div>
@@ -302,23 +303,7 @@ export default function ForFounders() {
           </div>
         </section>
 
-        <footer className="relative z-10 border-t border-border/10 py-12 bg-gray-50/50">
-          <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 bg-[#128045] rounded flex items-center justify-center">
-                <Zap className="h-3.5 w-3.5 text-white fill-white" />
-              </div>
-              <span className="font-bold text-lg tracking-tight">RevShare</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-widest">
-              © 2026 RevShare Marketplace
-            </p>
-            <div className="flex gap-6 text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-              <Link href="/privacy" className="hover:text-emerald-500 transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-emerald-500 transition-colors">Terms</Link>
-            </div>
-          </div>
-        </footer>
+        <Footer />
       </div>
     </main>
   );

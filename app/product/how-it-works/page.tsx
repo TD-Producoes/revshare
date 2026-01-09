@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
 
 export default function HowItWorks() {
@@ -294,47 +295,24 @@ export default function HowItWorks() {
         {/* Global Components omitted to avoid repeating content from other pages */}
       </div>
 
-      {/* Final CTA */}
-      <section className="relative z-10 py-32 text-center bg-gray-50/50">
+      <section className="relative z-10 py-24 text-center bg-gray-50/50">
         <div className="mx-auto max-w-3xl px-6">
-          <Badge variant="outline" className="mb-8 rounded-full border-black/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-black/40">
-            Engineered for growth
-          </Badge>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-8 leading-tight">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
             Stop manually handling payouts. <br />
-            Start <span className="text-[#6366F1] italic">scaling your reach.</span>
+            Start <span className="text-[#818CF8] italic">scaling your reach.</span>
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="h-14 rounded-full px-10 text-base bg-[#0F172A] text-white hover:bg-black font-bold transition-all shadow-xl">
-              Launch Program
-            </Button>
-            <Button size="lg" variant="outline" className="h-14 rounded-full px-10 text-base font-bold bg-white hover:bg-gray-50 transition-all border-black/5">
-              Book Architecture Call
+            <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#818CF8] hover:bg-[#818CF8]/90 text-white font-bold transition-all border-none shadow-none" asChild>
+              <Link href="/signup">Launch Program Now</Link>
             </Button>
           </div>
-          <p className="mt-12 text-[10px] text-black/30 font-bold uppercase tracking-[0.2em]">
+          <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
             Stripe Connected Platform
           </p>
         </div>
       </section>
 
-      <footer className="relative z-10 border-t border-border/10 py-16 bg-white">
-        <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 bg-[#0F172A] rounded flex items-center justify-center">
-              <Zap className="h-3.5 w-3.5 text-white fill-white" />
-            </div>
-            <span className="font-bold text-lg tracking-tight">RevShare</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground font-bold">
-            © 2026 RevShare Marketplace
-          </p>
-          <div className="flex gap-6 text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-            <Link href="/privacy" className="hover:text-[#6366F1] transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-[#6366F1] transition-colors">Terms</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer className="bg-white" />
     </main>
   );
 }
