@@ -74,13 +74,13 @@ export default function ForFounders() {
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
     // Hide dashboard button when the circle reveal is passing through the top-right corner
-    if (latest > 0.35 && latest < 0.6) {
+    if (latest > 0.35 && latest < 0.45) {
       setNavbarHideDashboard(true);
     } else {
       setNavbarHideDashboard(false);
     }
 
-    if (latest > 0.6) {
+    if (latest > 0.45) {
       setNavbarForceTransparent(false);
     } else {
       setNavbarForceTransparent(true);
