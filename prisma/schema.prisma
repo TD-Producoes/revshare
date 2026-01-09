@@ -86,6 +86,9 @@ model Project {
   showRevenue               Boolean                   @default(true)
   showStats                 Boolean                   @default(true)
   showAvgCommission         Boolean                   @default(true)
+  autoApproveApplications   Boolean                   @default(false)
+  autoApproveMatchTerms     Boolean                   @default(true)
+  autoApproveVerifiedOnly   Boolean                   @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

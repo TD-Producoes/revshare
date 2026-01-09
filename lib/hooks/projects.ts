@@ -31,6 +31,9 @@ export type ApiProject = {
   showRevenue?: boolean;
   showStats?: boolean;
   showAvgCommission?: boolean;
+  autoApproveApplications?: boolean;
+  autoApproveMatchTerms?: boolean;
+  autoApproveVerifiedOnly?: boolean;
 };
 
 export type ProjectStats = {

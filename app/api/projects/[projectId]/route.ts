@@ -31,6 +31,9 @@ const updateSchema = z
     showRevenue: z.boolean().optional(),
     showStats: z.boolean().optional(),
     showAvgCommission: z.boolean().optional(),
+    autoApproveApplications: z.boolean().optional(),
+    autoApproveMatchTerms: z.boolean().optional(),
+    autoApproveVerifiedOnly: z.boolean().optional(),
   })
   .refine(
     (data) =>
@@ -51,7 +54,10 @@ const updateSchema = z
       data.showMrr !== undefined ||
       data.showRevenue !== undefined ||
       data.showStats !== undefined ||
-      data.showAvgCommission !== undefined,
+      data.showAvgCommission !== undefined ||
+      data.autoApproveApplications !== undefined ||
+      data.autoApproveMatchTerms !== undefined ||
+      data.autoApproveVerifiedOnly !== undefined,
     {
       message: "At least one field must be provided",
     }
@@ -93,6 +99,9 @@ export async function GET(
       showRevenue: true,
       showStats: true,
       showAvgCommission: true,
+      autoApproveApplications: true,
+      autoApproveMatchTerms: true,
+      autoApproveVerifiedOnly: true,
       user: {
         select: {
           id: true,
@@ -227,6 +236,15 @@ export async function PATCH(
       ...(payload.showAvgCommission !== undefined
         ? { showAvgCommission: payload.showAvgCommission }
         : {}),
+      ...(payload.autoApproveApplications !== undefined
+        ? { autoApproveApplications: payload.autoApproveApplications }
+        : {}),
+      ...(payload.autoApproveMatchTerms !== undefined
+        ? { autoApproveMatchTerms: payload.autoApproveMatchTerms }
+        : {}),
+      ...(payload.autoApproveVerifiedOnly !== undefined
+        ? { autoApproveVerifiedOnly: payload.autoApproveVerifiedOnly }
+        : {}),
     },
     select: {
       id: true,
@@ -248,6 +266,9 @@ export async function PATCH(
       showRevenue: true,
       showStats: true,
       showAvgCommission: true,
+      autoApproveApplications: true,
+      autoApproveMatchTerms: true,
+      autoApproveVerifiedOnly: true,
     },
   });
 

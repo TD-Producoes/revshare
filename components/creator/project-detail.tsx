@@ -677,6 +677,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               showRevenue={apiProject?.showRevenue}
               showStats={apiProject?.showStats}
               showAvgCommission={apiProject?.showAvgCommission}
+              autoApproveApplications={apiProject?.autoApproveApplications}
+              autoApproveMatchTerms={apiProject?.autoApproveMatchTerms}
+              autoApproveVerifiedOnly={apiProject?.autoApproveVerifiedOnly}
             />
           ) : null}
         </TabsContent>
