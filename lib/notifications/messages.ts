@@ -11,6 +11,14 @@ export const notificationMessages = {
     title: "Project application rejected",
     message: `${projectName} rejected your application.`,
   }),
+  contractPaused: (projectName: string) => ({
+    title: "Partnership paused",
+    message: `${projectName} has temporarily paused your partnership.`,
+  }),
+  contractResumed: (projectName: string) => ({
+    title: "Partnership resumed",
+    message: `${projectName} has resumed your partnership.`,
+  }),
   couponClaimed: (marketerName: string, templateName: string, projectName: string) => ({
     title: "New marketer promo code",
     message: `${marketerName} claimed ${templateName} for ${projectName}.`,

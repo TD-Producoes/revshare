@@ -16,7 +16,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/lib/hooks/notifications";
 import { ChevronDown, Zap, Sun, Moon, Bell, Settings } from "lucide-react";
 
@@ -118,13 +117,6 @@ export function Header() {
             <span className="sr-only">Toggle theme</span>
           </Button>
 
-          <Badge
-            variant={user.role === "creator" ? "default" : "secondary"}
-            className="capitalize text-xs h-5"
-          >
-            {user.role}
-          </Badge>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative h-8 w-8">
@@ -217,16 +209,27 @@ export function Header() {
                     {getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden sm:inline text-sm">{displayName}</span>
+                <span className="hidden sm:inline">{displayName}</span>
                 <ChevronDown className="h-3.5 w-3.5 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel className="text-xs py-1">
-                Signed in as
+            <DropdownMenuContent align="end" className="w-52 text-xs">
+              <div className="px-2 py-1.5 text-muted-foreground">
+                <div className="truncate">{user.email}</div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 py-1">
+                Role
               </DropdownMenuLabel>
-              <DropdownMenuItem className="text-xs text-muted-foreground">
-                {user.email}
+              <div className="px-2 py-1.5 text-muted-foreground capitalize">
+                {user.role}
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push(notificationsPath)}>
+                Notifications
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(settingsPath)}>
+                Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>

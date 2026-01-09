@@ -44,6 +44,8 @@ export async function PATCH(
 
   const updated = await prisma.$transaction(async (tx) => {
     const nextStatus = status.toUpperCase() as ContractStatus;
+    const previousStatus = contract.status;
+
     const updatedContract = await tx.contract.update({
       where: { id: contractId },
       data: { status: nextStatus },
@@ -54,37 +56,62 @@ export async function PATCH(
       },
     });
 
-    // Only create event and notification for approved/rejected status changes
-    if (nextStatus === "APPROVED" || nextStatus === "REJECTED") {
-      await tx.event.create({
-        data: {
-          type: nextStatus === "APPROVED" ? "CONTRACT_APPROVED" : "CONTRACT_REJECTED",
-          actorId: creator.id,
-          projectId: contract.projectId,
-          subjectType: "Contract",
-          subjectId: contract.id,
-          data: {
-            projectId: contract.projectId,
-            contractStatus: nextStatus,
-            marketerId: contract.userId,
-          },
-        },
-      });
+    // Determine event type and notification based on status change
+    let eventType: string;
+    let notificationType: "CONTRACT_APPROVED" | "CONTRACT_REJECTED" | "SYSTEM";
+    let notificationMessage: { title: string; message: string };
 
-      await tx.notification.create({
-        data: {
-          userId: contract.userId,
-          type: nextStatus === "APPROVED" ? "CONTRACT_APPROVED" : "CONTRACT_REJECTED",
-          ...(nextStatus === "APPROVED"
-            ? notificationMessages.contractApproved(contract.project.name)
-            : notificationMessages.contractRejected(contract.project.name)),
-          data: {
-            projectId: contract.projectId,
-            contractId: contract.id,
-          },
-        },
-      });
+    // Check if this is a resume action (from PAUSED to APPROVED)
+    const isResume = previousStatus === "PAUSED" && nextStatus === "APPROVED";
+
+    if (nextStatus === "APPROVED" && !isResume) {
+      eventType = "CONTRACT_APPROVED";
+      notificationType = "CONTRACT_APPROVED";
+      notificationMessage = notificationMessages.contractApproved(contract.project.name);
+    } else if (isResume) {
+      eventType = "CONTRACT_RESUMED";
+      notificationType = "SYSTEM";
+      notificationMessage = notificationMessages.contractResumed(contract.project.name);
+    } else if (nextStatus === "REJECTED") {
+      eventType = "CONTRACT_REJECTED";
+      notificationType = "CONTRACT_REJECTED";
+      notificationMessage = notificationMessages.contractRejected(contract.project.name);
+    } else if (nextStatus === "PAUSED") {
+      eventType = "CONTRACT_PAUSED";
+      notificationType = "SYSTEM";
+      notificationMessage = notificationMessages.contractPaused(contract.project.name);
+    } else {
+      // No event/notification needed for other transitions
+      return updatedContract;
     }
+
+    await tx.event.create({
+      data: {
+        type: eventType as any,
+        actorId: creator.id,
+        projectId: contract.projectId,
+        subjectType: "Contract",
+        subjectId: contract.id,
+        data: {
+          projectId: contract.projectId,
+          contractStatus: nextStatus,
+          previousStatus: previousStatus,
+          marketerId: contract.userId,
+        },
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId: contract.userId,
+        type: notificationType,
+        ...notificationMessage,
+        data: {
+          projectId: contract.projectId,
+          contractId: contract.id,
+        },
+      },
+    });
 
     return updatedContract;
   });
