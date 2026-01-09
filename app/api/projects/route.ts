@@ -3,7 +3,12 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import {
+  authErrorResponse,
+  getAuthUserOptional,
+  requireAuthUser,
+  requireOwner,
+} from "@/lib/auth";
 import { redactProjectData } from "@/lib/services/visibility";
 
 const projectInput = z.object({
@@ -29,10 +34,7 @@ function normalizePercent(value: number) {
 }
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const authUser = await getAuthUserOptional();
 
   const projects = await prisma.project.findMany({
     where: {
@@ -96,6 +98,12 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, payload.userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const creator = await prisma.user.findUnique({
     where: { id: payload.userId },
     select: { id: true, role: true },

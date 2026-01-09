@@ -14,12 +14,19 @@ import {
   fetchedProfileToStorage,
 } from "@/lib/services/social-media-fetcher";
 import { Prisma } from "@prisma/client";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const { userId } = await params;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -78,6 +85,12 @@ export async function PATCH(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const { userId } = await params;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
 
   const body = await request.json();
   const parsed = updateSchema.safeParse(body);

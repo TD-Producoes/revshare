@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const customerInput = z.object({
   email: z.string().email(),
@@ -14,14 +14,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
-  // Authenticate user
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const parsed = customerInput.safeParse(await request.json());

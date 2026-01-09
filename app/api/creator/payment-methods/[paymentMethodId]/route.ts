@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const removeInput = z.object({
   userId: z.string().min(1),
@@ -19,6 +20,13 @@ export async function DELETE(
       { error: "Invalid payload", details: parsed.error.flatten() },
       { status: 400 }
     );
+  }
+
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, parsed.data.userId);
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const user = await prisma.user.findUnique({

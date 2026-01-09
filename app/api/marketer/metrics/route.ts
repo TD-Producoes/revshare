@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const querySchema = z.object({
   userId: z.string().min(1),
@@ -25,6 +26,12 @@ export async function GET(request: Request) {
   }
 
   const { userId, projectId } = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const lookbackDays = parsed.data.days ?? 30;
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - lookbackDays);

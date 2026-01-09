@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const querySchema = z.object({
   userId: z.string().min(1),
@@ -28,6 +29,12 @@ export async function GET(request: Request) {
   }
 
   const { userId } = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
 
   const preference = await prisma.notificationPreference.findUnique({
     where: { userId },
@@ -57,6 +64,12 @@ export async function PATCH(request: Request) {
   }
 
   const { userId, emailEnabled, webhookEnabled, webhookUrl } = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const normalizedWebhookUrl =
     typeof webhookUrl === "string" && webhookUrl.trim().length > 0
       ? webhookUrl.trim()

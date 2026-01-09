@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import {
+  authErrorResponse,
+  getAuthUserOptional,
+  requireAuthUser,
+} from "@/lib/auth";
 import { redactProjectData } from "@/lib/services/visibility";
 
 const updateSchema = z
@@ -67,10 +71,7 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const authUser = await getAuthUserOptional();
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -147,14 +148,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> }
 ) {
-  // Authenticate user
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const parsed = updateSchema.safeParse(await request.json());

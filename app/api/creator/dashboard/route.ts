@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { redactProjectData } from "@/lib/services/visibility";
-import { createClient } from "@/lib/supabase/server";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 type DayTotals = {
   revenue: number;
@@ -17,11 +17,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
 
-  // Get authenticated user to determine if they're the owner
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
 
   const creator = await prisma.user.findUnique({
     where: { id: userId },
@@ -203,7 +204,7 @@ export async function GET(request: Request) {
     }));
 
   // Determine if the requester is the owner
-  const isOwner = authUser?.id === userId;
+  const isOwner = true;
 
   const projectData = projects
     .map((project) => {

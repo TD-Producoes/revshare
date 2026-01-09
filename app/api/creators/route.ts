@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const creatorInput = z.object({
   id: z.string().min(1),
@@ -11,9 +12,20 @@ const creatorInput = z.object({
 });
 
 export async function GET() {
+  try {
+    await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
   const creators = await prisma.user.findMany({
     where: { role: "creator" },
     orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      role: true,
+    },
   });
 
   return NextResponse.json({ data: creators });
@@ -26,6 +38,13 @@ export async function POST(request: Request) {
       { error: "Invalid payload", details: parsed.error.flatten() },
       { status: 400 },
     );
+  }
+
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, parsed.data.id);
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const creator = await prisma.user.create({

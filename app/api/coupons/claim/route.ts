@@ -5,7 +5,7 @@ import { generatePromoCode } from "@/lib/codes";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 import { notificationMessages } from "@/lib/notifications/messages";
-import { createClient } from "@/lib/supabase/server";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const claimInput = z.object({
   projectId: z.string().min(1),
@@ -19,14 +19,11 @@ function derivePrefix(name: string) {
 }
 
 export async function POST(request: Request) {
-  // Authenticate user
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const parsed = claimInput.safeParse(await request.json());

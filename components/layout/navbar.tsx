@@ -162,14 +162,14 @@ export function Navbar({
                       <ListItem
                         href="/solutions/for-founders"
                         title="For Founders"
-                        icon={<Users className="h-5 w-5" />}
+                        icon={<Users className="text-amber-600 h-5 w-5" />}
                       >
                         Launch a commission-only sales force and scale your revenue without the CAC risk.
                       </ListItem>
                       <ListItem
                         href="/solutions/for-marketers"
                         title="For Marketers"
-                        icon={<TrendingUp className="h-5 w-5" />}
+                        icon={<TrendingUp className="text-amber-600 h-5 w-5" />}
                       >
                         Partner with high-growth SaaS founders and build a sustainable recurring income stream.
                       </ListItem>

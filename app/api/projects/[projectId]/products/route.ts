@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
@@ -11,13 +11,11 @@ export async function GET(
   const { projectId } = await params;
 
   // Authenticate user
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const project = await prisma.project.findUnique({

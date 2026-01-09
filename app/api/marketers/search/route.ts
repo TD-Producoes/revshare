@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { parseUserMetadata } from "@/lib/services/user-metadata";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUserOptional } from "@/lib/auth";
 import { redactMarketerData } from "@/lib/services/visibility";
 
 export type SearchMarketer = {
@@ -30,10 +30,7 @@ function matchesEarningsRange(earnings: number, range: string): boolean {
 }
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const authUser = await getAuthUserOptional();
 
   const { searchParams } = new URL(request.url);
 
