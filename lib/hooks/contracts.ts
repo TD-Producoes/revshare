@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export type ContractStatus = "pending" | "approved" | "rejected";
+export type ContractStatus = "pending" | "approved" | "rejected" | "paused";
 
 export type Contract = {
   id: string;

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle, XCircle } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Pause } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useContractsForMarketer } from "@/lib/hooks/contracts";
@@ -41,6 +41,7 @@ export function MyOffers({
   const approvedContracts = contracts.filter((c) => c.status === "approved");
   const pendingContracts = contracts.filter((c) => c.status === "pending");
   const rejectedContracts = contracts.filter((c) => c.status === "rejected");
+  const pausedContracts = contracts.filter((c) => c.status === "paused");
 
   return (
     <div className="space-y-6">
@@ -67,6 +68,10 @@ export function MyOffers({
           <TabsTrigger value="rejected" className="gap-2">
             <XCircle className="h-4 w-4" />
             Rejected ({rejectedContracts.length})
+          </TabsTrigger>
+          <TabsTrigger value="paused" className="gap-2">
+            <Pause className="h-4 w-4" />
+            Paused ({pausedContracts.length})
           </TabsTrigger>
         </TabsList>
 
@@ -158,6 +163,48 @@ export function MyOffers({
                         </p>
                       </div>
                       <Badge variant="destructive">Rejected</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="paused">
+          {pausedContracts.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No paused partnerships.
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Paused Partnerships</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground text-sm mb-4">
+                  These partnerships have been temporarily paused by the creator.
+                </p>
+                <div className="space-y-2">
+                  {pausedContracts.map((contract) => (
+                    <div
+                      key={contract.id}
+                      className="flex items-center justify-between p-3 border rounded-md"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          Project: {contract.projectName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Commission: {(contract.commissionPercent * 100).toFixed(0)}%
+                        </p>
+                      </div>
+                      <Badge variant="secondary">
+                        <Pause className="h-3 w-3 mr-1" />
+                        Paused
+                      </Badge>
                     </div>
                   ))}
                 </div>

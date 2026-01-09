@@ -93,10 +93,10 @@ export function ProjectSettingsTab({
     commissionPercent:
       marketerCommissionPercent != null
         ? String(
-            marketerCommissionPercent > 1
-              ? Math.round(marketerCommissionPercent)
-              : Math.round(marketerCommissionPercent * 100)
-          )
+          marketerCommissionPercent > 1
+            ? Math.round(marketerCommissionPercent)
+            : Math.round(marketerCommissionPercent * 100)
+        )
         : "",
     country: country ?? "",
     website: website ?? "",
@@ -127,10 +127,10 @@ export function ProjectSettingsTab({
       commissionPercent:
         marketerCommissionPercent != null
           ? String(
-              marketerCommissionPercent > 1
-                ? Math.round(marketerCommissionPercent)
-                : Math.round(marketerCommissionPercent * 100)
-            )
+            marketerCommissionPercent > 1
+              ? Math.round(marketerCommissionPercent)
+              : Math.round(marketerCommissionPercent * 100)
+          )
           : "",
       country: country ?? "",
       website: website ?? "",
@@ -405,25 +405,25 @@ export function ProjectSettingsTab({
             </p>
           </div>
           <div className="space-y-2">
-          <Label htmlFor="refundWindow">Refund window (days)</Label>
-          <Input
-            id="refundWindow"
-            type="number"
-            min={0}
-            value={form.refundWindowDays}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                refundWindowDays: event.target.value,
-              }))
-            }
-            placeholder="30"
-          />
-          <p className="text-xs text-muted-foreground">
-            Applies to new purchases only. Existing purchases keep their original
-            window.
-          </p>
-        </div>
+            <Label htmlFor="refundWindow">Refund window (days)</Label>
+            <Input
+              id="refundWindow"
+              type="number"
+              min={0}
+              value={form.refundWindowDays}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  refundWindowDays: event.target.value,
+                }))
+              }
+              placeholder="30"
+            />
+            <p className="text-xs text-muted-foreground">
+              Applies to new purchases only. Existing purchases keep their original
+              window.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -507,10 +507,10 @@ export function ProjectSettingsTab({
           <CardTitle className="text-base">Applications</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <Label htmlFor="autoApproveToggle">Auto-approve applications</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground">
                 Approve marketers automatically when they apply.
               </p>
             </div>
@@ -522,9 +522,8 @@ export function ProjectSettingsTab({
           </div>
 
           {autoApproveEnabled && (
-            <div className="space-y-3 rounded-lg border border-muted bg-muted/30 p-4">
-              <p className="text-sm font-medium">Auto-approve if:</p>
-              <div className="flex items-start gap-3">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
                 <Checkbox
                   id="autoApproveRequirements"
                   checked={autoApproveConditions.requirements}
@@ -535,15 +534,12 @@ export function ProjectSettingsTab({
                     }))
                   }
                 />
-                <Label
-                  htmlFor="autoApproveRequirements"
-                  className="text-sm font-normal leading-5"
-                >
+                <Label htmlFor="autoApproveRequirements">
                   Application matches project requirements (commission and refund
                   window).
                 </Label>
               </div>
-              <div className="flex items-start gap-3">
+              <div className="flex items-center gap-3">
                 <Checkbox
                   id="autoApproveVerified"
                   checked={autoApproveConditions.verifiedMarketer}
@@ -554,10 +550,7 @@ export function ProjectSettingsTab({
                     }))
                   }
                 />
-                <Label
-                  htmlFor="autoApproveVerified"
-                  className="text-sm font-normal leading-5"
-                >
+                <Label htmlFor="autoApproveVerified">
                   Marketer is verified (Stripe connected).
                 </Label>
               </div>

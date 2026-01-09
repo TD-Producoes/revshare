@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, CheckCircle, XCircle, MoreVertical, Star } from "lucide-react";
+import { Clock, CheckCircle, XCircle, MoreVertical, Star, Pause, Play } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import {
   Contract,
@@ -46,6 +46,8 @@ type ContractsTableProps = {
   showActions?: boolean;
   onReview: (contractId: string) => void;
   onOpenTestimonial: (contractId: string) => void;
+  onPause: (contractId: string) => void;
+  onResume: (contractId: string) => void;
   getStatusBadge: (status: ContractStatus) => React.ReactNode;
 };
 
@@ -54,6 +56,8 @@ function ContractsTable({
   showActions = false,
   onReview,
   onOpenTestimonial,
+  onPause,
+  onResume,
   getStatusBadge,
 }: ContractsTableProps) {
   return (
@@ -82,6 +86,7 @@ function ContractsTable({
         ) : (
           contractsList.map((contract) => {
             const isApproved = contract.status === "approved";
+            const isPaused = contract.status === "paused";
             return (
               <TableRow key={contract.id}>
                 <TableCell className="font-medium">
@@ -128,6 +133,18 @@ function ContractsTable({
                           <Star className="mr-2 h-4 w-4" />
                           Write testimonial
                         </DropdownMenuItem>
+                        {isApproved && (
+                          <DropdownMenuItem onClick={() => onPause(contract.id)}>
+                            <Pause className="mr-2 h-4 w-4" />
+                            Pause application
+                          </DropdownMenuItem>
+                        )}
+                        {isPaused && (
+                          <DropdownMenuItem onClick={() => onResume(contract.id)}>
+                            <Play className="mr-2 h-4 w-4" />
+                            Resume application
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -167,6 +184,10 @@ export function OffersManagement() {
     () => contracts.filter((contract) => contract.status === "rejected"),
     [contracts],
   );
+  const pausedContracts = useMemo(
+    () => contracts.filter((contract) => contract.status === "paused"),
+    [contracts],
+  );
 
   const handleApprove = (contractId: string) => {
     if (!creatorId) return;
@@ -186,6 +207,24 @@ export function OffersManagement() {
       status: "rejected",
     });
     setReviewContractId(null);
+  };
+
+  const handlePause = (contractId: string) => {
+    if (!creatorId) return;
+    updateStatus.mutate({
+      contractId,
+      creatorId,
+      status: "paused",
+    });
+  };
+
+  const handleResume = (contractId: string) => {
+    if (!creatorId) return;
+    updateStatus.mutate({
+      contractId,
+      creatorId,
+      status: "approved",
+    });
   };
 
   const getStatusBadge = (status: ContractStatus) => {
@@ -209,6 +248,13 @@ export function OffersManagement() {
           <Badge variant="destructive" className="gap-1">
             <XCircle className="h-3 w-3" />
             Rejected
+          </Badge>
+        );
+      case "paused":
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <Pause className="h-3 w-3" />
+            Paused
           </Badge>
         );
     }
@@ -264,6 +310,9 @@ export function OffersManagement() {
           <TabsTrigger value="rejected">
             Rejected ({rejectedContracts.length})
           </TabsTrigger>
+          <TabsTrigger value="paused">
+            Paused ({pausedContracts.length})
+          </TabsTrigger>
           <TabsTrigger value="all">All ({contracts.length})</TabsTrigger>
         </TabsList>
 
@@ -278,6 +327,8 @@ export function OffersManagement() {
                 showActions={true}
                 onReview={setReviewContractId}
                 onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
                 getStatusBadge={getStatusBadge}
               />
             </CardContent>
@@ -295,6 +346,8 @@ export function OffersManagement() {
                 showActions={false}
                 onReview={setReviewContractId}
                 onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
                 getStatusBadge={getStatusBadge}
               />
             </CardContent>
@@ -312,6 +365,27 @@ export function OffersManagement() {
                 showActions={false}
                 onReview={setReviewContractId}
                 onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
+                getStatusBadge={getStatusBadge}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="paused">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Paused Applications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ContractsTable
+                contractsList={pausedContracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
                 getStatusBadge={getStatusBadge}
               />
             </CardContent>
@@ -329,6 +403,8 @@ export function OffersManagement() {
                 showActions={false}
                 onReview={setReviewContractId}
                 onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
                 getStatusBadge={getStatusBadge}
               />
             </CardContent>

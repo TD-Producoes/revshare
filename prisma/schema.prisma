@@ -343,6 +343,7 @@ enum ContractStatus {
   PENDING
   APPROVED
   REJECTED
+  PAUSED
 }
 
 enum RewardStatus {

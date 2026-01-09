@@ -854,12 +854,14 @@ export async function POST(request: Request) {
             userId: coupon.marketerId,
           },
         },
-        select: { refundWindowDays: true },
+        select: { refundWindowDays: true, status: true },
       })
     : null;
 
-  const commissionPercent = coupon ? Number(coupon.commissionPercent) : 0;
-  const commissionAmount = coupon
+  // Only associate purchase with marketer if contract is approved
+  const isContractApproved = contract?.status === "APPROVED";
+  const commissionPercent = coupon && isContractApproved ? Number(coupon.commissionPercent) : 0;
+  const commissionAmount = coupon && isContractApproved
     ? Math.round(details.amount * commissionPercent)
     : 0;
 
@@ -887,7 +889,7 @@ export async function POST(request: Request) {
   const purchase = await prisma.purchase.create({
     data: {
       projectId: projectMatch.id,
-      couponId: coupon?.id ?? null,
+      couponId: coupon && isContractApproved ? coupon.id : null,
       stripeEventId: event.id,
       stripeChargeId: details.stripeChargeId,
       stripeInvoiceId: details.stripeInvoiceId,
@@ -913,20 +915,20 @@ export async function POST(request: Request) {
   await prisma.event.create({
     data: {
       type: "PURCHASE_CREATED",
-      actorId: coupon?.marketerId ?? null,
+      actorId: coupon && isContractApproved ? coupon.marketerId : null,
       projectId: projectMatch.id,
       subjectType: "Purchase",
       subjectId: purchase.id,
       data: {
         projectId: projectMatch.id,
-        couponId: coupon?.id ?? null,
+        couponId: coupon && isContractApproved ? coupon.id : null,
         amount: details.amount,
         currency: details.currency,
       },
     },
   });
 
-  if (coupon?.marketerId) {
+  if (coupon?.marketerId && isContractApproved) {
     await prisma.notification.create({
       data: {
         userId: coupon.marketerId,
@@ -945,8 +947,8 @@ export async function POST(request: Request) {
     await prisma.notification.create({
       data: {
         userId: projectMatch.userId,
-        type: coupon?.id ? "COMMISSION_DUE" : "SALE",
-        ...(coupon?.id
+        type: coupon?.id && isContractApproved ? "COMMISSION_DUE" : "SALE",
+        ...(coupon?.id && isContractApproved
           ? notificationMessages.commissionDue(
               projectMatch.name ?? "your project",
               details.amount,

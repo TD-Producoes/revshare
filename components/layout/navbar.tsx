@@ -72,12 +72,7 @@ export function Navbar({
             "flex items-center gap-2 font-bold text-xl transition-colors",
             isTransparentActive ? "text-white" : "text-foreground"
           )}>
-            <div className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
-              isTransparentActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-            )}>
-              <ChartPie strokeWidth={3} className="h-4 w-4" />
-            </div>
+            <ChartPie strokeWidth={3} className="h-4 w-4" />
             <span>RevShare</span>
           </Link>
 

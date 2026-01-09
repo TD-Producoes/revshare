@@ -7,7 +7,7 @@ import { notificationMessages } from "@/lib/notifications/messages";
 
 const statusInput = z.object({
   creatorId: z.string().min(1),
-  status: z.enum(["approved", "rejected"]),
+  status: z.enum(["approved", "rejected", "paused"]),
 });
 
 export async function PATCH(
@@ -54,34 +54,37 @@ export async function PATCH(
       },
     });
 
-    await tx.event.create({
-      data: {
-        type: nextStatus === "APPROVED" ? "CONTRACT_APPROVED" : "CONTRACT_REJECTED",
-        actorId: creator.id,
-        projectId: contract.projectId,
-        subjectType: "Contract",
-        subjectId: contract.id,
+    // Only create event and notification for approved/rejected status changes
+    if (nextStatus === "APPROVED" || nextStatus === "REJECTED") {
+      await tx.event.create({
         data: {
+          type: nextStatus === "APPROVED" ? "CONTRACT_APPROVED" : "CONTRACT_REJECTED",
+          actorId: creator.id,
           projectId: contract.projectId,
-          contractStatus: nextStatus,
-          marketerId: contract.userId,
+          subjectType: "Contract",
+          subjectId: contract.id,
+          data: {
+            projectId: contract.projectId,
+            contractStatus: nextStatus,
+            marketerId: contract.userId,
+          },
         },
-      },
-    });
+      });
 
-    await tx.notification.create({
-      data: {
-        userId: contract.userId,
-        type: nextStatus === "APPROVED" ? "CONTRACT_APPROVED" : "CONTRACT_REJECTED",
-        ...(nextStatus === "APPROVED"
-          ? notificationMessages.contractApproved(contract.project.name)
-          : notificationMessages.contractRejected(contract.project.name)),
+      await tx.notification.create({
         data: {
-          projectId: contract.projectId,
-          contractId: contract.id,
+          userId: contract.userId,
+          type: nextStatus === "APPROVED" ? "CONTRACT_APPROVED" : "CONTRACT_REJECTED",
+          ...(nextStatus === "APPROVED"
+            ? notificationMessages.contractApproved(contract.project.name)
+            : notificationMessages.contractRejected(contract.project.name)),
+          data: {
+            projectId: contract.projectId,
+            contractId: contract.id,
+          },
         },
-      },
-    });
+      });
+    }
 
     return updatedContract;
   });
