@@ -20,7 +20,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, ChartPie, Sparkles, LayoutDashboard } from "lucide-react";
+import {
+  Menu,
+  ChartPie,
+  Workflow,
+  Network,
+  BarChart3,
+  ShieldCheck,
+  Trophy,
+  Store,
+  Users,
+  TrendingUp
+} from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 
@@ -90,46 +101,49 @@ export function Navbar({
                     Product
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid gap-3 p-6 md:w-[500px] lg:w-[600px] lg:grid-cols-[210px_1fr]">
-                      <li className="row-span-4">
-                        <NavigationMenuLink asChild>
-                          <Link
-                            href="/"
-                            className="flex h-full w-full select-none flex-col justify-end rounded-[1.5rem] bg-amber-50/40 p-6 no-underline outline-none transition-all hover:bg-amber-100/40 group"
-                          >
-                            <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
-                              <Sparkles className="h-5 w-5 text-amber-500" />
-                            </div>
-                            <div className="mb-2 text-[15px] font-bold tracking-tight text-black">
-                              RevShare Market
-                            </div>
-                            <p className="text-[12px] leading-relaxed text-black/40">
-                              The #1 marketplace for creators and marketers to
-                              collaborate.
-                            </p>
-                          </Link>
-                        </NavigationMenuLink>
-                      </li>
-                      <ListItem href="/product/how-it-works" title="How RevShare Works">
-                        The full lifecycle: tracking → refunds → payouts → rewards.
+                    <ul className="grid gap-2 p-6 md:w-[600px] lg:w-[900px] lg:grid-cols-[1fr_1fr]">
+
+                      <ListItem
+                        href="/product/how-it-works"
+                        title="How RevShare Works"
+                        icon={<Workflow className="h-5 w-5 text-amber-600" />}
+                      >
+                        A transparent lifecycle: tracking → refunds → payouts → rewards.
                       </ListItem>
-                      <ListItem href="/product/revshare-vs-affiliate-networks" title="RevShare vs Affiliate Networks">
-                        A better way to build revenue-share partnerships.
+                      <ListItem
+                        href="/product/revshare-vs-affiliate-networks"
+                        title="Networks vs Marketplace"
+                        icon={<Network className="text-amber-600 h-5 w-5" />}
+                      >
+                        Why traditional legacy affiliate networks are failing modern SaaS.
                       </ListItem>
-                      <ListItem href="/product/revshare-vs-affiliate-marketing" title="RevShare vs Affiliate Marketing">
-                        Recurring value vs one-time affiliate bounties.
+                      <ListItem
+                        href="/product/revshare-vs-affiliate-marketing"
+                        title="Concept & Philosophy"
+                        icon={<BarChart3 className="text-amber-600 h-5 w-5" />}
+                      >
+                        Recurring value vs limited one-time affiliate bounties.
                       </ListItem>
-                      <ListItem href="/product/trust" title="Trust, Payments & Refunds">
-                        Refund windows, Stripe Connect, and immutable audit logs.
+                      <ListItem
+                        href="/product/trust"
+                        title="Trust & Security"
+                        icon={<ShieldCheck className="text-amber-600 h-5 w-5" />}
+                      >
+                        Refund windows, Stripe-native settlements, and immutable logs.
                       </ListItem>
-                      <ListItem href="/product/rewards" title="Rewards & Milestones">
-                        Performance-based incentives beyond flat commissions.
+                      <ListItem
+                        href="/product/rewards"
+                        title="Rewards & Milestones"
+                        icon={<Trophy className="text-amber-600 h-5 w-5" />}
+                      >
+                        Automated incentives that go far beyond flat commissions.
                       </ListItem>
-                      <ListItem href="/product/integrations" title="Integrations">
-                        Stripe, Shopify, SaaS, subscriptions, mobile apps.
-                      </ListItem>
-                      <ListItem href="/product/marketplace" title="Public Marketplace">
-                        Our open directory for projects and verified marketers.
+                      <ListItem
+                        href="/product/marketplace"
+                        title="Public Marketplace"
+                        icon={<Store className="text-amber-600 h-5 w-5" />}
+                      >
+                        The open directory for discovering projects and verified marketers.
                       </ListItem>
                     </ul>
                   </NavigationMenuContent>
@@ -144,12 +158,20 @@ export function Navbar({
                     Solutions
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-3 p-6 md:w-[500px] md:grid-cols-1 lg:w-[400px]">
-                      <ListItem href="/solutions/for-founders" title="For Founders">
-                        Scale your revenue with a commission-only army of sellers.
+                    <ul className="grid w-[400px] gap-2 p-4 md:w-[500px] md:grid-cols-1 lg:w-[450px]">
+                      <ListItem
+                        href="/solutions/for-founders"
+                        title="For Founders"
+                        icon={<Users className="h-5 w-5" />}
+                      >
+                        Launch a commission-only sales force and scale your revenue without the CAC risk.
                       </ListItem>
-                      <ListItem href="/solutions/for-marketers" title="For Marketers">
-                        Find high-quality SaaS products to promote. Earn recurring revenue.
+                      <ListItem
+                        href="/solutions/for-marketers"
+                        title="For Marketers"
+                        icon={<TrendingUp className="h-5 w-5" />}
+                      >
+                        Partner with high-growth SaaS founders and build a sustainable recurring income stream.
                       </ListItem>
                     </ul>
                   </NavigationMenuContent>
@@ -296,23 +318,28 @@ const components: { title: string; href: string; description: string }[] = [
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<"a"> & { icon?: React.ReactNode }
+>(({ className, title, children, icon, ...props }, ref) => {
   return (
     <li>
       <NavigationMenuLink asChild>
         <a
           ref={ref}
           className={cn(
-            "block select-none space-y-1.5 rounded-2xl p-4 leading-none no-underline outline-none transition-all hover:bg-amber-50/50 group",
+            "flex items-start gap-4 select-none rounded-[1.25rem] p-5 leading-none no-underline outline-none transition-all hover:bg-slate-50 group",
             className
           )}
           {...props}
         >
-          <div className="text-[13px] font-bold leading-none tracking-tight text-black group-hover:text-amber-600 transition-colors">{title}</div>
-          <p className="line-clamp-2 text-[12px] leading-relaxed text-black/40">
-            {children}
-          </p>
+          {icon}
+          <div className="flex flex-col gap-1.5 pt-0.5">
+            <div className="text-xs font-bold leading-none tracking-tight text-slate-900 group-hover:text-amber-600 transition-colors antialiased">
+              {title}
+            </div>
+            <p className="text-xs leading-relaxed text-slate-500 font-medium group-hover:text-slate-600 transition-colors">
+              {children}
+            </p>
+          </div>
         </a>
       </NavigationMenuLink>
     </li>
