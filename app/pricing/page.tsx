@@ -40,7 +40,7 @@ export default function PricingPage() {
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 4, opacity: 1 }}
             transition={{ duration: 2.5, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full bg-[#3D2B1F] z-0"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full bg-[#1f3d2d] z-0"
           />
 
           {/* Background Decoration */}
