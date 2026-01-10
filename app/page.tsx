@@ -2,36 +2,28 @@
 
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { ComparisonSection } from "@/components/sections/comparison-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/data/metrics";
 import { useMarketersLeaderboard } from "@/lib/hooks/marketer";
 import { useProjectsLeaderboard } from "@/lib/hooks/projects";
 import { getAvatarFallback, isAnonymousName } from "@/lib/utils/anonymous";
+import { motion, useMotionValueEvent, useScroll, useTransform } from "framer-motion";
 import {
-  ArrowRight,
-  ArrowUpRight,
-  ArrowUp,
   ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  ArrowUpRight,
   CheckCircle2,
-  Users,
-  Zap,
+  Zap
 } from "lucide-react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
+import Link from "next/link";
 import React, { useRef, useState } from "react";
-import { ComparisonSection } from "@/components/sections/comparison-section";
-import { Skeleton } from "@/components/ui/skeleton";
 
 // Skeleton Loader for Leaderboard Tables
 function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number, columns?: number }) {
@@ -115,12 +107,183 @@ const getPastelColor = (name: string) => {
   return { bg: colors[index], text: textColors[index] };
 };
 
+// Revenue Squares Visual Component (separate component to use hooks properly)
+function RevenueSquaresVisual({ progress }: { progress: any }) {
+  // Sample data for each square: MRR values and chart data
+  const squaresData = [
+    { mrr: 45200, chartData: [32, 38, 42, 45, 48, 45] },
+    { mrr: 12800, chartData: [10, 12, 11, 13, 12, 13] },
+    { mrr: 89500, chartData: [65, 72, 78, 82, 85, 90] },
+    { mrr: 23400, chartData: [18, 20, 22, 21, 23, 23] },
+  ];
+
+  // Create transformed values (hooks can be used here since this is a component)
+  const scale = useTransform(progress, [0.2, 0.4], [0.8, 1]);
+  const opacity = useTransform(progress, [0.2, 0.4], [0, 1]);
+
+  return (
+    <div className="relative w-full max-w-sm aspect-square bg-amber-50/30 rounded-full flex items-center justify-center p-12">
+      <div className="grid grid-cols-2 gap-4 w-full h-full">
+        {squaresData.map((data, i) => (
+          <motion.div
+            key={i}
+            style={{ 
+              scale, 
+              opacity 
+            }}
+            className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-3 flex flex-col"
+          >
+            {/* Stripe Reference Badge */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                <span className="text-[9px] font-bold text-gray-600 uppercase tracking-wider">Stripe</span>
+              </div>
+              <div className="h-1 w-1 rounded-full bg-emerald-500" />
+            </div>
+
+            {/* MRR Number */}
+            <div className="mb-2">
+              <p className="text-[10px] text-gray-400 font-medium mb-0.5">MRR</p>
+              <p className="text-lg font-bold text-black leading-none">
+                ${(data.mrr / 1000).toFixed(0)}k
+              </p>
+            </div>
+
+            {/* Simple Bar Chart */}
+            <div className="flex-1 flex items-end gap-0.5 mt-auto">
+              {data.chartData.map((height, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ height: 0 }}
+                  animate={{ height: `${height}%` }}
+                  transition={{ 
+                    delay: 0.3 + (idx * 0.05),
+                    duration: 0.4,
+                    ease: "easeOut"
+                  }}
+                  className="flex-1 bg-gradient-to-t from-amber-500/80 to-amber-400/60 rounded-t-sm min-h-[2px]"
+                />
+              ))}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Revenue Split Visual Component - Shows transaction and automatic money splitting
+function RevenueSplitVisual({ progress }: { progress: any }) {
+  // Create transformed values for animations
+  const transactionY = useTransform(progress, [0.2, 0.5], [100, 0]);
+  const transactionOpacity = useTransform(progress, [0.2, 0.4], [0, 1]);
+  const splitOpacity = useTransform(progress, [0.4, 0.6], [0, 1]);
+  const recipientsOpacity = useTransform(progress, [0.5, 0.7], [0, 1]);
+  const recipientsY = useTransform(progress, [0.5, 0.7], [20, 0]);
+
+  // Sample split data with explicit color classes
+  const totalAmount = 1000;
+  const splits = [
+    { label: "Creator", amount: 700, bgColor: "bg-emerald-500/20", barColor: "bg-gradient-to-r from-emerald-500 to-emerald-400" },
+    { label: "Marketer", amount: 250, bgColor: "bg-amber-500/20", barColor: "bg-gradient-to-r from-amber-500 to-amber-400" },
+    { label: "Platform", amount: 50, bgColor: "bg-blue-500/20", barColor: "bg-gradient-to-r from-blue-500 to-blue-400" },
+  ];
+
+  return (
+    <div className="relative w-full max-w-sm aspect-square bg-emerald-50/30 rounded-full flex items-center justify-center p-8 overflow-hidden">
+      <div className="w-full h-full flex flex-col items-center justify-center gap-4 relative">
+        {/* Transaction Card - Shows incoming payment */}
+        <motion.div
+          style={{ 
+            y: transactionY, 
+            opacity: transactionOpacity 
+          }}
+          className="w-full max-w-[280px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-4 z-10"
+        >
+          {/* Stripe Connect Badge */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wider">Stripe Connect</span>
+            </div>
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </div>
+
+          {/* Transaction Details */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-gray-500 font-medium">Payment Received</span>
+              <span className="text-[11px] text-emerald-600 font-bold">✓ Verified</span>
+            </div>
+            <div className="pt-2 border-t border-gray-100">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] text-gray-400">Amount</span>
+                <span className="text-xl font-bold text-black">${totalAmount.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Split Animation - Arrows/Flow */}
+        <motion.div
+          style={{ opacity: splitOpacity }}
+          className="flex items-center justify-center gap-2 w-full -my-2 z-0"
+        >
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
+          <motion.div
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            className="h-2 w-2 rounded-full bg-emerald-500"
+          />
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
+        </motion.div>
+
+        {/* Split Recipients - Shows money being distributed */}
+        <motion.div
+          style={{ 
+            opacity: recipientsOpacity,
+            y: recipientsY 
+          }}
+          className="w-full grid grid-cols-3 gap-2"
+        >
+          {splits.map((split, i) => (
+            <motion.div
+              key={i}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ 
+                delay: 0.6 + (i * 0.1),
+                duration: 0.3 
+              }}
+              className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100 p-3 flex flex-col items-center"
+            >
+              <div className={`h-1.5 w-full rounded-full mb-2 ${split.bgColor}`}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ 
+                    delay: 0.8 + (i * 0.1),
+                    duration: 0.5,
+                    ease: "easeOut"
+                  }}
+                  className={`h-full rounded-full ${split.barColor}`}
+                />
+              </div>
+              <p className="text-[9px] text-gray-500 font-medium mb-1">{split.label}</p>
+              <p className="text-sm font-bold text-black">${split.amount}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
 // Helper components for the features sections
 function FeatureSection({
-  badge,
   title,
   description,
-  items,
   visual,
   reversed = false
 }: {
@@ -498,32 +661,30 @@ export default function Home() {
 
         {/* Leaderboard Section */}
         <section className="py-24">
-          <div className="mx-auto max-w-4xl px-6">
-            <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="mb-12 px-4">
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black">Leaderboard</h2>
-              <div className="flex items-center gap-8">
-                <Link href="/marketers" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 font-bold text-xs transition-colors">
-                  Marketers <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-                <Link href="/projects" className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-bold text-xs transition-colors">
-                  Projects <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
             </div>
 
-            <div className="space-y-16">
+            {/* Side-by-side layout on large screens, stacked on smaller screens */}
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-4">
               {/* Projects Table Card */}
-              <div className="bg-[#F9F8F6] rounded-[2.5rem] p-8 md:p-10">
-                <div className="text-[11px] font-bold text-gray-500 px-2 mb-8 uppercase tracking-widest">Top Startups</div>
+              <div className="bg-[#F9F8F6] rounded-[2.5rem] p-6 lg:p-8 flex-1 min-w-0">
+                <div className="flex items-center justify-between px-2 mb-6">
+                  <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Top Startups</div>
+                  <Link href="/projects" className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-bold text-xs transition-colors">
+                    Startup Directory <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b border-black/5">
-                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60 w-12">#</th>
-                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60">Startup</th>
-                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60">Founder</th>
-                        <th className="text-right pb-6 px-2 text-xs font-bold text-black/60">MRR</th>
-                        <th className="text-right pb-6 px-2 text-xs font-bold text-black/60 w-32">MoM Growth</th>
+                        <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 w-10">#</th>
+                        <th className="text-left pb-4 px-2 text-xs font-bold text-black/60">Startup</th>
+                        <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 hidden xl:table-cell">Founder</th>
+                        <th className="text-right pb-4 px-2 text-xs font-bold text-black/60">MRR</th>
+                        <th className="text-right pb-4 px-2 text-xs font-bold text-black/60 w-24">Growth</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black/[0.03]">
@@ -532,12 +693,12 @@ export default function Home() {
                       ) : (
                         topProjects.slice(0, 10).map((project, i) => (
                           <tr key={project.id} className="group hover:bg-white/50 transition-colors">
-                            <td className="py-4 px-2">
+                            <td className="py-3 px-2">
                               <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
                             </td>
-                            <td className="py-4 px-2">
-                              <Link href={`/projects/${project.id}`} className="flex items-center gap-4">
-                                <div className={`h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.name || "Project").bg}`}>
+                            <td className="py-3 px-2">
+                              <Link href={`/projects/${project.id}`} className="flex items-center gap-3">
+                                <div className={`h-8 w-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.name || "Project").bg}`}>
                                   <Avatar className="h-full w-full border-none shadow-none rounded-none">
                                     <AvatarImage src={getProjectAvatarUrl(project.name, project.logoUrl)} />
                                     <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(project.name || "Project").text}`}>
@@ -546,22 +707,22 @@ export default function Home() {
                                   </Avatar>
                                 </div>
                                 <div className="min-w-0">
-                                  <p className={`font-bold text-[15px] leading-tight text-black flex items-center gap-2 ${isAnonymousName(project.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
+                                  <p className={`font-bold text-[14px] leading-tight text-black flex items-center gap-2 ${isAnonymousName(project.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
                                     {project.name}
                                     {project.revenue > 10000 && (
                                       <Badge className="bg-amber-100/80 text-amber-700 hover:bg-amber-100 border-none text-[8px] font-bold px-1.5 h-4">top</Badge>
                                     )}
                                   </p>
-                                  <p className="text-[12px] text-gray-500 truncate max-w-[200px] md:max-w-[300px] mt-1">
+                                  <p className="text-[11px] text-gray-500 truncate max-w-[120px] lg:max-w-[150px] xl:max-w-[180px] mt-0.5">
                                     {project.description || "Leading the future of digital innovation."}
                                   </p>
                                 </div>
                               </Link>
                             </td>
-                            <td className="py-4 px-2">
+                            <td className="py-3 px-2 hidden xl:table-cell">
                               {project.founder ? (
                                 <Link href={`/founders/${project.founder.id}`} className="flex items-center gap-2">
-                                  <div className={`h-6 w-6 rounded-lg overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.founder.name || "U").bg}`}>
+                                  <div className={`h-5 w-5 rounded-lg overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.founder.name || "U").bg}`}>
                                     <Avatar className="h-full w-full border-none shadow-none rounded-none">
                                       <AvatarImage src={project.founder.image || undefined} />
                                       <AvatarFallback className={`text-[8px] font-extrabold ${getPastelColor(project.founder.name || "U").text}`}>
@@ -569,17 +730,17 @@ export default function Home() {
                                       </AvatarFallback>
                                     </Avatar>
                                   </div>
-                                  <span className="text-[14px] font-medium text-gray-700">{project.founder.name}</span>
+                                  <span className="text-[13px] font-medium text-gray-700">{project.founder.name}</span>
                                 </Link>
                               ) : (
-                                <span className="text-[14px] text-gray-300">-</span>
+                                <span className="text-[13px] text-gray-300">-</span>
                               )}
                             </td>
-                            <td className="py-4 px-2 text-right">
-                              <p className="font-bold text-[15px] text-black tracking-tight">{formatCurrency(project.revenue)}</p>
+                            <td className="py-3 px-2 text-right">
+                              <p className="font-bold text-[14px] text-black tracking-tight">{formatCurrency(project.revenue)}</p>
                             </td>
-                            <td className="py-4 px-2 text-right">
-                              <div className={`inline-flex items-center gap-1 text-[12px] font-bold ${project.growth.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
+                            <td className="py-3 px-2 text-right">
+                              <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${project.growth.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
                                 {project.growth.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                                 {project.growth.replace(/[+-]/, "")}
                               </div>
@@ -593,17 +754,22 @@ export default function Home() {
               </div>
 
               {/* Marketers Table Card */}
-              <div className="bg-[#F9F8F6] rounded-[2.5rem] p-8 md:p-10">
-                <div className="text-[11px] font-bold text-gray-500 px-2 mb-8 uppercase tracking-widest">Top Marketers</div>
+              <div className="bg-[#F9F8F6] rounded-[2.5rem] p-6 lg:p-8 flex-1 min-w-0">
+                <div className="flex items-center justify-between px-2 mb-6">
+                  <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Top Marketers</div>
+                  <Link href="/marketers" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 font-bold text-xs transition-colors">
+                    Marketers <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b border-black/5">
-                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60 w-12">#</th>
-                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60">Marketer</th>
-                        <th className="text-left pb-6 px-2 text-xs font-bold text-black/60">Focus</th>
-                        <th className="text-right pb-6 px-2 text-xs font-bold text-black/60">Revenue</th>
-                        <th className="text-right pb-6 px-2 text-xs font-bold text-black/60 w-32">Trend</th>
+                        <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 w-10">#</th>
+                        <th className="text-left pb-4 px-2 text-xs font-bold text-black/60">Marketer</th>
+                        <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 hidden xl:table-cell">Focus</th>
+                        <th className="text-right pb-4 px-2 text-xs font-bold text-black/60">Revenue</th>
+                        <th className="text-right pb-4 px-2 text-xs font-bold text-black/60 w-24">Trend</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black/[0.03]">
@@ -612,12 +778,12 @@ export default function Home() {
                       ) : (
                         topMarketers.slice(0, 5).map((marketer, i) => (
                           <tr key={marketer.id} className="group hover:bg-white/50 transition-colors">
-                            <td className="py-4 px-2">
+                            <td className="py-3 px-2">
                               <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
                             </td>
-                            <td className="py-4 px-2">
-                              <Link href={`/marketers/${marketer.id}`} className="flex items-center gap-4">
-                                <div className={`h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(marketer.name || "Anonymous").bg}`}>
+                            <td className="py-3 px-2">
+                              <Link href={`/marketers/${marketer.id}`} className="flex items-center gap-3">
+                                <div className={`h-8 w-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(marketer.name || "Anonymous").bg}`}>
                                   <Avatar className="h-full w-full border-none shadow-none rounded-none">
                                     <AvatarImage src={marketer.image || undefined} />
                                     <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(marketer.name || "Anonymous").text}`}>
@@ -626,20 +792,20 @@ export default function Home() {
                                   </Avatar>
                                 </div>
                                 <div>
-                                  <p className={`font-bold text-[15px] leading-tight text-black ${isAnonymousName(marketer.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
+                                  <p className={`font-bold text-[14px] leading-tight text-black ${isAnonymousName(marketer.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
                                     {marketer.name || "Anonymous"}
                                   </p>
                                 </div>
                               </Link>
                             </td>
-                            <td className="py-4 px-2">
+                            <td className="py-3 px-2 hidden xl:table-cell">
                               <p className="text-[12px] text-gray-600 font-medium">{marketer.focus}</p>
                             </td>
-                            <td className="py-4 px-2 text-right">
-                              <p className="font-bold text-[15px] text-black tracking-tight">{formatCurrency(marketer.revenue)}</p>
+                            <td className="py-3 px-2 text-right">
+                              <p className="font-bold text-[14px] text-black tracking-tight">{formatCurrency(marketer.revenue)}</p>
                             </td>
-                            <td className="py-4 px-2 text-right">
-                              <div className={`inline-flex items-center gap-1 text-[12px] font-bold ${marketer.trend.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
+                            <td className="py-3 px-2 text-right">
+                              <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${marketer.trend.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
                                 {marketer.trend.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                                 {marketer.trend.replace(/[+-]/, "")}
                               </div>
@@ -682,19 +848,7 @@ export default function Home() {
           title="Direct access to verified SaaS revenue."
           description="We've built the plumbing for the world's first true revenue-market. Browse high-quality SaaS products with verified Stripe revenue and immutable commission structures."
           items={["Verified data", "Direct connections", "Zero fees"]}
-          visual={(progress) => (
-            <div className="relative w-full max-w-sm aspect-square bg-amber-50/30 rounded-full flex items-center justify-center p-12">
-              <div className="grid grid-cols-2 gap-4 w-full h-full">
-                {[1, 2, 3, 4].map(i => (
-                  <motion.div
-                    key={i}
-                    style={{ scale: useTransform(progress, [0.2, 0.4], [0.8, 1]), opacity: useTransform(progress, [0.2, 0.4], [0, 1]) }}
-                    className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-4"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          visual={(progress) => <RevenueSquaresVisual progress={progress} />}
         />
 
         <FeatureSection
@@ -703,22 +857,7 @@ export default function Home() {
           title="Global scaling. Zero extra paperwork."
           description="Revenue is automatically split at the source. No more manual invoicing, no more chasing partners for payments. Stripe Connect handles the complexity so you can focus on building."
           items={["Automated payouts", "Tax compliance", "Global reach"]}
-          visual={(progress) => (
-            <div className="relative w-full max-w-sm aspect-square bg-emerald-50/30 rounded-full flex items-center justify-center p-12 overflow-hidden">
-              <motion.div
-                style={{ y: useTransform(progress, [0.2, 0.5], [100, 0]), opacity: useTransform(progress, [0.2, 0.4], [0, 1]) }}
-                className="w-full h-3/4 bg-white rounded-t-3xl border-x border-t border-gray-100 p-6 flex flex-col gap-4"
-              >
-                <div className="h-2 w-24 bg-gray-100 rounded" />
-                <div className="flex-1 space-y-3">
-                  <div className="h-1.5 w-full bg-gray-50 rounded" />
-                  <div className="h-1.5 w-full bg-gray-50 rounded" />
-                  <div className="h-1.5 w-4/5 bg-gray-50 rounded" />
-                </div>
-                <div className="h-10 w-full bg-emerald-500 rounded-xl" />
-              </motion.div>
-            </div>
-          )}
+          visual={(progress) => <RevenueSplitVisual progress={progress} />}
         />
 
         {/* Bento Features Grid */}
@@ -735,57 +874,173 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Creator Payout Console */}
-              <div className="md:col-span-2 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between min-h-[320px]">
+              <div className="md:col-span-2 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
                 <div>
                   <h3 className="font-bold text-lg mb-2 text-black">Creator Payout Console</h3>
-                  <p className="text-sm text-black/40">Track what’s owed, ready, and paid with receipts.</p>
+                  <p className="text-sm text-black/40">Track what&apos;s owed, ready, and paid with receipts.</p>
                 </div>
-                <div className="mt-8 bg-white rounded-2xl p-4 space-y-3 shadow-sm border border-black/5">
-                  <div className="flex items-center justify-between">
-                    <div className="h-2 w-24 bg-black/5 rounded" />
-                    <div className="h-2 w-12 bg-black/5 rounded" />
+                {/* macOS Window */}
+                <div className="mt-8 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  {/* macOS Window Title Bar */}
+                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center gap-2">
+                    <div className="flex gap-1.5">
+                      <div className="h-3 w-3 rounded-full bg-red-500" />
+                      <div className="h-3 w-3 rounded-full bg-yellow-500" />
+                      <div className="h-3 w-3 rounded-full bg-green-500" />
+                    </div>
+                    <div className="flex-1 text-center">
+                      <span className="text-[11px] text-gray-600 font-medium">Payouts</span>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="h-8 w-full bg-white rounded-xl border border-black/5" />
-                    <div className="h-8 w-full bg-white rounded-xl border border-black/5" />
+
+                  {/* Window Content - Image */}
+                  <div className="bg-white overflow-hidden">
+                    <Image
+                      src="/payouts-dashboard.png"
+                      alt="Creator Payout Console - Payouts Dashboard"
+                      width={1200}
+                      height={800}
+                      className="w-full h-auto"
+                      priority
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Contracting */}
-              <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+              <div className="md:col-span-2 p-6 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
                 <div>
-                  <h3 className="font-bold text-lg mb-2 text-black">Contracting</h3>
+                  <h3 className="font-bold text-lg mb-1 text-black">Contracting</h3>
                   <p className="text-sm text-black/40">Approve contracts and set commissions.</p>
                 </div>
-                <div className="mt-8 bg-white rounded-2xl p-4 flex flex-col gap-2 shadow-sm border border-black/5">
-                  <div className="h-1.5 w-full bg-black/5 rounded" />
-                  <div className="h-1.5 w-4/5 bg-black/5 rounded" />
-                  <div className="h-1.5 w-3/4 bg-black/5 rounded" />
-                  <div className="h-8 w-full bg-amber-500 rounded-xl mt-2" />
+                {/* Contract Document */}
+                <div className="mt-6 bg-white rounded-2xl p-4 border border-gray-200 flex flex-col gap-3 relative overflow-hidden">
+                  {/* Approved Badge */}
+                  <div className="absolute top-2 right-2">
+                    <div className="bg-emerald-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="h-2.5 w-2.5" />
+                      APPROVED
+                    </div>
+                  </div>
+
+                  {/* Contract Header */}
+                  <div className="border-b border-gray-200 pb-2">
+                    <h4 className="text-sm font-bold text-black mb-0.5">Revenue Share Agreement</h4>
+                    <p className="text-[10px] text-gray-500">Contract #RS-2025-0428</p>
+                  </div>
+
+                  {/* Contract Terms */}
+                  <div className="space-y-2 flex-1">
+                    <div>
+                      <p className="text-[9px] text-gray-500 mb-0.5">Parties</p>
+                      <div className="text-[10px] text-black space-y-0.5">
+                        <p className="font-medium">Creator: Flowceipt Inc.</p>
+                        <p className="font-medium">Marketer: Tiago Mark</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[9px] text-gray-500 mb-0.5">Commission Structure</p>
+                      <div className="bg-amber-50 rounded-lg p-1.5 border border-amber-100">
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-[10px] text-gray-600">Commission Rate</span>
+                          <span className="text-base font-bold text-amber-700">25%</span>
+                        </div>
+                        <p className="text-[9px] text-gray-500 mt-0.5">Of all referred revenue</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[9px] text-gray-500 mb-0.5">Terms</p>
+                      <div className="text-[10px] text-gray-700 space-y-0.5">
+                        <div className="flex items-start gap-1.5">
+                          <div className="h-1 w-1 rounded-full bg-gray-400 mt-1.5 shrink-0" />
+                          <p>Payouts processed monthly</p>
+                        </div>
+                        <div className="flex items-start gap-1.5">
+                          <div className="h-1 w-1 rounded-full bg-gray-400 mt-1.5 shrink-0" />
+                          <p>30-day refund window applies</p>
+                        </div>
+                        <div className="flex items-start gap-1.5">
+                          <div className="h-1 w-1 rounded-full bg-gray-400 mt-1.5 shrink-0" />
+                          <p>Immutable commission structure</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Signatures Section */}
+                  <div className="border-t border-gray-200 pt-2 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-[9px] text-gray-500 mb-0.5">Creator Signature</p>
+                        <div className="flex items-center gap-2">
+                          <div className="h-5 w-14 bg-gray-100 rounded border border-gray-200" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        </div>
+                      </div>
+                      <div className="flex-1 ml-2">
+                        <p className="text-[9px] text-gray-500 mb-0.5">Marketer Signature</p>
+                        <div className="flex items-center gap-2">
+                          <div className="h-5 w-14 bg-gray-100 rounded border border-gray-200" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <div className="flex-1 h-px bg-gray-200" />
+                      <span className="text-[9px] text-gray-400 font-medium">Signed on Dec 28, 2025</span>
+                      <div className="flex-1 h-px bg-gray-200" />
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Stripe Connect */}
-              <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col items-center justify-center text-center">
-                <div className="mb-4">
+              <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+                <div>
                   <h3 className="font-bold text-lg mb-2 text-black">Stripe Connect</h3>
                   <p className="text-sm text-black/40">Onboarding for all partners.</p>
                 </div>
-                <div className="h-16 w-16 bg-amber-500/10 rounded-2xl flex items-center justify-center">
-                  <Zap className="h-8 w-8 text-amber-500 fill-amber-500" />
+                <div className="mt-8 space-y-3">
+                  {/* Connected Partner */}
+                  <div className="bg-white rounded-xl p-3 border border-gray-200 ">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="py-2.5 px-4 bg-yellow-50 rounded-lg border-2 border-yellow-200 text-center">
+                          <span className="font-bold text-yellow-600 text-base">Tiago Mark</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 text-[10px]">
+                      <div className="flex items-center justify-between text-gray-600">
+                        <span>Status:</span>
+                        <span className="font-semibold text-emerald-600">Connected</span>
+                      </div>
+                      <div className="flex items-center justify-between text-gray-600">
+                        <span>Stripe ID:</span>
+                        <span className="font-semibold text-black">acct_***</span>
+                      </div>
+                      <div className="flex items-center justify-between text-gray-600">
+                        <span>Connected:</span>
+                        <span className="font-semibold text-black">Dec 15, 2025</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Row 2 */}
               {/* Smart Coupons */}
-              <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between min-h-[280px]">
+              <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
                 <div>
                   <h3 className="font-bold text-lg mb-2 text-black">Smart Coupons</h3>
                   <p className="text-sm text-black/40">Unique codes & attribution.</p>
                 </div>
-                <div className="mt-auto py-4 px-6 bg-white rounded-xl border-2 border-dashed border-black/5 text-center font-bold text-amber-500 tracking-widest text-lg shadow-sm">
-                  BMK20
+                <div className="mt-auto">
+                  <div className="py-4 px-6 bg-white rounded-xl border-2 border-dashed border-amber-500/30 text-center">
+                    <span className="font-bold text-amber-500 tracking-widest text-lg">BMK20</span>
+                  </div>
                 </div>
               </div>
 
@@ -795,8 +1050,8 @@ export default function Home() {
                   <h3 className="font-bold text-lg mb-2 text-black">Public Dashboard</h3>
                   <p className="text-sm text-black/40">Showcase best performers.</p>
                 </div>
-                <div className="mt-8 flex items-end gap-1.5 h-20">
-                  {[40, 70, 45, 90, 60].map((h, i) => (
+                <div className="mt-auto flex items-end gap-1.5 h-20">
+                  {[40, 70, 45, 90].map((h, i) => (
                     <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-amber-500/20 rounded-t-lg" />
                   ))}
                 </div>
@@ -808,31 +1063,15 @@ export default function Home() {
                   <h3 className="font-bold text-lg mb-2 text-black">Revenue & Earnings</h3>
                   <p className="text-sm text-black/40">Live maker & marketer stats.</p>
                 </div>
-                <div className="mt-8 space-y-2">
-                  <div className="p-3 bg-white rounded-xl shadow-sm border border-black/5">
-                    <p className="text-[9px] font-bold text-amber-500/60">Sales</p>
+                <div className="mt-auto space-y-2">
+                  <div className="p-3 bg-white rounded-xl border border-gray-200">
+                    <p className="text-[9px] font-bold text-amber-500/60 mb-1">Sales</p>
                     <p className="text-sm font-bold text-black">$124.5k</p>
                   </div>
                   <div className="p-3 bg-amber-500 rounded-xl text-white">
-                    <p className="text-[9px] font-bold text-white/60">Earnings</p>
+                    <p className="text-[9px] font-bold text-white/60 mb-1">Earnings</p>
                     <p className="text-sm font-bold text-white">$2.8k</p>
                   </div>
-                </div>
-              </div>
-
-              {/* Auto Ledger */}
-              <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
-                <div>
-                  <h3 className="font-bold text-lg mb-2 text-black">Auto Ledger</h3>
-                  <p className="text-sm text-black/40">Automated audit trail.</p>
-                </div>
-                <div className="mt-8 space-y-2">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-amber-500/30" />
-                      <div className="h-1.5 w-full bg-black/5 rounded" />
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
@@ -858,15 +1097,16 @@ export default function Home() {
               {/* Card 1: Partner Approvals */}
               <div className="rounded-[2rem] bg-[#F9F8F6] overflow-hidden flex flex-col h-full">
                 <div className="p-6">
-                  <div className="h-[200px] shrink-0 relative p-8 flex items-center justify-center bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
-                    <div className="relative w-full h-full">
-                      <Image
-                        src="/approved-afil.png"
-                        alt="Partner Approvals"
-                        fill
-                        className="object-contain drop-shadow-md"
-                      />
-                    </div>
+                  <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                    <Image
+                      src="/approved-afil.png"
+                      alt="Partner Approvals"
+                      fill
+                      className="object-cover"
+                      quality={100}
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      unoptimized
+                    />
                   </div>
                 </div>
                 <div className="px-8 pb-8 flex flex-col flex-1">
@@ -880,15 +1120,16 @@ export default function Home() {
               {/* Card 2: Compliance Ledger */}
               <div className="rounded-[2rem] bg-[#F9F8F6] overflow-hidden flex flex-col h-full">
                 <div className="p-6">
-                  <div className="h-[200px] shrink-0 relative p-8 flex items-center justify-center bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
-                    <div className="relative w-full h-full">
-                      <Image
-                        src="/audit-log-light.png"
-                        alt="Compliance Ledger"
-                        fill
-                        className="object-contain drop-shadow-md"
-                      />
-                    </div>
+                  <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                    <Image
+                      src="/audit-log-light.png"
+                      alt="Compliance Ledger"
+                      fill
+                      className="object-cover"
+                      quality={100}
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      unoptimized
+                    />
                   </div>
                 </div>
                 <div className="px-8 pb-8 flex flex-col flex-1">
@@ -902,15 +1143,16 @@ export default function Home() {
               {/* Card 3: Growth Analytics */}
               <div className="rounded-[2rem] bg-[#F9F8F6] overflow-hidden flex flex-col h-full">
                 <div className="p-6">
-                  <div className="h-[200px] shrink-0 relative p-8 flex items-center justify-center bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
-                    <div className="relative w-full h-full">
-                      <Image
-                        src="/dash-stats-light.png"
-                        alt="Growth Analytics"
-                        fill
-                        className="object-contain drop-shadow-md"
-                      />
-                    </div>
+                  <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                    <Image
+                      src="/dash-stats-light.png"
+                      alt="Growth Analytics"
+                      fill
+                      className="object-cover"
+                      quality={100}
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      unoptimized
+                    />
                   </div>
                 </div>
                 <div className="px-8 pb-8 flex flex-col flex-1">
@@ -933,7 +1175,7 @@ export default function Home() {
               <span className="text-amber-500 italic">revenue sharing?</span>
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all border-none shadow-none" asChild>
+              <Button size="lg" className="h-12 rounded-full px-8 text-base shadow-amber-500/20 transition-all font-bold bg-amber-400 text-white" asChild>
                 <Link href="/signup">Get Started Now</Link>
               </Button>
             </div>
