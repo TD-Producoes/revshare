@@ -108,7 +108,7 @@ export function MarketerRewardsTab({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <CardTitle className="text-base">{item.reward.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground">
                         Unlock at: {getMilestoneCopy(item.reward)}
                       </p>
                     </div>
@@ -137,7 +137,7 @@ export function MarketerRewardsTab({
                     </div>
                   </div>
 
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-muted-foreground">
                     Reward: <span className="text-foreground">{getRewardCopy(item.reward)}</span>
                   </div>
 

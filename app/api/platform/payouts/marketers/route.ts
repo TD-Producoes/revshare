@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
+import { notificationMessages } from "@/lib/notifications/messages";
 
 const payoutInput = z.object({
   creatorId: z.string().min(1),
@@ -240,6 +241,52 @@ export async function POST(request: Request) {
           commissionStatus: "PAID",
           status: "PAID",
         },
+      });
+
+      await prisma.event.create({
+        data: {
+          type: "TRANSFER_PAID",
+          actorId: creatorId,
+          projectId: group.projectId,
+          subjectType: "Transfer",
+          subjectId: transferRecord.id,
+          data: {
+            creatorId,
+            marketerId: group.marketerId,
+            transferId: transfer.id,
+            amount: netAmount,
+            currency: group.currency,
+            purchaseIds: group.purchaseIds,
+            adjustmentIds: group.adjustmentIds,
+          },
+        },
+      });
+
+      await prisma.notification.createMany({
+        data: [
+          {
+            userId: creatorId,
+            type: "SYSTEM",
+            ...notificationMessages.transferSentCreator(netAmount, group.currency),
+            data: {
+              transferId: transfer.id,
+              transferRecordId: transferRecord.id,
+              marketerId: group.marketerId,
+              projectId: group.projectId,
+            },
+          },
+          {
+            userId: group.marketerId,
+            type: "SYSTEM",
+            ...notificationMessages.transferSentMarketer(netAmount, group.currency),
+            data: {
+              transferId: transfer.id,
+              transferRecordId: transferRecord.id,
+              creatorId,
+              projectId: group.projectId,
+            },
+          },
+        ],
       });
 
       results.push({
