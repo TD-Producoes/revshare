@@ -245,7 +245,7 @@ export async function POST(request: Request) {
 
       await prisma.event.create({
         data: {
-          type: "TRANSFER_PAID",
+          type: "TRANSFER_COMPLETED",
           actorId: creatorId,
           projectId: group.projectId,
           subjectType: "Transfer",
