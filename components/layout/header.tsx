@@ -8,6 +8,8 @@ import { useUser } from "@/lib/hooks/users";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/lib/hooks/notifications";
-import { ChevronDown, Zap, Sun, Moon, Bell, Settings, PieChart } from "lucide-react";
+import { toast } from "sonner";
+import { ChevronDown, Sun, Moon, Bell, Settings, PieChart, ImagePlus } from "lucide-react";
 
 export function Header() {
   const router = useRouter();
@@ -26,6 +29,10 @@ export function Header() {
   const { theme, setTheme } = useTheme();
   const [logoutError, setLogoutError] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackError, setFeedbackError] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const { data: notificationsPayload } = useNotifications(user?.id, 10);
   const markNotificationRead = useMarkNotificationRead();
   const markAllNotificationsRead = useMarkAllNotificationsRead();
@@ -95,6 +102,37 @@ export function Header() {
     await markAllNotificationsRead.mutateAsync({ userId: user.id });
   };
 
+  const handleFeedbackSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = feedbackText.trim();
+    if (!trimmed) {
+      setFeedbackError("Please enter your feedback.");
+      return;
+    }
+    setIsSubmittingFeedback(true);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to send feedback.");
+      }
+      toast.success("Feedback sent. Thank you!");
+      setFeedbackText("");
+      setFeedbackOpen(false);
+    } catch (error) {
+      setFeedbackError(
+        error instanceof Error ? error.message : "Failed to send feedback."
+      );
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-12 items-center px-4">
@@ -104,6 +142,44 @@ export function Header() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <Popover open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3">
+                Feedback
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-3">
+              <form onSubmit={handleFeedbackSubmit} className="space-y-3">
+                <div className="rounded-lg border bg-background p-2 shadow-sm">
+                  <Textarea
+                    value={feedbackText}
+                    onChange={(event) => setFeedbackText(event.target.value)}
+                    placeholder="My idea for improving RevShare is..."
+                    className="min-h-[140px] border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
+                  />
+                </div>
+                {feedbackError ? (
+                  <p className="text-[10px] text-destructive">{feedbackError}</p>
+                ) : null}
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled
+                    aria-label="Attach image"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                  </Button>
+                  <Button type="submit" size="sm" className="h-8" disabled={isSubmittingFeedback}>
+                    {isSubmittingFeedback ? "Sending..." : "Send"}
+                  </Button>
+                </div>
+              </form>
+            </PopoverContent>
+          </Popover>
+
           <Button
             variant="ghost"
             size="icon"
@@ -114,7 +190,6 @@ export function Header() {
             <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
           </Button>
-
           <Button
             variant="ghost"
             size="icon"
