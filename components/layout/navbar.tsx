@@ -202,6 +202,19 @@ export function Navbar({
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild className={cn(
+                    navigationMenuTriggerStyle(),
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
+                  )}>
+                    <Link href="/pricing">
+                      Pricing
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
           </div>
@@ -276,6 +289,9 @@ export function Navbar({
                 </Link>
                 <Link href="/marketers" className="text-sm font-medium">
                   Marketers
+                </Link>
+                <Link href="/pricing" className="text-sm font-medium">
+                  Pricing
                 </Link>
                 <div className="my-2 h-px bg-border" />
                 {!isAuthed && !isLoadingUser ? (
