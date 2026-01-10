@@ -25,7 +25,7 @@ export function FoundersBentoGrid() {
               <h3 className="font-bold text-lg mb-2 text-black">Multi-Project Management</h3>
               <p className="text-sm text-black/40">Manage your entire SaaS portfolio from one dashboard. Set unique commission rules and refund windows for each project.</p>
             </div>
-            <div className="mt-8 bg-white rounded-2xl p-4 space-y-3 shadow-sm border border-emerald-500/10">
+            <div className="mt-8 bg-white rounded-2xl p-4 space-y-3 border border-emerald-500/10">
               <div className="flex items-center justify-between">
                 <div className="h-2 w-24 bg-emerald-500/10 rounded" />
                 <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/20">PROJECT A</Badge>
@@ -47,7 +47,7 @@ export function FoundersBentoGrid() {
               <h3 className="font-bold text-lg mb-2 text-black">Performance Tiers</h3>
               <p className="text-sm text-black/40">Automatically reward high-volume partners with bonuses.</p>
             </div>
-            <div className="mt-8 bg-white rounded-2xl p-4 flex flex-col gap-2 shadow-sm border border-emerald-500/10">
+            <div className="mt-8 bg-white rounded-2xl p-4 flex flex-col gap-2 border border-emerald-500/10">
               <div className="h-1.5 w-full bg-emerald-100 rounded" />
               <div className="h-1.5 w-4/5 bg-emerald-100 rounded" />
               <div className="h-8 w-full bg-[#128045] rounded-xl mt-2 flex items-center justify-center text-xs font-bold text-white">REWARD UNLOCKED</div>
@@ -55,8 +55,8 @@ export function FoundersBentoGrid() {
           </div>
 
           {/* Audit Log */}
-          <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col items-center justify-center text-center">
-            <div className="mb-4">
+          <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col items-center justify-between text-center">
+            <div>
               <h3 className="font-bold text-lg mb-2 text-black">Full Audit Log</h3>
               <p className="text-sm text-black/40">Immutable history of every change.</p>
             </div>
@@ -71,7 +71,7 @@ export function FoundersBentoGrid() {
               <h3 className="font-bold text-lg mb-2 text-black">Real-time MRR</h3>
               <p className="text-sm text-black/40">Track attributed growth.</p>
             </div>
-            <div className="mt-auto py-4 px-6 bg-white rounded-xl border-2 border-dashed border-emerald-200 text-center font-bold text-[#128045] tracking-widest text-lg shadow-sm">
+            <div className="mt-auto py-4 px-6 bg-white rounded-xl border-2 border-dashed border-emerald-200 text-center font-bold text-[#128045] tracking-widest text-lg">
               +42% MoM
             </div>
           </div>
@@ -96,7 +96,7 @@ export function FoundersBentoGrid() {
               <p className="text-sm text-black/40">No payout until revenue sticks.</p>
             </div>
             <div className="mt-8 space-y-2">
-              <div className="p-3 bg-white rounded-xl shadow-sm border border-[#128045]/10">
+              <div className="p-3 bg-white rounded-xl border border-[#128045]/10">
                 <p className="text-[9px] font-bold text-[#128045] uppercase tracking-tighter">Escrow</p>
                 <p className="text-sm font-bold text-black">$85,420</p>
               </div>
