@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const querySchema = z.object({
-  role: z.enum(["creator", "marketer"]).optional(),
+  role: z.enum(["founder", "marketer"]).optional(),
   projectId: z.string().min(1).optional(),
   actor: z.string().min(1).optional(),
   eventType: z.string().min(1).optional(),
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
   }
 
   // Add role-based OR conditions
-  if (role === "creator") {
+  if (role === "founder") {
     whereConditions.OR = [{ actorId: userId }, { project: { userId } }];
   } else if (role === "marketer") {
     whereConditions.OR = [

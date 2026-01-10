@@ -42,16 +42,16 @@ export async function GET(request: NextRequest) {
         select: { role: true, name: true, email: true },
       });
       const roleFromQuery =
-        roleParam === "marketer" || roleParam === "creator" ? roleParam : null;
+        roleParam === "marketer" || roleParam === "founder" ? roleParam : null;
       const metadataRole =
-        metadata.role === "marketer" || metadata.role === "creator"
+        metadata.role === "marketer" || metadata.role === "founder"
           ? metadata.role
           : null;
       const email =
         data.user.email ??
         existing?.email ??
         `${data.user.id}@placeholder.local`;
-      const role = roleFromQuery ?? metadataRole ?? existing?.role ?? "creator";
+      const role = roleFromQuery ?? metadataRole ?? existing?.role ?? "founder";
       const name =
         metadata.name ??
         metadata.full_name ??
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       redirectUrl =
         updatedUser.role === "marketer"
           ? `${origin}/marketer`
-          : `${origin}/creator`;
+          : `${origin}/founder`;
     }
   }
 

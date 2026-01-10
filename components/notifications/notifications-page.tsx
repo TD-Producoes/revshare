@@ -39,7 +39,7 @@ const filters: { value: NotificationFilter; label: string }[] = [
 ];
 
 type NotificationsPageProps = {
-  expectedRole?: "creator" | "marketer";
+  expectedRole?: "founder" | "marketer";
 };
 
 export function NotificationsPage({ expectedRole }: NotificationsPageProps) {

@@ -239,7 +239,7 @@ export function BrowseProjects() {
                 <CardContent className="flex-1">
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Creator</span>
+                      <span className="text-muted-foreground">Founder</span>
                       <span className="font-medium">
                         {creatorName}
                       </span>

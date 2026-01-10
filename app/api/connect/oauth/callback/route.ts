@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 
-const DEFAULT_RETURN_URL = `${process.env.BASE_URL}/creator/projects`;
+const DEFAULT_RETURN_URL = `${process.env.BASE_URL}/founder/projects`;
 
 function decodeState(value: string | null) {
-  if (!value) return { role: "creator", projectId: null };
+  if (!value) return { role: "founder", projectId: null };
   try {
     const decoded = JSON.parse(Buffer.from(value, "base64").toString("utf8"));
     if (decoded && typeof decoded.role === "string") {
@@ -17,9 +17,9 @@ function decodeState(value: string | null) {
       };
     }
   } catch {
-    return { role: "creator", projectId: null };
+    return { role: "founder", projectId: null };
   }
-  return { role: "creator", projectId: null };
+  return { role: "founder", projectId: null };
 }
 
 export async function GET(request: Request) {
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 
   const returnUrl = process.env.ACCOUNT_LINK_RETURN_URL ?? DEFAULT_RETURN_URL;
   const redirectUrl = new URL(returnUrl);
-  redirectUrl.pathname = `/creator/projects/${projectId}`;
+  redirectUrl.pathname = `/founder/projects/${projectId}`;
   redirectUrl.searchParams.set("onboarding", "return");
   redirectUrl.searchParams.set("accountId", account.id);
 

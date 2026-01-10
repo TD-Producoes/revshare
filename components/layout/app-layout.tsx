@@ -22,11 +22,11 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   useEffect(() => {
     if (currentUser) {
-      const isOnCreatorRoute = pathname.startsWith("/creator");
+      const isOnCreatorRoute = pathname.startsWith("/founder");
       const isOnMarketerRoute = pathname.startsWith("/marketer");
 
-      // if (currentUser.role === "creator" && isOnMarketerRoute) {
-      //   router.push("/creator");
+      // if (currentUser.role === "founder" && isOnMarketerRoute) {
+      //   router.push("/founder");
       // } else if (currentUser.role === "marketer" && isOnCreatorRoute) {
       //   router.push("/marketer");
       // } else if (pathname === "/") {

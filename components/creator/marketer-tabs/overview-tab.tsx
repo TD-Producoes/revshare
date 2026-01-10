@@ -91,7 +91,7 @@ export function MarketerOverviewTab({
                     <TableCell className="font-medium">
                       <Link
                         className="hover:underline"
-                        href={`/creator/projects/${project.id}`}
+                        href={`/founder/projects/${project.id}`}
                       >
                         {project.name}
                       </Link>

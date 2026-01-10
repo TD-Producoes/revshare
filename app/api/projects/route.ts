@@ -108,8 +108,8 @@ export async function POST(request: Request) {
     where: { id: payload.userId },
     select: { id: true, role: true },
   });
-  if (!creator || creator.role !== "creator") {
-    return NextResponse.json({ error: "Creator not found" }, { status: 404 });
+  if (!creator || creator.role !== "founder") {
+    return NextResponse.json({ error: "Founder not found" }, { status: 404 });
   }
 
   let creatorStripeAccountId: string | null = null;

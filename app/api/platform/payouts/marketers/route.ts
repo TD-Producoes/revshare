@@ -41,8 +41,8 @@ export async function POST(request: Request) {
     where: { id: creatorId },
     select: { id: true, role: true },
   });
-  if (!creator || creator.role !== "creator") {
-    return NextResponse.json({ error: "Creator not found" }, { status: 404 });
+  if (!creator || creator.role !== "founder") {
+    return NextResponse.json({ error: "Founder not found" }, { status: 404 });
   }
 
   const now = new Date();

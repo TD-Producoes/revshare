@@ -79,17 +79,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ data });
   }
 
-  // If user is creator, return contracts for their projects
-  if (user.role !== "creator") {
+  // If user is founder, return contracts for their projects
+  if (user.role !== "founder") {
     return NextResponse.json({ error: "Invalid user role" }, { status: 403 });
   }
 
-  const creatorProjects = await prisma.project.findMany({
+  const projects = await prisma.project.findMany({
     where: { userId: user.id },
     select: { id: true },
   });
 
-  const projectIds = creatorProjects.map((project) => project.id);
+  const projectIds = projects.map((project) => project.id);
   if (projectIds.length === 0) {
     return NextResponse.json({ data: [] });
   }

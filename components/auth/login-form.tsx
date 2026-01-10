@@ -42,11 +42,11 @@ export function LoginForm({
 
     const role =
       data.user?.user_metadata?.role === "marketer" ||
-      data.user?.user_metadata?.role === "creator"
+      data.user?.user_metadata?.role === "founder"
         ? data.user.user_metadata.role
         : undefined;
 
-    router.push(role === "marketer" ? "/marketer" : "/creator");
+    router.push(role === "marketer" ? "/marketer" : "/founder");
     router.refresh();
   };
 

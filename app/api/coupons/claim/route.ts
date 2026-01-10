@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   }
   if (!project.creatorStripeAccountId) {
     return NextResponse.json(
-      { error: "Creator Stripe account not set" },
+      { error: "Founder Stripe account not set" },
       { status: 400 },
     );
   }

@@ -239,7 +239,7 @@ export default function PricingPage() {
               </div>
             </motion.div>
 
-            {/* Creator Card */}
+            {/* Founder Card */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -248,7 +248,7 @@ export default function PricingPage() {
             >
               <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <h3 className="text-2xl font-bold text-black">For Creators</h3>
+                  <h3 className="text-2xl font-bold text-black">For Founders</h3>
                 </div>
                 
                 <div className="mb-6">
@@ -294,7 +294,7 @@ export default function PricingPage() {
 
               <div className="pt-6 border-t border-black/5">
                 <Button className="w-full h-11 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold border-none" asChild>
-                  <Link href="/signup?role=creator">Launch your first project</Link>
+                  <Link href="/signup?role=founder">Launch your first project</Link>
                 </Button>
               </div>
             </motion.div>
@@ -364,13 +364,13 @@ export default function PricingPage() {
               Why commission-only pricing?
             </h2>
             <p className="text-lg text-black/60 max-w-2xl mx-auto leading-relaxed mb-8">
-              RevShare is designed to align incentives between creators, marketers, and the platform.
+              RevShare is designed to align incentives between founders, marketers, and the platform.
             </p>
 
             <div className="grid md:grid-cols-3 gap-6">
               {[
                 {
-                  title: "Creators only pay when they make money",
+                  title: "Founders only pay when they make money",
                   description: "No upfront costs or monthly fees. You only pay when revenue is generated.",
                 },
                 {
@@ -478,7 +478,7 @@ export default function PricingPage() {
                   answer: "Yes. Marketers never pay fees or platform charges.",
                 },
                 {
-                  question: "Do creators pay anything upfront?",
+                  question: "Do founders pay anything upfront?",
                   answer: "No. There are no setup or monthly fees.",
                 },
                 {
@@ -536,7 +536,7 @@ export default function PricingPage() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base border-2 border-black/10 hover:bg-amber-50 font-bold transition-all" asChild>
-                <Link href="/signup?role=creator">
+                <Link href="/signup?role=founder">
                   Create a project
                 </Link>
               </Button>
@@ -554,4 +554,3 @@ export default function PricingPage() {
     </main>
   );
 }
-

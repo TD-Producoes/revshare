@@ -35,8 +35,8 @@ export async function POST(request: Request) {
     select: { id: true, role: true },
   });
 
-  if (!creator || creator.role !== "creator") {
-    return NextResponse.json({ error: "Creator not found" }, { status: 404 });
+  if (!creator || creator.role !== "founder") {
+    return NextResponse.json({ error: "Founder not found" }, { status: 404 });
   }
 
   // Verify the contract exists, is approved, and belongs to the creator
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   // Verify the contract belongs to the creator's project
   if (contract.project.userId !== creatorId) {
     return NextResponse.json(
-      { error: "Contract does not belong to creator" },
+      { error: "Contract does not belong to founder" },
       { status: 403 }
     );
   }

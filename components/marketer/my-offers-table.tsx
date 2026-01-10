@@ -424,7 +424,7 @@ export function MyOffersTable({
             <DialogHeader>
               <DialogTitle>Select coupon template</DialogTitle>
               <DialogDescription>
-                Choose a creator-managed template to generate your promo code.
+                Choose a founder-managed template to generate your promo code.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
@@ -642,7 +642,7 @@ export function MyOffersTable({
           <TableHeader>
             <TableRow>
               <TableHead>Project</TableHead>
-              <TableHead>Creator</TableHead>
+              <TableHead>Founder</TableHead>
               <TableHead className="text-right">Rev Share</TableHead>
               <TableHead>Referral Link</TableHead>
               <TableHead>Coupon</TableHead>

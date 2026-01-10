@@ -4,7 +4,7 @@ const DEFAULT_REDIRECT_URI = `${process.env.BASE_URL}/api/connect/oauth/callback
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const role = searchParams.get("role") ?? "creator";
+  const role = searchParams.get("role") ?? "founder";
   const projectId = searchParams.get("projectId");
 
   if (!projectId) {

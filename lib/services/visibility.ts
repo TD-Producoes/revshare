@@ -59,7 +59,7 @@ export function redactProjectData<T extends RedactableProject>(
     redacted.logoUrl = null;
     if (redacted.imageUrls) redacted.imageUrls = [];
     redacted.description = "This project identity is private.";
-    redacted.about = "Identity hidden by creator.";
+    redacted.about = "Identity hidden by founder.";
     if (redacted.user) {
       redacted.user = { id: redacted.user.id, name: "Anonymous" };
     }

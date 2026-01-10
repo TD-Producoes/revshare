@@ -5,7 +5,7 @@ import type { UserMetadata } from "@/lib/services/user-metadata";
 
 export type ApiUser = {
   id: string;
-  role: "creator" | "marketer";
+  role: "founder" | "marketer";
   name: string;
   email: string;
   stripeConnectedAccountId?: string | null;
@@ -120,11 +120,11 @@ export function useFounderProfile(userId?: string | null) {
       if (!userResponse.ok) return null;
       const userPayload = await userResponse.json();
       const user = userPayload?.data;
-      if (!user || user.role !== "creator") return null;
+      if (!user || user.role !== "founder") return null;
 
       // Fetch creator dashboard data
       const dashboardResponse = await fetch(
-        `/api/creator/dashboard?userId=${userId}`
+        `/api/founder/dashboard?userId=${userId}`
       );
       if (!dashboardResponse.ok) return null;
       const dashboardPayload = await dashboardResponse.json();

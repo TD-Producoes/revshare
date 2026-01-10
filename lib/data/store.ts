@@ -22,7 +22,7 @@ interface AppState {
 
   // Actions
   setCurrentUser: (userId: string) => void;
-  switchRole: (role: "creator" | "marketer") => void;
+  switchRole: (role: "founder" | "marketer") => void;
 
   // Project actions
   addProject: (project: Omit<Project, "id" | "createdAt">) => void;
@@ -53,8 +53,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   offers: [...offers],
   events: [...events],
 
-  // Default to first creator
-  currentUser: users.find((u) => u.role === "creator") || null,
+  // Default to first founder
+  currentUser: users.find((u) => u.role === "founder") || null,
 
   setCurrentUser: (userId: string) => {
     const user = get().users.find((u) => u.id === userId);
@@ -63,7 +63,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  switchRole: (role: "creator" | "marketer") => {
+  switchRole: (role: "founder" | "marketer") => {
     const user = get().users.find((u) => u.role === role);
     if (user) {
       set({ currentUser: user });
@@ -72,7 +72,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   addProject: (projectData) => {
     const currentUser = get().currentUser;
-    if (!currentUser || currentUser.role !== "creator") return;
+    if (!currentUser || currentUser.role !== "founder") return;
 
     const newProject: Project = {
       ...projectData,

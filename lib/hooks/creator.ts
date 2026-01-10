@@ -181,7 +181,7 @@ export function useCreatorPayouts(userId?: string | null) {
     queryKey: ["creator-payouts", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const response = await fetch(`/api/creator/payouts?userId=${userId}`);
+      const response = await fetch(`/api/founder/payouts?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch payouts.");
@@ -200,7 +200,7 @@ export function useCreatorPaymentPreview(userId?: string | null, enabled = true)
     queryKey: ["creator-payment-preview", userId ?? "none"],
     enabled: Boolean(userId) && enabled,
     queryFn: async () => {
-      const response = await fetch(`/api/creator/payouts/preview?userId=${userId}`);
+      const response = await fetch(`/api/founder/payouts/preview?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to load payout preview.");
@@ -214,7 +214,7 @@ export function useCreatorPaymentPreview(userId?: string | null, enabled = true)
 export function useCreatorPaymentCheckout() {
   return useMutation({
     mutationFn: async (payload: { userId: string }) => {
-      const response = await fetch("/api/creator/payouts/checkout", {
+      const response = await fetch("/api/founder/payouts/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -231,7 +231,7 @@ export function useCreatorPaymentCheckout() {
 export function useCreatorPaymentCharge() {
   return useMutation({
     mutationFn: async (payload: { userId: string; paymentMethodId?: string }) => {
-      const response = await fetch("/api/creator/payouts/charge", {
+      const response = await fetch("/api/founder/payouts/charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -250,7 +250,7 @@ export function useCreatorAdjustments(userId?: string | null) {
     queryKey: ["creator-adjustments", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const response = await fetch(`/api/creator/adjustments?userId=${userId}`);
+      const response = await fetch(`/api/founder/adjustments?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch adjustments.");
@@ -266,7 +266,7 @@ export function useCreatorPayments(userId?: string | null) {
     queryKey: ["creator-payments", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const response = await fetch(`/api/creator/payouts/payments?userId=${userId}`);
+      const response = await fetch(`/api/founder/payouts/payments?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch payments.");
@@ -283,7 +283,7 @@ export function useCreatorPurchaseDetails(userId?: string | null) {
     enabled: Boolean(userId),
     queryFn: async () => {
       const response = await fetch(
-        `/api/creator/payouts/purchases?userId=${userId}`,
+        `/api/founder/payouts/purchases?userId=${userId}`,
       );
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -317,7 +317,7 @@ export function useCreatorDashboard(userId?: string | null) {
     queryKey: ["creator-dashboard", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const response = await fetch(`/api/creator/dashboard?userId=${userId}`);
+      const response = await fetch(`/api/founder/dashboard?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch dashboard.");
@@ -345,7 +345,7 @@ export function useCreatorMarketers(creatorId?: string | null) {
     enabled: Boolean(creatorId),
     queryFn: async () => {
       if (!creatorId) return [];
-      const response = await fetch(`/api/creator/marketers?creatorId=${creatorId}`);
+      const response = await fetch(`/api/founder/marketers?creatorId=${creatorId}`);
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to fetch marketers.");
@@ -358,7 +358,7 @@ export function useCreatorMarketers(creatorId?: string | null) {
 export function usePayCreatorPayouts() {
   return useMutation({
     mutationFn: async (payload: { userId: string }) => {
-      const response = await fetch("/api/creator/payouts/pay", {
+      const response = await fetch("/api/founder/payouts/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -394,7 +394,7 @@ export function useCreatorMarketerMetrics(
         params.set("projectId", projectId);
       }
       const response = await fetch(
-        `/api/creator/marketers/${marketerId}/metrics?${params.toString()}`,
+        `/api/founder/marketers/${marketerId}/metrics?${params.toString()}`,
       );
       const payload = await response.json().catch(() => null);
       if (!response.ok) {

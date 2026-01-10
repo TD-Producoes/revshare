@@ -48,10 +48,10 @@ export function ProjectsList() {
     );
   }
 
-  if (!currentUser || currentUser.role !== "creator") {
+  if (!currentUser || currentUser.role !== "founder") {
     return (
       <div className="text-muted-foreground">
-        This section is only available to creators.
+        This section is only available to founders.
       </div>
     );
   }

@@ -321,7 +321,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       <div className="text-center py-12">
         <p className="text-muted-foreground">Project not found</p>
         <Button variant="link" asChild>
-          <Link href="/creator/projects">Back to Projects</Link>
+          <Link href="/founder/projects">Back to Projects</Link>
         </Button>
       </div>
     );
@@ -519,12 +519,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/creator/projects">Projects</BreadcrumbLink>
+                <BreadcrumbLink href="/founder/projects">Projects</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbLink
-                  href={`/creator/projects/${projectId}`}
+                  href={`/founder/projects/${projectId}`}
                   onClick={() => setActiveTab("overview")}
                 >
                   {resolvedProject.name}
@@ -538,7 +538,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           </Breadcrumb>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/creator/projects">
+              <Link href="/founder/projects">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
@@ -623,7 +623,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             couponTemplates={couponTemplates}
             isTemplatesLoading={isTemplatesLoading}
             templatesError={templatesError as Error | null}
-            canEdit={currentUser?.role === "creator"}
+            canEdit={currentUser?.role === "founder"}
             onCreateTemplate={openCreateTemplate}
             onEditTemplate={openEditTemplate}
           />

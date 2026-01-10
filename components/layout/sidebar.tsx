@@ -42,33 +42,33 @@ type NavSection = {
 
 const creatorNavSections: NavSection[] = [
   {
-    items: [{ title: "Dashboard", href: "/creator", icon: LayoutDashboard }],
+    items: [{ title: "Dashboard", href: "/founder", icon: LayoutDashboard }],
   },
   {
     label: "Discover",
     items: [
-      { title: "Marketers", href: "/creator/discover-marketers", icon: Search },
+      { title: "Marketers", href: "/founder/discover-marketers", icon: Search },
     ],
   },
   {
     label: "Manage",
     items: [
-      { title: "Projects", href: "/creator/projects", icon: FolderKanban },
-      { title: "Affiliates", href: "/creator/affiliates", icon: Users },
-      { title: "Applications", href: "/creator/applications", icon: FileText },
+      { title: "Projects", href: "/founder/projects", icon: FolderKanban },
+      { title: "Affiliates", href: "/founder/affiliates", icon: Users },
+      { title: "Applications", href: "/founder/applications", icon: FileText },
     ],
   },
   {
     label: "Finance",
     items: [
-      { title: "Payouts", href: "/creator/payouts", icon: CreditCard },
+      { title: "Payouts", href: "/founder/payouts", icon: CreditCard },
     ],
   },
   {
     label: "System",
     items: [
-      { title: "Notifications", href: "/creator/notifications", icon: Bell },
-      { title: "Audit Log", href: "/creator/events", icon: History },
+      { title: "Notifications", href: "/founder/notifications", icon: Bell },
+      { title: "Audit Log", href: "/founder/events", icon: History },
     ],
   },
 ];
@@ -170,11 +170,11 @@ export function Sidebar() {
 
   if (!user) return null;
 
-  const isCreator = user.role === "creator";
+  const isCreator = user.role === "founder";
 
   const isActiveLink = (href: string) =>
     pathname === href ||
-    (href !== "/creator" && href !== "/marketer" && pathname.startsWith(href));
+    (href !== "/founder" && href !== "/marketer" && pathname.startsWith(href));
 
   // Fetch signals
   const { data: notifications } = useNotifications(authUserId);

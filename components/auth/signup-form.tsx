@@ -31,7 +31,7 @@ export function SignupForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"creator" | "marketer">("creator");
+  const [role, setRole] = useState<"founder" | "marketer">("founder");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -77,7 +77,7 @@ export function SignupForm({
     }
 
     if (data.session) {
-      router.push(role === "marketer" ? "/marketer" : "/creator");
+      router.push(role === "marketer" ? "/marketer" : "/founder");
       router.refresh();
       return;
     }
@@ -172,13 +172,13 @@ export function SignupForm({
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="role">I want to join as</Label>
-                  <Select value={role} onValueChange={(v: "creator" | "marketer") => setRole(v)}>
+                  <Select value={role} onValueChange={(v: "founder" | "marketer") => setRole(v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="creator">
-                        Creator - I have products to promote
+                      <SelectItem value="founder">
+                        Founder - I have products to promote
                       </SelectItem>
                       <SelectItem value="marketer">
                         Marketer - I want to earn commissions

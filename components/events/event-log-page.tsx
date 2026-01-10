@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/table";
 
 type EventLogPageProps = {
-  expectedRole?: "creator" | "marketer";
+  expectedRole?: "founder" | "marketer";
   title?: string;
 };
 
@@ -72,7 +72,7 @@ export function EventLogPage({ expectedRole, title }: EventLogPageProps) {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: user, isLoading: isUserLoading } = useUser(authUserId);
   const { data: projects = [] } = useProjects(
-    user?.role === "creator" ? user?.id : null,
+    user?.role === "founder" ? user?.id : null,
   );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -116,7 +116,7 @@ export function EventLogPage({ expectedRole, title }: EventLogPageProps) {
   }, [projectId, actorQuery, pageSize, eventType, filterMode]);
 
   const projectOptions = useMemo(() => {
-    if (user?.role === "creator" && projects.length > 0) {
+    if (user?.role === "founder" && projects.length > 0) {
       return projects.map((project) => ({
         id: project.id,
         name: project.name,
