@@ -287,8 +287,10 @@ function ExpandingCardSection() {
           </p>
 
           <div className="pt-4">
-            <Button size="lg" className="h-12 rounded-full px-8 bg-[#FFB347] text-[#3D2B1F] hover:bg-[#FFA500] font-bold">
-              Join the Network
+            <Button size="lg" className="h-12 rounded-full px-8 bg-[#FFB347] text-[#3D2B1F] hover:bg-[#FFA500] font-bold" asChild>
+              <Link href="/signup?role=marketer">
+                Join the Network
+              </Link>
             </Button>
           </div>
         </div>
@@ -768,7 +770,7 @@ export default function ForMarketers() {
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
-                  <Link href="/signup">Create profile</Link>
+                  <Link href="/signup?role=marketer">Create profile</Link>
                 </Button>
               </motion.div>
 
@@ -872,7 +874,7 @@ export default function ForMarketers() {
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Button size="lg" className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all border-none shadow-none" asChild>
-                <Link href="/signup">Explore Projects Now</Link>
+                <Link href="/signup?role=marketer">Explore Projects Now</Link>
               </Button>
             </div>
             <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
