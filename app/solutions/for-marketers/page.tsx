@@ -15,13 +15,13 @@ import {
   Wallet,
   FileSearch,
   TrendingUp,
+  X as XIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import React, { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { ComparisonSection } from "@/components/sections/comparison-section";
 import { FeatureSection } from "@/components/sections/feature-section";
 
 // Helper components for the features sections move to shared components/sections/feature-section.tsx
@@ -173,6 +173,62 @@ function ReliabilityVisual({ progress }: { progress: any }) {
   );
 }
 
+function RewardsVisual({ progress }: { progress: any }) {
+  const y1 = useTransform(progress, [0.1, 0.3], [80, 0]);
+  const y2 = useTransform(progress, [0.15, 0.35], [100, 0]);
+  const opacity = useTransform(progress, [0.1, 0.3], [0, 1]);
+  const scale = useTransform(progress, [0.1, 0.4], [0.85, 1]);
+
+  return (
+    <CircularVisual color="bg-purple-500/5">
+      <div className="flex flex-col items-center gap-4 w-full px-4">
+        <motion.div style={{ y: y1, opacity, scale }} className="w-full rounded-xl border border-border/30 bg-background/95 p-5 shadow-lg">
+          <div className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest mb-2">Milestone Progress</div>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-semibold">$5k Revenue</span>
+                <span className="text-[10px] font-bold text-emerald-500">100%</span>
+              </div>
+              <div className="h-2 w-full bg-emerald-100 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-emerald-500"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 1, delay: 0.5 }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-semibold">$10k Revenue</span>
+                <span className="text-[10px] font-bold text-amber-500">75%</span>
+              </div>
+              <div className="h-2 w-full bg-amber-100 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-amber-500"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "75%" }}
+                  transition={{ duration: 1, delay: 0.7 }}
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div style={{ y: y2, opacity, scale: useTransform(progress, [0.2, 0.5], [0.5, 1]) }} className="w-full">
+          <div className="bg-purple-50 rounded-xl p-3 border border-purple-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-600" />
+              <span className="text-xs font-bold text-purple-900">Reward Unlocked!</span>
+            </div>
+            <Badge className="bg-purple-500 text-white text-[9px]">+$500 Bonus</Badge>
+          </div>
+        </motion.div>
+      </div>
+    </CircularVisual>
+  );
+}
+
 // Token individual items for the visual
 function VisualToken({ label, sublabel, icon: Icon, className }: { label: string, sublabel?: string, icon?: any, className?: string }) {
   return (
@@ -226,8 +282,8 @@ function ExpandingCardSection() {
           </h2>
 
           <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto leading-relaxed">
-            Join the elite circle of marketers earning over $4.2M in aggregate commissions.
-            No gatekeepers. Just results.
+            Build a sustainable income stream by promoting products you actually use.
+            No gatekeepers. No middlemen. Just direct partnerships with founders.
           </p>
 
           <div className="pt-4">
@@ -331,6 +387,192 @@ function HeroDashboardCards() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+// Marketers Bento Grid - inspired by founders page
+function MarketersBentoGrid() {
+  return (
+    <section className="py-24 bg-white">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black mb-4 text-balance">
+            Everything you need to <span className="text-[#FFB347]">scale your performance</span>
+          </h2>
+          <p className="text-black/40 text-lg max-w-xl mx-auto">
+            A complete toolkit for discovering programs, tracking earnings, and managing your revenue portfolio.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Program Discovery */}
+          <div className="md:col-span-2 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between min-h-[320px]">
+            <div>
+              <h3 className="font-bold text-lg mb-2 text-black">Program Discovery</h3>
+              <p className="text-sm text-black/40">Browse verified SaaS programs by commission rate, revenue, and category. See performance stats before applying.</p>
+            </div>
+            <div className="mt-8 bg-white rounded-2xl p-4 space-y-3 border border-amber-500/10">
+              <div className="flex items-center justify-between">
+                <div className="h-2 w-24 bg-amber-500/10 rounded" />
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/20">25% COMM</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="h-2 w-16 bg-amber-500/10 rounded" />
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/20">20% COMM</Badge>
+              </div>
+              <div className="space-y-2">
+                <div className="h-8 w-full bg-amber-50/50 rounded-xl border border-amber-500/10" />
+                <div className="h-8 w-full bg-amber-50/50 rounded-xl border border-amber-500/10" />
+              </div>
+            </div>
+          </div>
+
+          {/* Earnings Tracking */}
+          <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-lg mb-2 text-black">Earnings Dashboard</h3>
+              <p className="text-sm text-black/40">Real-time earnings by project with pending vs available breakdown.</p>
+            </div>
+            <div className="mt-8 bg-white rounded-2xl p-4 flex flex-col gap-2 border border-amber-500/10">
+              <div className="text-xs font-bold text-black">$4,280.50</div>
+              <div className="h-1.5 w-full bg-emerald-100 rounded" />
+              <div className="h-1.5 w-3/4 bg-amber-100 rounded" />
+              <div className="text-[9px] text-black/50 mt-2">Available: $3,120</div>
+            </div>
+          </div>
+
+          {/* Payout History */}
+          <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col items-center justify-between text-center">
+            <div>
+              <h3 className="font-bold text-lg mb-2 text-black">Payout History</h3>
+              <p className="text-sm text-black/40">Full audit trail of every payment.</p>
+            </div>
+            <div className="h-16 w-16 bg-amber-500/10 rounded-2xl flex items-center justify-center">
+              <Wallet className="h-8 w-8 text-[#FFB347]" />
+            </div>
+          </div>
+
+          {/* Active Offers */}
+          <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between min-h-[280px]">
+            <div>
+              <h3 className="font-bold text-lg mb-2 text-black">Active Offers</h3>
+              <p className="text-sm text-black/40">Manage all your approved programs.</p>
+            </div>
+            <div className="mt-auto py-4 px-6 bg-white rounded-xl border-2 border-dashed border-amber-200 text-center font-bold text-[#FFB347] tracking-widest text-lg">
+              12 Active
+            </div>
+          </div>
+
+          {/* Performance Rewards */}
+          <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-lg mb-2 text-black">Milestone Rewards</h3>
+              <p className="text-sm text-black/40">Unlock bonuses as you hit targets.</p>
+            </div>
+            <div className="mt-8 space-y-2">
+              <div className="p-3 bg-white rounded-xl border border-yellow-500/10">
+                <p className="text-[9px] font-bold text-yellow-600 uppercase tracking-tighter">Next Reward</p>
+                <p className="text-sm font-bold text-black">$10k Revenue</p>
+              </div>
+              <div className="p-3 bg-yellow-500 rounded-xl text-white">
+                <p className="text-[9px] font-bold text-white/60 uppercase tracking-tighter">Unlocked</p>
+                <p className="text-sm font-bold text-white">$5k Bonus</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Revenue Growth */}
+          <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-lg mb-2 text-black">Revenue Growth</h3>
+              <p className="text-sm text-black/40">Track attributed revenue over time.</p>
+            </div>
+            <div className="mt-8 flex items-end gap-1.5 h-20">
+              {[40, 70, 45, 90, 60, 85].map((h, i) => (
+                <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-[#FFB347]/30 rounded-t-lg" />
+              ))}
+            </div>
+          </div>
+
+          {/* Always Free Badge */}
+          <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-lg mb-2 text-black">Always Free</h3>
+              <p className="text-sm text-black/40">No fees. No subscriptions. Ever.</p>
+            </div>
+            <div className="mt-8 flex -space-x-3 overflow-hidden">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="inline-block h-10 w-10 rounded-full ring-2 ring-[#F9F8F6] bg-emerald-500/20 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Always Free Promise Section
+function AlwaysFreeSection() {
+  return (
+    <section className="py-24 bg-[#F9F8F6] border-y border-black/5">
+      <div className="mx-auto max-w-4xl px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center space-y-8"
+        >
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black">
+              Always Free for Marketers
+            </h2>
+          </div>
+          
+          <p className="text-lg text-black/60 max-w-2xl mx-auto leading-relaxed mb-8">
+            RevShare is built on a commission-only model. Marketers never pay fees, subscriptions, or platform charges.
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                title: "No subscriptions",
+                description: "Zero monthly fees. No recurring costs.",
+              },
+              {
+                title: "No platform fees",
+                description: "We don't take a cut of your earnings.",
+              },
+              {
+                title: "No payout cuts",
+                description: "You keep 100% of your commissions.",
+              },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="bg-white rounded-[1.5rem] p-6"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <h3 className="text-base font-bold text-black">{item.title}</h3>
+                </div>
+                <p className="text-sm text-black/60 text-left leading-relaxed">{item.description}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <p className="text-sm text-black/50 italic pt-4">
+            You only earn from revenue you generate. That&apos;s it.
+          </p>
+        </motion.div>
+      </div>
+    </section>
   );
 }
 
@@ -571,7 +813,9 @@ export default function ForMarketers() {
 
       {/* Main Content Area (White Background) */}
       <div className="relative z-40 bg-white">
-        <ComparisonSection />
+        {/* Marketers Bento Grid */}
+        <MarketersBentoGrid />
+        
         {/* Features Area */}
         <FeatureSection
           badge="Discovery"
@@ -598,13 +842,33 @@ export default function ForMarketers() {
           visual={(progress) => <TransparencyVisual progress={progress} />}
         />
 
+        <FeatureSection
+          reversed
+          badge="Reliability"
+          title="Stripe-powered payouts. No clawbacks."
+          description="Get paid through Stripe Connect with predictable schedules. Once a payout is processed, it's yours—no surprise deductions or clawbacks after payment."
+          items={["Stripe Connect payouts", "Predictable schedules", "No post-payment clawbacks"]}
+          visual={(progress) => <ReliabilityVisual progress={progress} />}
+        />
+
+        <FeatureSection
+          badge="Rewards"
+          title="Unlock rewards by hitting revenue milestones."
+          description="Earn bonus rewards as you scale. Hit revenue targets and automatically unlock performance bonuses, exclusive perks, and milestone-based incentives."
+          items={["Milestone-based rewards", "Auto-unlock bonuses", "Progress tracking"]}
+          visual={(progress) => <RewardsVisual progress={progress} />}
+        />
+
+        {/* Always Free Promise Section */}
+        <AlwaysFreeSection />
+
         <ExpandingCardSection />
 
         <section className="relative z-10 py-24 text-center bg-gray-50/50">
           <div className="mx-auto max-w-2xl px-6">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
               Start building your performance <br />
-              <span className="text-primary italic">portfolio today.</span>
+              <span className="text-primary">portfolio today.</span>
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Button size="lg" className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all border-none shadow-none" asChild>
@@ -612,7 +876,7 @@ export default function ForMarketers() {
               </Button>
             </div>
             <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
-              Join 850+ high-performance marketers
+              Join the network of high-performance marketers
             </p>
           </div>
         </section>

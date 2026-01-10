@@ -322,7 +322,7 @@ export default function PricingPage() {
             </div>
 
             {/* Visual Example */}
-            <div className="bg-[#F9F8F6] rounded-[2rem] p-8 md:p-10 ">
+            <div className="bg-[#F9F8F6] rounded-[2rem] p-8 md:p-10 border border-black/5">
               <div className="space-y-4 text-left max-w-md mx-auto">
                 <div className="flex items-center justify-between pb-3 border-b border-black/10">
                   <span className="text-sm text-black/60">Customer pays:</span>
@@ -330,15 +330,27 @@ export default function PricingPage() {
                 </div>
                 <div className="flex items-center justify-between pb-3 border-b border-black/10">
                   <span className="text-sm text-black/60">Marketer commission (20%):</span>
-                  <span className="text-lg font-bold text-amber-600">$20</span>
+                  <span className="text-lg font-bold text-emerald-600">$20</span>
                 </div>
                 <div className="flex items-center justify-between pb-3 border-b border-black/10">
                   <span className="text-sm text-black/60">RevShare platform fee (5% of commission):</span>
                   <span className="text-lg font-bold text-blue-600">$1</span>
                 </div>
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-sm font-semibold text-black">Marketer receives:</span>
-                  <span className="text-xl font-bold text-emerald-600">$19</span>
+                <div className="pt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-black">Marketer receives:</span>
+                    <span className="text-lg font-bold text-emerald-600">$20</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-black/60 text-xs">(Full commission, no fees)</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-black/10">
+                    <span className="text-sm font-semibold text-black">Founder receives:</span>
+                    <span className="text-lg font-bold text-emerald-800">$79</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-black/60 text-xs">($80 - $1 platform fee)</span>
+                  </div>
                 </div>
               </div>
             </div>
