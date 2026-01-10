@@ -117,7 +117,7 @@ function buildReceiptLines(
   };
 }
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   let authUser;
   try {
     authUser = await requireAuthUser();
@@ -125,18 +125,8 @@ export async function GET(request: Request) {
     return authErrorResponse(error);
   }
 
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
-
-  if (!userId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
-  }
-  if (userId !== authUser.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   const creator = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: authUser.id },
     select: { id: true, role: true },
   });
   if (!creator || creator.role !== "creator") {
@@ -144,7 +134,7 @@ export async function GET(request: Request) {
   }
 
   const pendingPayment = await prisma.creatorPayment.findFirst({
-    where: { creatorId: userId, status: "PENDING" },
+    where: { creatorId: creator.id, status: "PENDING" },
     include: {
       purchases: {
         include: {

@@ -1,36 +1,24 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
-import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
-
-const removeInput = z.object({
-  userId: z.string().min(1),
-});
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ paymentMethodId: string }> }
 ) {
   const { paymentMethodId } = await params;
-  const parsed = removeInput.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
 
+  let authUser;
   try {
-    const authUser = await requireAuthUser();
-    requireOwner(authUser, parsed.data.userId);
+    authUser = await requireAuthUser();
   } catch (error) {
     return authErrorResponse(error);
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: parsed.data.userId },
+    where: { id: authUser.id },
     select: { id: true, stripeCustomerId: true },
   });
   if (!user) {

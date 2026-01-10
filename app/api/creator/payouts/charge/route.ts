@@ -3,10 +3,9 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
-import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const chargeInput = z.object({
-  userId: z.string().min(1),
   paymentMethodId: z.string().min(1).optional(),
 });
 
@@ -59,6 +58,13 @@ async function buildReceiptPurchases(creatorId: string, paymentId?: string | nul
 }
 
 export async function POST(request: Request) {
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
   const parsed = chargeInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -68,14 +74,8 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
-  try {
-    const authUser = await requireAuthUser();
-    requireOwner(authUser, payload.userId);
-  } catch (error) {
-    return authErrorResponse(error);
-  }
   const creator = await prisma.user.findUnique({
-    where: { id: payload.userId },
+    where: { id: authUser.id },
     select: { id: true, role: true, stripeCustomerId: true },
   });
   if (!creator || creator.role !== "creator") {

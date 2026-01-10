@@ -1,31 +1,18 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
-import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
-const setupIntentInput = z.object({
-  userId: z.string().min(1),
-});
-
-export async function POST(request: Request) {
-  const parsed = setupIntentInput.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
-
-  const { userId } = parsed.data;
+export async function POST(_request: Request) {
+  let authUser;
   try {
-    const authUser = await requireAuthUser();
-    requireOwner(authUser, userId);
+    authUser = await requireAuthUser();
   } catch (error) {
     return authErrorResponse(error);
   }
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  const user = await prisma.user.findUnique({ where: { id: authUser.id } });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }

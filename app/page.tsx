@@ -2,7 +2,7 @@
 
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { ComparisonSection } from "@/components/sections/comparison-section";
+import { LifecycleSection } from "@/components/sections/lifecycle-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import {
   ArrowUp,
   ArrowUpRight,
   CheckCircle2,
+  Gift,
+  Tag,
+  Trophy,
   Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -127,9 +130,9 @@ function RevenueSquaresVisual({ progress }: { progress: any }) {
         {squaresData.map((data, i) => (
           <motion.div
             key={i}
-            style={{ 
-              scale, 
-              opacity 
+            style={{
+              scale,
+              opacity
             }}
             className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-3 flex flex-col"
           >
@@ -157,7 +160,7 @@ function RevenueSquaresVisual({ progress }: { progress: any }) {
                   key={idx}
                   initial={{ height: 0 }}
                   animate={{ height: `${height}%` }}
-                  transition={{ 
+                  transition={{
                     delay: 0.3 + (idx * 0.05),
                     duration: 0.4,
                     ease: "easeOut"
@@ -195,9 +198,9 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
       <div className="w-full h-full flex flex-col items-center justify-center gap-4 relative">
         {/* Transaction Card - Shows incoming payment */}
         <motion.div
-          style={{ 
-            y: transactionY, 
-            opacity: transactionOpacity 
+          style={{
+            y: transactionY,
+            opacity: transactionOpacity
           }}
           className="w-full max-w-[280px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-4 z-10"
         >
@@ -241,9 +244,9 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
 
         {/* Split Recipients - Shows money being distributed */}
         <motion.div
-          style={{ 
+          style={{
             opacity: recipientsOpacity,
-            y: recipientsY 
+            y: recipientsY
           }}
           className="w-full grid grid-cols-3 gap-2"
         >
@@ -252,9 +255,9 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
               key={i}
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ 
+              transition={{
                 delay: 0.6 + (i * 0.1),
-                duration: 0.3 
+                duration: 0.3
               }}
               className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100 p-3 flex flex-col items-center"
             >
@@ -262,7 +265,7 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: "100%" }}
-                  transition={{ 
+                  transition={{
                     delay: 0.8 + (i * 0.1),
                     duration: 0.5,
                     ease: "easeOut"
@@ -840,7 +843,7 @@ export default function Home() {
           </div>
         </section>
 
-        <ComparisonSection />
+        <LifecycleSection />
 
         {/* Dynamic Features mapped to FeatureSection */}
         <FeatureSection
@@ -908,29 +911,32 @@ export default function Home() {
               </div>
 
               {/* Contracting */}
-              <div className="md:col-span-2 p-6 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+              <div className="md:col-span-2 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
                 <div>
                   <h3 className="font-bold text-lg mb-1 text-black">Contracting</h3>
                   <p className="text-sm text-black/40">Approve contracts and set commissions.</p>
                 </div>
                 {/* Contract Document */}
-                <div className="mt-6 bg-white rounded-2xl p-4 border border-gray-200 flex flex-col gap-3 relative overflow-hidden">
+                <div className="mt-8 bg-white rounded-xl p-3 border border-gray-200 flex flex-col gap-2 relative overflow-hidden flex-1">
                   {/* Approved Badge */}
-                  <div className="absolute top-2 right-2">
-                    <div className="bg-emerald-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <CheckCircle2 className="h-2.5 w-2.5" />
+                  <div className="absolute top-3 right-3">
+                    <div className="bg-emerald-100/80 text-emerald-700 border border-emerald-200 text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="h-2 w-2" />
                       APPROVED
                     </div>
                   </div>
 
                   {/* Contract Header */}
-                  <div className="border-b border-gray-200 pb-2">
-                    <h4 className="text-sm font-bold text-black mb-0.5">Revenue Share Agreement</h4>
-                    <p className="text-[10px] text-gray-500">Contract #RS-2025-0428</p>
+                  <div className="border-b border-gray-100 pb-1.5">
+                    <h4 className="text-xs font-bold text-black mb-0.5">Revenue Share Agreement</h4>
+                    <p className="text-[9px] text-gray-400 font-mono">#RS-2025-0428</p>
                   </div>
 
                   {/* Contract Terms */}
-                  <div className="space-y-2 flex-1">
+                  <div className="space-y-2 flex-1 relative">
+                    {/* Fade out at bottom */}
+                    <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+
                     <div>
                       <p className="text-[9px] text-gray-500 mb-0.5">Parties</p>
                       <div className="text-[10px] text-black space-y-0.5">
@@ -986,11 +992,6 @@ export default function Home() {
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-0.5">
-                      <div className="flex-1 h-px bg-gray-200" />
-                      <span className="text-[9px] text-gray-400 font-medium">Signed on Dec 28, 2025</span>
-                      <div className="flex-1 h-px bg-gray-200" />
                     </div>
                   </div>
                 </div>

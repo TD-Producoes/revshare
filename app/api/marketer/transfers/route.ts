@@ -1,24 +1,18 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
-
-  if (!userId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
-  }
+export async function GET(_request: Request) {
+  let authUser;
   try {
-    const authUser = await requireAuthUser();
-    requireOwner(authUser, userId);
+    authUser = await requireAuthUser();
   } catch (error) {
     return authErrorResponse(error);
   }
 
   const marketer = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: authUser.id },
     select: { id: true, role: true },
   });
   if (!marketer || marketer.role !== "marketer") {
@@ -26,7 +20,7 @@ export async function GET(request: Request) {
   }
 
   const transfers = await prisma.transfer.findMany({
-    where: { marketerId: userId },
+    where: { marketerId: marketer.id },
     orderBy: { createdAt: "desc" },
     include: {
       purchases: {

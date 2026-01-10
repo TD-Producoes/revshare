@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 import { notificationMessages } from "@/lib/notifications/messages";
-import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
-
-const payInput = z.object({
-  userId: z.string().min(1),
-});
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 type PendingGroup = {
   creatorStripeAccountId: string;
@@ -20,24 +15,16 @@ type PendingGroup = {
   marketerId: string;
 };
 
-export async function POST(request: Request) {
-  const parsed = payInput.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
-
-  const payload = parsed.data;
+export async function POST(_request: Request) {
+  let authUser;
   try {
-    const authUser = await requireAuthUser();
-    requireOwner(authUser, payload.userId);
+    authUser = await requireAuthUser();
   } catch (error) {
     return authErrorResponse(error);
   }
+
   const creator = await prisma.user.findUnique({
-    where: { id: payload.userId },
+    where: { id: authUser.id },
     select: { id: true, role: true },
   });
   if (!creator || creator.role !== "creator") {
