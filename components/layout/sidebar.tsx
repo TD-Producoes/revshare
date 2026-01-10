@@ -20,6 +20,7 @@ import {
   FileText,
   Search,
   CreditCard,
+  Wallet,
   Bell,
   History,
   TrendingUp,
@@ -96,7 +97,7 @@ const marketerNavSections: NavSection[] = [
   {
     label: "Finance",
     items: [
-      { title: "Earnings", href: "/marketer/earnings", icon: CreditCard },
+      { title: "Earnings", href: "/marketer/earnings", icon: Wallet },
       { title: "Payouts", href: "/marketer/payouts", icon: CreditCard },
     ],
   },

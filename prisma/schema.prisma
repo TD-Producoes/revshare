@@ -41,6 +41,7 @@ model User {
   testimonialsReceived     Testimonial[]             @relation("MarketerTestimonials")
   rewardEarned             RewardEarned[]
   rewardCoupons            RewardCoupon[]
+  feedbacks                Feedback[]
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   visibility               VisibilityMode            @default(PUBLIC)
@@ -640,6 +641,17 @@ model Testimonial {
   @@index([creatorId])
   @@index([marketerId])
   @@index([projectId])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum VisibilityMode {
