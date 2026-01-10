@@ -1,23 +1,22 @@
 "use client";
 
-import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
+import { motion, useScroll, useTransform, useMotionValueEvent, MotionValue } from "framer-motion";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, Zap, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FoundersHeroCards } from "@/components/founders/founders-hero-visuals";
-import { FoundersComparison } from "@/components/founders/founders-comparison";
 import { FoundersBentoGrid } from "@/components/founders/founders-features";
 import { FeatureSection } from "@/components/sections/feature-section";
 import { FoundersInfrastructure } from "@/components/founders/founders-infrastructure";
 import { RecruitmentVisual, NegotiationVisual, AnalyticsVisual } from "@/components/founders/founders-visuals";
 
 // Browser Window Preview revealed inside the white circle
-function FounderBrowserPreview({ progress }: { progress: any }) {
+function FounderBrowserPreview({ progress }: { progress: MotionValue<number> }) {
   const opacity = useTransform(progress, [0.4, 0.6], [0, 1]);
   const scale = useTransform(progress, [0.4, 0.7], [0.8, 0.9]);
   const y = useTransform(progress, [0.4, 0.7], [40, 0]);
@@ -27,7 +26,7 @@ function FounderBrowserPreview({ progress }: { progress: any }) {
       style={{ opacity, scale, y }}
       className="absolute inset-0 flex flex-col items-center justify-center z-30 pt-20 px-6 pointer-events-none"
     >
-      <div className="w-full max-w-4xl group">
+      <div className="w-full max-w-6xl group">
         <div className="bg-white rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.1)] border border-border/40 overflow-hidden transform-gpu transition-all duration-700">
           {/* macOS Browser Header */}
           <div className="h-10 bg-gray-50/50 border-b border-border/40 flex items-center px-4 gap-2">
@@ -46,7 +45,7 @@ function FounderBrowserPreview({ progress }: { progress: any }) {
           {/* Main Dashboard Image */}
           <div className="relative aspect-[16/10] overflow-hidden bg-white">
             <Image
-              src="/creator-dashboard.png"
+              src="/founder-dashboard-light.png"
               alt="Founder Dashboard"
               fill
               className="object-cover object-left-top scale-100"
@@ -71,7 +70,7 @@ export default function ForFounders() {
 
   const heroOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0]);
   const heroContentScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.95]);
-  const heroPointerEvents = useTransform(scrollYProgress, [0, 0.45], ["auto", "none"] as any);
+  const heroPointerEvents = useTransform(scrollYProgress, [0, 0.45], ["auto", "none"]) as MotionValue<string>;
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
     // Hide dashboard button when the circle reveal is passing through the top-right corner
@@ -259,26 +258,26 @@ export default function ForFounders() {
 
         <FeatureSection
           badge="Marketplace"
-          title="Instant visibility to qualified partners."
-          description="Your product is featured in our public leaderboard, where the world's most aggressive SaaS marketers compete to bring you the highest ROI."
-          items={["Verified partner pool", "Public program listing", "Automatic matching"]}
+          title="Inbound growth. No outreach required."
+          description="Your project is featured in our discovery directory. Marketers search by category, commission rate, and performance—applying directly to you without a single cold email."
+          items={["Verified partner pool", "Direct-to-founder applications", "Public or private listings"]}
           visual={(progress) => <RecruitmentVisual progress={progress} />}
         />
 
         <FeatureSection
           reversed
           badge="Automation"
-          title="Smart contracts that pay for performance."
-          description="Define your commission waterfalls and let our engine handle the rest. We provide automated escrow and refund buffer management."
-          items={["Dynamic commissions", "Milestone rewards", "Refund protection"]}
+          title="Refund-aware accounting that protects you."
+          description="Define your commission rules and refund windows. Our engine handles the rest, keeping funds in escrow until the refund period passes, ensuring you only pay for real revenue."
+          items={["Dynamic commission tiers", "Milestone bonuses", "Refund & reversal protection"]}
           visual={(progress) => <NegotiationVisual progress={progress} />}
         />
 
         <FeatureSection
           badge="Intelligence"
-          title="See which partners are actually moving the needle."
-          description="Get granular data on marketer performance. Compare conversion rates and customer LTV across your entire distribution army."
-          items={["Partner scorecards", "Cohort analysis", "LTV tracking"]}
+          title="Granular performance data at your fingertips."
+          description="See exactly which partners are moving the needle. Track customer LTV, churn, and cohort performance across your entire distribution army from a single dashboard."
+          items={["Partner scorecards", "LTV & Churn tracking", "Immutable audit trail"]}
           visual={(progress) => <AnalyticsVisual progress={progress} />}
         />
 
@@ -292,7 +291,7 @@ export default function ForFounders() {
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all border-none shadow-none" asChild>
-                <Link href="/signup?role=creator">Start Scaling Now</Link>
+                <Link href="/signup?role=creator">Start Scaling for Free</Link>
               </Button>
             </div>
             <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">

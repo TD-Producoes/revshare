@@ -22,13 +22,17 @@ export function FoundersBentoGrid() {
           {/* Contracts */}
           <div className="md:col-span-2 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col justify-between min-h-[320px]">
             <div>
-              <h3 className="font-bold text-lg mb-2 text-black">Contract Negotiation</h3>
-              <p className="text-sm text-black/40">Negotiate custom commission rates and refund windows with top marketers.</p>
+              <h3 className="font-bold text-lg mb-2 text-black">Multi-Project Management</h3>
+              <p className="text-sm text-black/40">Manage your entire SaaS portfolio from one dashboard. Set unique commission rules and refund windows for each project.</p>
             </div>
             <div className="mt-8 bg-white rounded-2xl p-4 space-y-3 shadow-sm border border-emerald-500/10">
               <div className="flex items-center justify-between">
                 <div className="h-2 w-24 bg-emerald-500/10 rounded" />
-                <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/20">25% RATE</Badge>
+                <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/20">PROJECT A</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="h-2 w-16 bg-emerald-500/10 rounded" />
+                <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/20">PROJECT B</Badge>
               </div>
               <div className="space-y-2">
                 <div className="h-8 w-full bg-emerald-50/50 rounded-xl border border-emerald-500/10" />
@@ -40,34 +44,34 @@ export function FoundersBentoGrid() {
           {/* Reward Milestones */}
           <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-lg mb-2 text-black">Reward Milestones</h3>
-              <p className="text-sm text-black/40">Automated bonuses for volume targets.</p>
+              <h3 className="font-bold text-lg mb-2 text-black">Performance Tiers</h3>
+              <p className="text-sm text-black/40">Automatically reward high-volume partners with bonuses.</p>
             </div>
             <div className="mt-8 bg-white rounded-2xl p-4 flex flex-col gap-2 shadow-sm border border-emerald-500/10">
               <div className="h-1.5 w-full bg-emerald-100 rounded" />
               <div className="h-1.5 w-4/5 bg-emerald-100 rounded" />
-              <div className="h-8 w-full bg-emerald-500 rounded-xl mt-2 flex items-center justify-center text-xs font-bold text-white">$500 BONUS</div>
+              <div className="h-8 w-full bg-[#128045] rounded-xl mt-2 flex items-center justify-center text-xs font-bold text-white">REWARD UNLOCKED</div>
             </div>
           </div>
 
           {/* Audit Log */}
           <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col items-center justify-center text-center">
             <div className="mb-4">
-              <h3 className="font-bold text-lg mb-2 text-black">Immutable Logs</h3>
-              <p className="text-sm text-black/40">Full transparency.</p>
+              <h3 className="font-bold text-lg mb-2 text-black">Full Audit Log</h3>
+              <p className="text-sm text-black/40">Immutable history of every change.</p>
             </div>
             <div className="h-16 w-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
-              <Shield className="h-8 w-8 text-emerald-500" />
+              <Shield className="h-8 w-8 text-[#128045]" />
             </div>
           </div>
 
           {/* Metrics */}
           <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col justify-between min-h-[280px]">
             <div>
-              <h3 className="font-bold text-lg mb-2 text-black">Live Metrics</h3>
-              <p className="text-sm text-black/40">Compare channels.</p>
+              <h3 className="font-bold text-lg mb-2 text-black">Real-time MRR</h3>
+              <p className="text-sm text-black/40">Track attributed growth.</p>
             </div>
-            <div className="mt-auto py-4 px-6 bg-white rounded-xl border-2 border-dashed border-emerald-200 text-center font-bold text-emerald-600 tracking-widest text-lg shadow-sm">
+            <div className="mt-auto py-4 px-6 bg-white rounded-xl border-2 border-dashed border-emerald-200 text-center font-bold text-[#128045] tracking-widest text-lg shadow-sm">
               +42% MoM
             </div>
           </div>
@@ -75,12 +79,12 @@ export function FoundersBentoGrid() {
           {/* Marketer Analytics */}
           <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-lg mb-2 text-black">Partner Intel</h3>
-              <p className="text-sm text-black/40">See who's driving ROI.</p>
+              <h3 className="font-bold text-lg mb-2 text-black">Customer LTV</h3>
+              <p className="text-sm text-black/40">Identify highest quality partners.</p>
             </div>
             <div className="mt-8 flex items-end gap-1.5 h-20">
               {[40, 70, 45, 90, 60].map((h, i) => (
-                <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-emerald-500/30 rounded-t-lg" />
+                <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-[#128045]/30 rounded-t-lg" />
               ))}
             </div>
           </div>
@@ -89,7 +93,7 @@ export function FoundersBentoGrid() {
           <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col justify-between">
             <div>
               <h3 className="font-bold text-lg mb-2 text-black">Refund Buffers</h3>
-              <p className="text-sm text-black/40">Protected payouts.</p>
+              <p className="text-sm text-black/40">No payout until revenue sticks.</p>
             </div>
             <div className="mt-8 space-y-2">
               <div className="p-3 bg-white rounded-xl shadow-sm border border-[#128045]/10">
@@ -107,11 +111,11 @@ export function FoundersBentoGrid() {
           <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F6F9F7] flex flex-col justify-between">
             <div>
               <h3 className="font-bold text-lg mb-2 text-black">Public Reach</h3>
-              <p className="text-sm text-black/40">Visible to 1k+ pros.</p>
+              <p className="text-sm text-black/40">Be discovered by pros.</p>
             </div>
             <div className="mt-8 flex -space-x-3 overflow-hidden">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="inline-block h-10 w-10 rounded-full ring-2 ring-[#F6F9F7] bg-emerald-200" />
+                <div key={i} className="inline-block h-10 w-10 rounded-full ring-2 ring-[#F6F9F7] bg-[#BFF2A0]/40" />
               ))}
             </div>
           </div>

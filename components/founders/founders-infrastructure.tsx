@@ -20,46 +20,44 @@ export function FoundersInfrastructure() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Card 1: Negotiable Contracts */}
+          {/* Card 1: Payouts */}
           <div className="rounded-[2rem] bg-[#F9FAF9] overflow-hidden flex flex-col h-full">
             <div className="p-6">
-              <div className="h-[200px] shrink-0 relative p-8 flex items-center justify-center bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
-                <div className="relative w-full h-full">
-                  <Image
-                    src="/audit-log-light.png"
-                    alt="Negotiable Contracts"
-                    fill
-                    className="object-contain drop-shadow-md grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all"
-                  />
-                </div>
+              <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                <Image
+                  src="/payouts.png"
+                  alt="Stripe Payouts"
+                  fill
+                  className="object-cover grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all"
+                  quality={100}
+                />
               </div>
             </div>
             <div className="px-8 pb-8 flex flex-col flex-1">
-              <h3 className="font-bold text-[17px] text-black mb-2">Immutable Audit Trail</h3>
+              <h3 className="font-bold text-[17px] text-black mb-2">Stripe-Powered Payouts</h3>
               <p className="text-[13px] text-black/40 leading-relaxed">
-                Track every commission change, refund, and payment. Fully transparent for both makers and marketers.
+                Connect your Stripe account in seconds. We automate the distribution of commissions directly from referred revenue—no manual transfers or holding of funds.
               </p>
             </div>
           </div>
 
-          {/* Card 2: Refund Windows */}
+          {/* Card 2: Compliance */}
           <div className="rounded-[2rem] bg-[#F9FAF9] overflow-hidden flex flex-col h-full">
             <div className="p-6">
-              <div className="h-[200px] shrink-0 relative p-8 flex items-center justify-center bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
-                <div className="relative w-full h-full">
-                  <Image
-                    src="/approved-afil.png"
-                    alt="Refund Windows"
-                    fill
-                    className="object-contain drop-shadow-md grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all"
-                  />
-                </div>
+              <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                <Image
+                  src="/approved-afil.png"
+                  alt="Refund Protection"
+                  fill
+                  className="object-cover grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all"
+                  quality={100}
+                />
               </div>
             </div>
             <div className="px-8 pb-8 flex flex-col flex-1">
-              <h3 className="font-bold text-[17px] text-black mb-2">Automated Compliance</h3>
+              <h3 className="font-bold text-[17px] text-black mb-2">Zero-Paperwork Compliance</h3>
               <p className="text-[13px] text-black/40 leading-relaxed">
-                Configure custom refund windows and escrow periods to protect your cash flow from fraudulent activities.
+                Configure custom refund windows and let our engine handle the reconciliation. We provide a full audit log for every payout, keeping you tax-ready.
               </p>
             </div>
           </div>
@@ -67,21 +65,20 @@ export function FoundersInfrastructure() {
           {/* Card 3: Marketer Metrics */}
           <div className="rounded-[2rem] bg-[#F9FAF9] overflow-hidden flex flex-col h-full">
             <div className="p-6">
-              <div className="h-[200px] shrink-0 relative p-8 flex items-center justify-center bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
-                <div className="relative w-full h-full">
-                  <Image
-                    src="/dash-stats-light.png"
-                    alt="Marketer Metrics"
-                    fill
-                    className="object-contain drop-shadow-md grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all"
-                  />
-                </div>
+              <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                <Image
+                  src="/audit-log-light.png"
+                  alt="Marketer Metrics"
+                  fill
+                  className="object-cover grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all"
+                  quality={100}
+                />
               </div>
             </div>
             <div className="px-8 pb-8 flex flex-col flex-1">
-              <h3 className="font-bold text-[17px] text-black mb-2">Deep Marketer Intelligence</h3>
+              <h3 className="font-bold text-[17px] text-black mb-2">Immutable History</h3>
               <p className="text-[13px] text-black/40 leading-relaxed">
-                Identify your top-performing partners and reward them with higher tiers automatically based on revenue milestones.
+                Every commission change, refund adjustment, and payment is recorded on an immutable ledger. Build trust with your distribution army through transparency.
               </p>
             </div>
           </div>
