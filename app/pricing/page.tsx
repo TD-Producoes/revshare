@@ -174,19 +174,22 @@ export default function PricingPage() {
         </section>
 
       {/* Core Principle Quote */}
-      <section className="py-12 bg-amber-50/30 border-y border-amber-100/50">
+      <section className="py-12 bg-amber-50/30">
         <div className="mx-auto max-w-4xl px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-center"
+            className="text-center space-y-4"
           >
             <blockquote className="text-xl md:text-2xl font-semibold text-black leading-relaxed">
               RevShare only makes money when you do.
               <br />
               <span className="text-amber-600">No subscriptions. No upfront fees.</span>
             </blockquote>
+            <p className="text-sm text-black/60 max-w-2xl mx-auto leading-relaxed">
+              Currently free for founders while we&apos;re starting. We&apos;re exploring subscription-based pricing as an alternative to platform fees — coming soon.
+            </p>
           </motion.div>
         </div>
       </section>

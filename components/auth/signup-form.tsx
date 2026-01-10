@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,15 @@ export function SignupForm({
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"founder" | "marketer">("founder");
+  
+  // Initialize role from URL parameter
+  const roleParam = searchParams.get("role");
+  const initialRole = (roleParam === "marketer" || roleParam === "founder") ? roleParam : "founder";
+  const [role, setRole] = useState<"founder" | "marketer">(initialRole);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
