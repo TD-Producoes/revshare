@@ -18,10 +18,6 @@ import {
   ArrowUp,
   ArrowUpRight,
   CheckCircle2,
-  Gift,
-  Tag,
-  Trophy,
-  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -134,7 +130,7 @@ function RevenueSquaresVisual({ progress }: { progress: any }) {
               scale,
               opacity
             }}
-            className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-3 flex flex-col"
+            className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col"
           >
             {/* Stripe Reference Badge */}
             <div className="flex items-center justify-between mb-2">
@@ -178,12 +174,11 @@ function RevenueSquaresVisual({ progress }: { progress: any }) {
 
 // Revenue Split Visual Component - Shows transaction and automatic money splitting
 function RevenueSplitVisual({ progress }: { progress: any }) {
-  // Create transformed values for animations
-  const transactionY = useTransform(progress, [0.2, 0.5], [100, 0]);
-  const transactionOpacity = useTransform(progress, [0.2, 0.4], [0, 1]);
-  const splitOpacity = useTransform(progress, [0.4, 0.6], [0, 1]);
-  const recipientsOpacity = useTransform(progress, [0.5, 0.7], [0, 1]);
-  const recipientsY = useTransform(progress, [0.5, 0.7], [20, 0]);
+  // Create transformed values for animations (finish earlier in scroll)
+  const transactionY = useTransform(progress, [0.2, 0.4], [100, 0]);
+  const transactionOpacity = useTransform(progress, [0.2, 0.35], [0, 1]);
+  const recipientsOpacity = useTransform(progress, [0.35, 0.5], [0, 1]);
+  const recipientsY = useTransform(progress, [0.35, 0.5], [20, 0]);
 
   // Sample split data with explicit color classes
   const totalAmount = 1000;
@@ -202,7 +197,7 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
             y: transactionY,
             opacity: transactionOpacity
           }}
-          className="w-full max-w-[280px] bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 p-4 z-10"
+          className="w-full max-w-[280px] bg-white rounded-2xl border border-gray-100 p-4 z-10"
         >
           {/* Stripe Connect Badge */}
           <div className="flex items-center justify-between mb-3">
@@ -228,20 +223,6 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
           </div>
         </motion.div>
 
-        {/* Split Animation - Arrows/Flow */}
-        <motion.div
-          style={{ opacity: splitOpacity }}
-          className="flex items-center justify-center gap-2 w-full -my-2 z-0"
-        >
-          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            className="h-2 w-2 rounded-full bg-emerald-500"
-          />
-          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
-        </motion.div>
-
         {/* Split Recipients - Shows money being distributed */}
         <motion.div
           style={{
@@ -259,7 +240,7 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
                 delay: 0.6 + (i * 0.1),
                 duration: 0.3
               }}
-              className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100 p-3 flex flex-col items-center"
+              className="bg-white rounded-xl border border-gray-100 p-3 flex flex-col items-center"
             >
               <div className={`h-1.5 w-full rounded-full mb-2 ${split.bgColor}`}>
                 <motion.div
@@ -1161,6 +1142,93 @@ export default function Home() {
                   <p className="text-[13px] text-black/40 leading-relaxed">
                     Gain deep insights into your revenue waterfalls. Track attribution from the first click to the final payout.
                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Rewards & Incentives Section */}
+        <section className="py-24 bg-white">
+          <div className="mx-auto max-w-5xl px-6 text-center">
+            <h2 className="text-3xl md:text-4xl font-semibold  leading-[1.05] text-black text-balance mb-12">
+              Expert marketers get <br /> ahead with Rewards
+            </h2>
+
+            <div className="bg-[#F9F8F6] rounded-[2.5rem] p-8 md:p-12 flex flex-col lg:flex-row items-center gap-10 text-left">
+              {/* Left Visual: Reward Claim Card */}
+              <div className="w-full lg:w-1/2 flex justify-center">
+                <div className="bg-white rounded-2xl w-full max-w-[340px] border border-black/5 relative overflow-hidden flex flex-col">
+                  {/* macOS Window Header */}
+                  <div className="bg-gray-50/80 border-b border-black/5 px-4 py-2.5 flex items-center relative">
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] opacity-80" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] opacity-80" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F] opacity-80" />
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="text-[11px] text-gray-600 font-medium">Reward</span>
+                    </div>
+                  </div>
+
+                  <div className="p-6 relative">
+                    <div className="absolute top-6 right-6 bg-gray-100 px-2 py-0.5 rounded-full text-[9px] font-bold text-gray-500 uppercase tracking-wider">
+                      Claimed
+                    </div>
+                  
+                    <div className="mb-4">
+                      <h3 className="text-lg font-bold text-black mb-0.5">1 month free</h3>
+                      <p className="text-[11px] text-gray-400 font-medium">Unlock at: 1 completed sales</p>
+                    </div>
+
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold text-gray-600">4 / 1</span>
+                        <span className="text-[11px] font-bold text-gray-400">100%</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full w-full bg-amber-400 rounded-full" />
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <p className="text-[11px] font-bold text-gray-500 mb-3 uppercase tracking-tight">Reward: Free 3 months</p>
+                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-gray-600 font-mono">1MONTH-2AF61F3D</span>
+                      </div>
+                    </div>
+
+                    <Button className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-black font-bold text-sm rounded-lg shadow-md shadow-amber-400/10">
+                      Claim reward
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Content */}
+              <div className="w-full lg:w-1/2 space-y-6">
+                <h3 className="text-xl md:text-2xl font-bold tracking-tight text-black leading-tight">
+                  How Milestone-based Incentives drive genuine performance.
+                </h3>
+                
+                <div className="space-y-4">
+                  <ul className="space-y-4">
+                    <li>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        <strong className="text-black">Milestone-based:</strong> Create performance rewards that automatically unlock when marketers hit specific revenue targets.
+                      </p>
+                    </li>
+                    <li>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        <strong className="text-black">Systematic growth:</strong> Auto-generated coupons and perks keep your army of sellers motivated and engaged.
+                      </p>
+                    </li>
+                    <li>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        <strong className="text-black">Refund protection:</strong> Rewards only unlock after refund windows close, ensuring you only reward real, verified value.
+                      </p>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
