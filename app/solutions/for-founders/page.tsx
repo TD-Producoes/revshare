@@ -255,7 +255,7 @@ export default function ForFounders() {
 
       {/* Main Content Area */}
       <div className="relative z-40 bg-white">
-        <FoundersComparison />
+        <FoundersBentoGrid />
 
         <FeatureSection
           badge="Marketplace"
@@ -264,8 +264,6 @@ export default function ForFounders() {
           items={["Verified partner pool", "Public program listing", "Automatic matching"]}
           visual={(progress) => <RecruitmentVisual progress={progress} />}
         />
-
-        <FoundersBentoGrid />
 
         <FeatureSection
           reversed
