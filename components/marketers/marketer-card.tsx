@@ -22,7 +22,7 @@ export type MarketerCardData = {
 
 type MarketerCardProps = {
   marketer: MarketerCardData;
-  basePath?: string; // Base path for marketer links (e.g., "/marketers" for public, "/creator/discover-marketers" for dashboard)
+  basePath?: string; // Base path for marketer links (e.g., "/marketers" for public, "/founder/discover-marketers" for dashboard)
 };
 
 function formatCurrency(value: number | null): string {

@@ -173,7 +173,7 @@ export async function POST(
   }
   if (!project.creatorStripeAccountId) {
     return NextResponse.json(
-      { error: "Creator Stripe account not set" },
+      { error: "Founder Stripe account not set" },
       { status: 400 },
     );
   }
@@ -328,7 +328,7 @@ export async function PATCH(
   }
   if (!project.creatorStripeAccountId) {
     return NextResponse.json(
-      { error: "Creator Stripe account not set" },
+      { error: "Founder Stripe account not set" },
       { status: 400 },
     );
   }

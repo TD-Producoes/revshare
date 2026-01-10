@@ -60,7 +60,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                 <TableRow key={project.id}>
                   <TableCell className="font-medium">
                     <Link
-                      href={`/creator/projects/${project.id}`}
+                      href={`/founder/projects/${project.id}`}
                       className="hover:underline"
                     >
                       {project.name}
@@ -87,7 +87,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
                   </TableCell>
                   <TableCell>
                     <Button variant="ghost" size="icon" asChild>
-                      <Link href={`/creator/projects/${project.id}`}>
+                      <Link href={`/founder/projects/${project.id}`}>
                         <ExternalLink className="h-4 w-4" />
                       </Link>
                     </Button>

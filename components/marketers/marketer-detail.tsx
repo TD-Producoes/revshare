@@ -180,7 +180,7 @@ type MarketerDetailProps = {
    */
   isPrivate?: boolean;
   /**
-   * Base path for navigation links (e.g., "/marketers" for public, "/creator/discover-marketers" for dashboard)
+   * Base path for navigation links (e.g., "/marketers" for public, "/founder/discover-marketers" for dashboard)
    */
   basePath?: string;
 };

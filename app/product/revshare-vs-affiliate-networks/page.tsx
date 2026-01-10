@@ -167,7 +167,7 @@ export default function RevShareVsAffiliates() {
           <FeatureSection
             badge="Revenue-First"
             title="Real revenue, not just clicks."
-            description="RevShare tracks actual revenue generated, not just last-touch attribution. Commissions unlock only after the refund window ends — protecting both creators and marketers."
+            description="RevShare tracks actual revenue generated, not just last-touch attribution. Commissions unlock only after the refund window ends — protecting both founders and marketers."
             items={["Net revenue tracking", "Refund-aware logic", "Secure settlements"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-emerald-500/5 rounded-full flex items-center justify-center p-12 overflow-hidden border border-emerald-500/10">
@@ -196,7 +196,7 @@ export default function RevShareVsAffiliates() {
             reversed
             badge="Discovery"
             title="A real marketplace for partnerships."
-            description="Instead of hidden programs behind network logins, RevShare projects are publicly discoverable. Marketers can showcase verified performance and creators can find the best partners faster."
+            description="Instead of hidden programs behind network logins, RevShare projects are publicly discoverable. Marketers can showcase verified performance and founders can find the best partners faster."
             items={["Public leaderboard", "Verified profiles", "Direct applications"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-[#BFF2A0]/10 rounded-full flex items-center justify-center p-8">

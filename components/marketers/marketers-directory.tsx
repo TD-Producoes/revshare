@@ -171,7 +171,7 @@ export function MarketersDirectory({
                   <MarketerCard
                     key={marketer.id}
                     marketer={marketer}
-                    basePath={isPrivate ? "/creator/discover-marketers" : "/marketers"}
+                    basePath={isPrivate ? "/founder/discover-marketers" : "/marketers"}
                   />
                 ))}
               </div>

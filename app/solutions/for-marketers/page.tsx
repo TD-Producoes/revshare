@@ -593,7 +593,7 @@ export default function ForMarketers() {
         <FeatureSection
           badge="Transparency"
           title="Audit every cent in real-time."
-          description="Full granular visibility into every conversion. We sync directly with the source so you see exactly what the creator sees."
+          description="Full granular visibility into every conversion. We sync directly with the source so you see exactly what the founder sees."
           items={["Conversion logs", "Revenue sync", "Immutable tracking"]}
           visual={(progress) => <TransparencyVisual progress={progress} />}
         />

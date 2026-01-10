@@ -437,7 +437,7 @@ enum NotificationType {
 }
 
 enum UserRole {
-  creator
+  founder
   marketer
 }
 

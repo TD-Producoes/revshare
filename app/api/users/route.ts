@@ -8,7 +8,7 @@ const userInput = z.object({
   id: z.string().min(1),
   email: z.string().email(),
   name: z.string().min(1).optional(),
-  role: z.enum(["creator", "marketer"]).optional(),
+  role: z.enum(["founder", "marketer"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return authErrorResponse(error);
   }
-  const role = payload.role ?? "creator";
+  const role = payload.role ?? "founder";
   const displayName =
     payload.name?.trim() || payload.email.split("@")[0] || "New user";
 

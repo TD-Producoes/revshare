@@ -45,7 +45,7 @@ export const notificationMessages = {
   }),
   transferSentMarketer: (amount: number, currency: string) => ({
     title: "Transfer received",
-    message: `You received ${(amount / 100).toFixed(2)} ${currency.toUpperCase()} from a creator.`,
+    message: `You received ${(amount / 100).toFixed(2)} ${currency.toUpperCase()} from a founder.`,
   }),
   referralSale: (commissionAmount: number, currency: string) => ({
     title: "New referral sale",

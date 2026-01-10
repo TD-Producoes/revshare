@@ -132,7 +132,7 @@ export function ApplyToPromoteDialog({
                   rows={3}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional message for the creator (max 2000 characters).
+                  Optional message for the founder (max 2000 characters).
                 </p>
               </div>
               {formError ? (

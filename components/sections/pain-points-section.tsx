@@ -28,7 +28,7 @@ const points: Point[] = [
   {
     title: "Trust & Transparency",
     problem: "Black-box reporting where marketers don't know why their earnings changed.",
-    solution: "Full audit logs and real-time dashboard sync. If a creator sees it, you see it."
+    solution: "Full audit logs and real-time dashboard sync. If a founder sees it, you see it."
   }
 ];
 

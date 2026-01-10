@@ -14,7 +14,7 @@ type AccountTabProps = {
     id: string;
     name: string;
     email: string;
-    role: "creator" | "marketer";
+    role: "founder" | "marketer";
   };
 };
 

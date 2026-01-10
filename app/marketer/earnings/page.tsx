@@ -265,7 +265,7 @@ export default function EarningsPage() {
             />
           }
           value={formatCurrency(netReady)}
-          description="Creator paid"
+          description="Founder paid"
           icon={CheckCircle}
         />
         <StatCard
@@ -282,12 +282,12 @@ export default function EarningsPage() {
         <StatCard
           title={
             <InfoLabel
-              label="Awaiting creator"
-              help="Commissions pending creator payment."
+              label="Awaiting founder"
+              help="Commissions pending founder payment."
             />
           }
           value={formatCurrency(totals.awaitingCreator)}
-          description="Creator payment pending"
+          description="Founder payment pending"
           icon={Clock}
         />
         <StatCard
@@ -320,7 +320,7 @@ export default function EarningsPage() {
                   <TableHead className="text-right">Received</TableHead>
                   <TableHead className="text-right">Ready</TableHead>
                   <TableHead className="text-right">Refund Window</TableHead>
-                  <TableHead className="text-right">Awaiting Creator</TableHead>
+                  <TableHead className="text-right">Awaiting Founder</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

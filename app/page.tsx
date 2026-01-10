@@ -183,7 +183,7 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
   // Sample split data with explicit color classes
   const totalAmount = 1000;
   const splits = [
-    { label: "Creator", amount: 700, bgColor: "bg-emerald-500/20", barColor: "bg-gradient-to-r from-emerald-500 to-emerald-400" },
+    { label: "Founder", amount: 700, bgColor: "bg-emerald-500/20", barColor: "bg-gradient-to-r from-emerald-500 to-emerald-400" },
     { label: "Marketer", amount: 250, bgColor: "bg-amber-500/20", barColor: "bg-gradient-to-r from-amber-500 to-amber-400" },
     { label: "Platform", amount: 50, bgColor: "bg-blue-500/20", barColor: "bg-gradient-to-r from-blue-500 to-blue-400" },
   ];
@@ -857,10 +857,10 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Creator Payout Console */}
+              {/* Founder Payout Console */}
               <div className="md:col-span-2 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
                 <div>
-                  <h3 className="font-bold text-lg mb-2 text-black">Creator Payout Console</h3>
+                  <h3 className="font-bold text-lg mb-2 text-black">Founder Payout Console</h3>
                   <p className="text-sm text-black/40">Track what&apos;s owed, ready, and paid with receipts.</p>
                 </div>
                 {/* macOS Window */}
@@ -881,7 +881,7 @@ export default function Home() {
                   <div className="bg-white overflow-hidden">
                     <Image
                       src="/payouts-dashboard.png"
-                      alt="Creator Payout Console - Payouts Dashboard"
+                      alt="Founder Payout Console - Payouts Dashboard"
                       width={1200}
                       height={800}
                       className="w-full h-auto"
@@ -921,7 +921,7 @@ export default function Home() {
                     <div>
                       <p className="text-[9px] text-gray-500 mb-0.5">Parties</p>
                       <div className="text-[10px] text-black space-y-0.5">
-                        <p className="font-medium">Creator: Flowceipt Inc.</p>
+                        <p className="font-medium">Founder: Flowceipt Inc.</p>
                         <p className="font-medium">Marketer: Tiago Mark</p>
                       </div>
                     </div>
@@ -960,7 +960,7 @@ export default function Home() {
                   <div className="border-t border-gray-200 pt-2 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-[9px] text-gray-500 mb-0.5">Creator Signature</p>
+                        <p className="text-[9px] text-gray-500 mb-0.5">Founder Signature</p>
                         <div className="flex items-center gap-2">
                           <div className="h-5 w-14 bg-gray-100 rounded border border-gray-200" />
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />

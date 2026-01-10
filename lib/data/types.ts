@@ -1,6 +1,6 @@
 // Data types for the marketplace
 
-export type UserRole = "creator" | "marketer";
+export type UserRole = "founder" | "marketer";
 
 export interface User {
   id: string;
@@ -8,7 +8,7 @@ export interface User {
   name: string;
   email: string;
   avatarUrl?: string;
-  stripeConnected?: boolean; // For creators
+  stripeConnected?: boolean; // For founders
 }
 
 export type PricingModel = "subscription" | "one-time";

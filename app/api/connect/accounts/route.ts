@@ -9,7 +9,7 @@ const connectInput = z.object({
   userId: z.string().min(1),
   email: z.string().email(),
   name: z.string().min(1).optional(),
-  role: z.enum(["creator", "marketer"]).optional(),
+  role: z.enum(["founder", "marketer"]).optional(),
   country: z.string().min(2).max(2).optional(),
   type: z.enum(["express", "standard"]).optional(),
   businessType: z.enum(["individual", "company"]).optional(),
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   const stripe = platformStripe();
   const displayName =
     payload.name?.trim() || payload.email.split("@")[0] || "New account";
-  const role = payload.role ?? "creator";
+  const role = payload.role ?? "founder";
 
   const accountType: "express" | "standard" = payload.type ?? "express";
   const countryCode: string = payload.country ?? "US";

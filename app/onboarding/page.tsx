@@ -125,7 +125,7 @@ export default function OnboardingPage() {
                     {currentStep === 5 && "Choose the niches you're most passionate about to boost your conversion."}
                     {currentStep === 6 && "Setting a goal helps us recommend programs that can realistically get you there."}
                     {currentStep === 7 && "Transparency is at the core of RevShare. Here is how we ensure fairness."}
-                    {currentStep === 8 && "Your profile helps creators understand who you are and why they should work with you."}
+                    {currentStep === 8 && "Your profile helps founders understand who you are and why they should work with you."}
                   </p>
                 </div>
               )}
@@ -435,7 +435,7 @@ export default function OnboardingPage() {
                 {currentStep === 8 && (
                   <div className="space-y-8">
                     <div className="space-y-2">
-                      <h1 className="text-3xl font-black tracking-tight">How should creators see you?</h1>
+                      <h1 className="text-3xl font-black tracking-tight">How should founders see you?</h1>
                       <p className="text-muted-foreground tracking-tight font-bold">Give brands confidence in your partnership.</p>
                     </div>
                     <div className="space-y-6">

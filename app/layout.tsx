@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "RevShare - Creator & Marketer Marketplace",
-  description: "Connect creators and marketers with Stripe-based revenue sharing",
+  description: "Connect founders and marketers with Stripe-based revenue sharing",
 };
 
 export default function RootLayout({

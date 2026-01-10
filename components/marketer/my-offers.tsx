@@ -107,7 +107,7 @@ export function MyOffers({
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-sm mb-4">
-                  These applications are awaiting creator approval.
+                  These applications are awaiting founder approval.
                 </p>
                 <div className="space-y-2">
                   {pendingContracts.map((contract) => (
@@ -185,7 +185,7 @@ export function MyOffers({
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-sm mb-4">
-                  These partnerships have been temporarily paused by the creator.
+                  These partnerships have been temporarily paused by the founder.
                 </p>
                 <div className="space-y-2">
                   {pausedContracts.map((contract) => (

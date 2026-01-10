@@ -303,7 +303,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
           icon={Tag}
         />
         <StatCard
-          title="Awaiting Creator"
+          title="Awaiting Founder"
           value={formatCurrency(
             commissionStatus.awaitingCreator.amount,
             projectCurrency,

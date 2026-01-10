@@ -34,9 +34,9 @@ export function Header() {
   const notifications = notificationsPayload?.data ?? [];
   const unreadCount = notificationsPayload?.unreadCount ?? 0;
   const notificationsPath =
-    user?.role === "creator" ? "/creator/notifications" : "/marketer/notifications";
+    user?.role === "founder" ? "/founder/notifications" : "/marketer/notifications";
   const settingsPath =
-    user?.role === "creator" ? "/creator/settings" : "/marketer/settings";
+    user?.role === "founder" ? "/founder/settings" : "/marketer/settings";
 
   if (!authUserId || !user) return null;
 

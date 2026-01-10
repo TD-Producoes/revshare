@@ -380,9 +380,9 @@ export function CreateProjectForm() {
           userId: userId,
           email: currentUser?.email || "",
           name: currentUser?.name || "",
-          role: "creator",
-          returnUrl: `${origin}/creator/settings`,
-          refreshUrl: `${origin}/creator/settings`,
+          role: "founder",
+          returnUrl: `${origin}/founder/settings`,
+          refreshUrl: `${origin}/founder/settings`,
         }),
       });
       

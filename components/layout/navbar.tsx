@@ -62,7 +62,7 @@ export function Navbar({
   const isAuthed = Boolean(currentUser);
   const isLoadingUser = isAuthLoading || isUserLoading;
   const dashboardHref =
-    currentUser?.role === "marketer" ? "/marketer" : "/creator";
+    currentUser?.role === "marketer" ? "/marketer" : "/founder";
   const dashboardLabel = isAuthed ? "Dashboard" : "Signup";
 
   const isTransparentActive = (isTransparent && !isScrolled) || forceTransparent;

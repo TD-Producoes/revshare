@@ -201,7 +201,7 @@ export default function ForFounders() {
                 className="flex flex-wrap items-center justify-center gap-4 pt-2"
               >
                 <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold border-none transition-all flex items-center" asChild>
-                  <Link href="/signup?role=creator">
+                  <Link href="/signup?role=founder">
                     Launch Program
                     <div className="ml-2 h-7 w-7 rounded-full bg-[#0B1710]/10 flex items-center justify-center">
                       <ArrowUpRight className="h-4 w-4 text-[#0B1710]" />
@@ -291,7 +291,7 @@ export default function ForFounders() {
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all border-none shadow-none" asChild>
-                <Link href="/signup?role=creator">Start Scaling for Free</Link>
+                <Link href="/signup?role=founder">Start Scaling for Free</Link>
               </Button>
             </div>
             <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">

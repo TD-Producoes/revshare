@@ -49,7 +49,7 @@ export type EventLogResponse = {
 
 export function useEventLog(params: {
   userId?: string | null;
-  role?: "creator" | "marketer";
+  role?: "founder" | "marketer";
   projectId?: string | null;
   actor?: string;
   eventType?: string;
