@@ -39,6 +39,14 @@ export const notificationMessages = {
     title: "Payout failed",
     message: failureReason,
   }),
+  transferSentCreator: (amount: number, currency: string) => ({
+    title: "Transfer sent",
+    message: `You sent ${(amount / 100).toFixed(2)} ${currency.toUpperCase()} to a marketer.`,
+  }),
+  transferSentMarketer: (amount: number, currency: string) => ({
+    title: "Transfer received",
+    message: `You received ${(amount / 100).toFixed(2)} ${currency.toUpperCase()} from a creator.`,
+  }),
   referralSale: (commissionAmount: number, currency: string) => ({
     title: "New referral sale",
     message: `You earned ${Math.round(commissionAmount) / 100} ${currency.toUpperCase()} in commission.`,
