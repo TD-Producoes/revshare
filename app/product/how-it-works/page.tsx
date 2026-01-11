@@ -87,7 +87,7 @@ export default function HowItWorks() {
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
                 <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/70 tracking-wide uppercase">
-                  Platform Lifecycle
+                  How RevShare Works
                 </Badge>
               </motion.div>
 
@@ -104,7 +104,7 @@ export default function HowItWorks() {
                 }}
                 className="text-[44px] md:text-[62px] tracking-tighter leading-[1.05] text-white text-balance text-center"
               >
-                {"The lifecycle of a".split(" ").map((word, i) => (
+                {"How a RevShare".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-[0.2em] last:mr-0"
@@ -119,7 +119,7 @@ export default function HowItWorks() {
                 ))}
                 <br className="hidden md:block" />
                 <span className="text-[#818CF8]">
-                  {"partnership.".split(" ").map((word, i) => (
+                  {"partnership works.".split(" ").map((word, i) => (
                     <motion.span
                       key={i}
                       className="inline-block mr-[0.2em] last:mr-0"
@@ -141,7 +141,7 @@ export default function HowItWorks() {
                 transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="max-w-2xl text-base md:text-lg text-white/70 leading-relaxed mx-auto text-center"
               >
-                From first connection to verified payout. RevShare automates the trust layer between SaaS founders and performance marketers using verified Stripe data.
+                From first hello to verified payout. RevShare uses Stripe-verified revenue so founders and marketers see the same numbers.
               </motion.p>
 
               <motion.div
@@ -152,7 +152,7 @@ export default function HowItWorks() {
               >
                 <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#818CF8] hover:bg-[#818CF8]/90 text-white font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(129,140,248,0.2)]" asChild>
                   <Link href="/signup">
-                    Get Started
+                    Start your program
                     <div className="ml-2 h-7 w-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20">
                       <ArrowUpRight className="h-4 w-4 text-white" />
                     </div>
@@ -167,9 +167,9 @@ export default function HowItWorks() {
         <div className="py-24 space-y-24">
           <FeatureSection
             badge="Phase 1: Discovery"
-            title="Transparent Marketplace Foundations."
-            description="Founders publish projects with verified revenue data directly from Stripe. Marketers register and showcase their proven track record. Both remain discoverable through real-time public statistics."
-            items={["Stripe-verified revenue", "Marketer public stats", "Open discovery directory"]}
+            title="Find each other in public."
+            description="Founders list with Stripe-verified revenue. Marketers show real results. Everyone can browse and decide quickly."
+            items={["Stripe-verified revenue", "Public marketer stats", "Open directory"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-[#818CF8]/5 rounded-full flex items-center justify-center p-12 overflow-hidden border border-[#818CF8]/10">
                 <motion.div
@@ -208,9 +208,9 @@ export default function HowItWorks() {
           <FeatureSection
             reversed
             badge="Phase 2: Setup"
-            title="Custom Parameters & Outreach."
-            description="Founders set their own commission rates, performance rewards, and refund windows. Once matched, marketers receive unique coupon codes to share with their audience immediately."
-            items={["Custom refund windows", "Performance rewards", "Instant coupon generation"]}
+            title="Set terms and ship."
+            description="Set commission, refund window, and rewards. When you approve a partner, they get a coupon to share right away."
+            items={["Custom refund windows", "Performance rewards", "Instant coupons"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-indigo-500/5 rounded-full flex items-center justify-center p-8">
                 <div className="relative w-full h-full p-4 flex flex-col items-center justify-center">
@@ -247,9 +247,9 @@ export default function HowItWorks() {
 
           <FeatureSection
             badge="Phase 3: Execution"
-            title="Automated Splitting & Rewards."
-            description="All revenue is split transparently at the source. Payouts are released automatically once the refund window expires. Marketers earn additional rewards as they hit revenue, customer, or sales milestones."
-            items={["Transparent splitting", "Automated payouts", "Milestone-based bonuses"]}
+            title="Split revenue automatically."
+            description="Revenue splits at the source. Payouts release after the refund window. Bonuses kick in when milestones hit."
+            items={["Source-level splitting", "Automated payouts", "Milestone bonuses"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-[#818CF8]/5 rounded-full flex items-center justify-center p-12">
                 <motion.div
@@ -298,16 +298,16 @@ export default function HowItWorks() {
       <section className="relative z-10 py-24 text-center bg-gray-50/50">
         <div className="mx-auto max-w-3xl px-6">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
-            Stop manually handling payouts. <br />
-            Start <span className="text-[#818CF8] italic">scaling your reach.</span>
+            Stop chasing payouts. <br />
+            Start <span className="text-[#818CF8] italic">paying partners on time.</span>
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#818CF8] hover:bg-[#818CF8]/90 text-white font-bold transition-all border-none shadow-none" asChild>
-              <Link href="/signup">Launch Program Now</Link>
+              <Link href="/signup">Launch your program</Link>
             </Button>
           </div>
           <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
-            Stripe Connected Platform
+            Powered by Stripe Connect
           </p>
         </div>
       </section>

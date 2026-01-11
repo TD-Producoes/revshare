@@ -95,7 +95,7 @@ export function ComparisonTable() {
             <thead>
               <tr className="border-b border-border/50 bg-gray-50/50">
                 <th className="py-6 px-8 text-sm font-bold uppercase tracking-widest text-muted-foreground">Feature</th>
-                <th className="py-6 px-8 text-sm font-bold uppercase tracking-widest text-primary">RevShare</th>
+                <th className="py-6 px-8 text-sm font-bold uppercase tracking-widest text-emerald-700">RevShare</th>
                 <th className="py-6 px-8 text-sm font-bold uppercase tracking-widest text-muted-foreground">Traditional Networks</th>
               </tr>
             </thead>
@@ -140,7 +140,7 @@ export function ComparisonTable() {
                         </div>
                       )
                     ) : (
-                      <span className="text-primary font-bold">{row.revShare}</span>
+                      <span className="text-emerald-700 font-bold">{row.revShare}</span>
                     )}
                   </td>
                   <td className="py-6 px-8">

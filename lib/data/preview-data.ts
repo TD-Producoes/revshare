@@ -113,6 +113,14 @@ export const previewMarketers: PreviewMarketer[] = [
     isVerified: false,
     bio: "Newsletter operator with 25k+ subscribers in the startup/finance space.",
   },
+  {
+    id: "preview-marketer-5",
+    name: "Liam O'Connor",
+    promotionTypes: ["Affiliate Marketing", "Partnerships"],
+    industries: ["SaaS", "Marketing"],
+    isVerified: true,
+    bio: "Affiliate marketer focused on SaaS products. Generated $500k+ in affiliate revenue last year.",
+  },
 ];
 
 // Category options for filters

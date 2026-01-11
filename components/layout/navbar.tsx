@@ -138,13 +138,7 @@ export function Navbar({
                       >
                         Why traditional legacy affiliate networks are failing modern SaaS.
                       </ListItem>
-                      <ListItem
-                        href="/product/revshare-vs-affiliate-marketing"
-                        title="RevShare vs Affiliate Marketing"
-                        icon={<BarChart3 className="text-amber-600 h-5 w-5" />}
-                      >
-                        Recurring value vs limited one-time affiliate bounties.
-                      </ListItem>
+
                       <ListItem
                         href="/product/trust"
                         title="Trust & Security"

@@ -70,7 +70,7 @@ export default function TrustPaymentsPage() {
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
                 <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/70 tracking-wide uppercase">
-                  Security & Reliability
+                  Trust You Can Verify
                 </Badge>
               </motion.div>
 
@@ -87,7 +87,7 @@ export default function TrustPaymentsPage() {
                 }}
                 className="text-[44px] md:text-[62px] tracking-tighter leading-[1.05] text-white text-balance text-center"
               >
-                {"Trust is our binary".split(" ").map((word, i) => (
+                {"Trust you can".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-[0.2em] last:mr-0"
@@ -102,7 +102,7 @@ export default function TrustPaymentsPage() {
                 ))}
                 <br className="hidden md:block" />
                 <span className="text-[#0EA5E9]">
-                  {"foundation.".split(" ").map((word, i) => (
+                  {"verify.".split(" ").map((word, i) => (
                     <motion.span
                       key={i}
                       className="inline-block mr-[0.2em] last:mr-0"
@@ -124,7 +124,7 @@ export default function TrustPaymentsPage() {
                 transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="max-w-2xl text-base md:text-lg text-white/70 leading-relaxed mx-auto text-center"
               >
-                From Stripe Connect integration to immutable audit logs, we've built the world's most transparent revenue-sharing infrastructure.
+                Stripe Connect + audit logs mean payouts are verifiable. Founders and partners see the same source of truth.
               </motion.p>
 
               <motion.div
@@ -135,7 +135,7 @@ export default function TrustPaymentsPage() {
               >
                 <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(14,165,233,0.2)]" asChild>
                   <Link href="/signup">
-                    Get Started
+                    Set up trust
                     <div className="ml-2 h-7 w-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20">
                       <ArrowUpRight className="h-4 w-4 text-white" />
                     </div>
@@ -150,9 +150,9 @@ export default function TrustPaymentsPage() {
         <div className="py-24 space-y-24">
           <FeatureSection
             badge="Infrastructure"
-            title="Stripe Connect Integration."
-            description="We leverage Stripe Connect to handle all financial movements. Funds never sit in a RevShare bank account—they flow directly from the project's Stripe account to the marketer's wallet."
-            items={["Direct peer-to-peer flow", "Automated 1099 reporting", "Global payout coverage"]}
+            title="Money moves via Stripe."
+            description="Money flows from the founder’s Stripe account to the partner’s wallet. RevShare never holds funds."
+            items={["Direct Stripe flow", "Tax forms handled", "Global payouts"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-[#0EA5E9]/5 rounded-full flex items-center justify-center p-12 overflow-hidden border border-[#0EA5E9]/10">
                 <motion.div
@@ -183,9 +183,9 @@ export default function TrustPaymentsPage() {
           <FeatureSection
             reversed
             badge="Logic"
-            title="Automated Refund Windows."
-            description="Protect your cash flow with custom refund windows. Commissions are held in 'Pending' status until the risk period passes, ensuring you only pay for revenue you actually keep."
-            items={["Configurable lock-ups", "Pending vs Available views", "Automated release triggers"]}
+            title="Refund windows that protect you."
+            description="Hold commissions until the refund window ends. You only pay on revenue you actually keep."
+            items={["Custom lockups", "Pending vs paid views", "Auto release"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-blue-500/5 rounded-full flex items-center justify-center p-8">
                 <div className="w-full bg-white rounded-2xl shadow-xl p-6 border border-black/5 space-y-5">
@@ -220,9 +220,9 @@ export default function TrustPaymentsPage() {
 
           <FeatureSection
             badge="Transparency"
-            title="Immutable Audit Logs."
-            description="Every cent is accounted for. Both founders and marketers have access to a shared source of truth, with real-time logs for every tracking event, refund, and payment release."
-            items={["Real-time event feed", "Shared verification view", "Dispute reduction architecture"]}
+            title="An audit trail you can share."
+            description="Every event is logged: conversions, refunds, payouts. Both sides see the same timeline."
+            items={["Live event feed", "Shared verification view", "Fewer payout disputes"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-[#0EA5E9]/5 rounded-full flex items-center justify-center p-12">
                 <motion.div
@@ -257,16 +257,13 @@ export default function TrustPaymentsPage() {
       <section className="relative z-10 py-24 text-center bg-gray-50/50">
         <div className="mx-auto max-w-3xl px-6">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
-            Built on <span className="text-[#0EA5E9] italic">finance-grade</span> trust.
+            Built on <span className="text-[#0EA5E9] italic">verifiable</span> payouts.
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold transition-all border-none shadow-none" asChild>
-              <Link href="/signup">Create Secure Account Now</Link>
+              <Link href="/signup">Create your account</Link>
             </Button>
           </div>
-          <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
-            Review Documentation & Infrastructure
-          </p>
         </div>
       </section>
 

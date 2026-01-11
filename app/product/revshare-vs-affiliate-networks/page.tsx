@@ -86,7 +86,7 @@ export default function RevShareVsAffiliates() {
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
                 <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/70 tracking-wide uppercase">
-                  Platform Comparison
+                  RevShare vs. Affiliate Networks
                 </Badge>
               </motion.div>
 
@@ -103,7 +103,7 @@ export default function RevShareVsAffiliates() {
                 }}
                 className="text-[44px] md:text-[62px] tracking-tighter leading-[1.05] text-white text-balance text-center"
               >
-                {"Built for your next stage of".split(" ").map((word, i) => (
+                {"Built for founders who".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-[0.2em] last:mr-0"
@@ -118,7 +118,7 @@ export default function RevShareVsAffiliates() {
                 ))}
                 <br className="hidden md:block" />
                 <span className="text-[#BFF2A0]">
-                  {"growth.".split(" ").map((word, i) => (
+                  {"grow in public.".split(" ").map((word, i) => (
                     <motion.span
                       key={i}
                       className="inline-block mr-[0.2em] last:mr-0"
@@ -140,7 +140,7 @@ export default function RevShareVsAffiliates() {
                 transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="max-w-xl text-base md:text-lg text-white/70 leading-relaxed mx-auto text-center"
               >
-                Traditional affiliate networks were built for links and cookies. RevShare is built for actual revenue, transparency, and long-term SaaS partnerships.
+                Affiliate networks track clicks. RevShare tracks real revenue, so you can pay fairly and see what’s working.
               </motion.p>
 
               <motion.div
@@ -151,7 +151,7 @@ export default function RevShareVsAffiliates() {
               >
                 <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(191,242,160,0.2)]" asChild>
                   <Link href="/signup">
-                    Get Started
+                    Start a program
                     <div className="ml-2 h-7 w-7 rounded-full bg-[#0B1710]/10 flex items-center justify-center group-hover:bg-[#0B1710]/20">
                       <ArrowUpRight className="h-4 w-4 text-[#0B1710]" />
                     </div>
@@ -166,9 +166,9 @@ export default function RevShareVsAffiliates() {
         <div className="py-24 space-y-24">
           <FeatureSection
             badge="Revenue-First"
-            title="Real revenue, not just clicks."
-            description="RevShare tracks actual revenue generated, not just last-touch attribution. Commissions unlock only after the refund window ends — protecting both founders and marketers."
-            items={["Net revenue tracking", "Refund-aware logic", "Secure settlements"]}
+            title="Pay for revenue, not noise."
+            description="RevShare tracks net revenue, not last-touch clicks. Payouts unlock after the refund window so everyone plays fair."
+            items={["Net revenue tracking", "Refund-window payouts", "Safe settlements"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-emerald-500/5 rounded-full flex items-center justify-center p-12 overflow-hidden border border-emerald-500/10">
                 <motion.div
@@ -195,9 +195,9 @@ export default function RevShareVsAffiliates() {
           <FeatureSection
             reversed
             badge="Discovery"
-            title="A real marketplace for partnerships."
-            description="Instead of hidden programs behind network logins, RevShare projects are publicly discoverable. Marketers can showcase verified performance and founders can find the best partners faster."
-            items={["Public leaderboard", "Verified profiles", "Direct applications"]}
+            title="A public place to find partners."
+            description="No hidden programs behind logins. Founders list publicly, marketers show real results, and both sides can decide quickly."
+            items={["Public listings", "Proof of performance", "Direct apply"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-[#BFF2A0]/10 rounded-full flex items-center justify-center p-8">
                 <div className="grid grid-cols-2 gap-4 w-full h-full p-4">
@@ -226,12 +226,12 @@ export default function RevShareVsAffiliates() {
       <section className="relative z-10 py-24 text-center bg-gray-50/50">
         <div className="mx-auto max-w-3xl px-6">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
-            Stop coding black boxes. <br />
-            Start <span className="text-[#128045] italic">scaling trust.</span>
+            Stop guessing who drove revenue. <br />
+            Start <span className="text-[#128045] italic">paying the people who did.</span>
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all border-none shadow-none" asChild>
-              <Link href="/signup">Launch Your Program Now</Link>
+              <Link href="/signup">Launch your program</Link>
             </Button>
           </div>
           <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
