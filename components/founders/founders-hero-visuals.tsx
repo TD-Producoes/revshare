@@ -33,14 +33,13 @@ export function FoundersHeroCards() {
         </div>
       </motion.div>
 
-      {/* Card 2: Active Army (Center) */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
         className="w-full md:w-[260px] bg-[#0B1710] border border-white/10 rounded-xl p-6 flex flex-col items-center shadow-2xl z-10"
       >
-        <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Active Army</div>
+        <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Active Affiliates</div>
         <div className="text-[11px] text-white/20 mb-4">January 2026</div>
         <div className="relative h-24 w-24 mb-4">
           <svg className="h-full w-full" viewBox="0 0 36 36">
@@ -82,7 +81,7 @@ export function FoundersHeroCards() {
             <span className="text-[#BFF2A0] font-medium">22.5%</span>
           </div>
           <div className="flex justify-between items-center text-[11px]">
-            <span className="text-white/40">Refund Buffer</span>
+            <span className="text-white/40">Refund Window</span>
             <span className="text-white/80 font-medium">30 Days</span>
           </div>
         </div>

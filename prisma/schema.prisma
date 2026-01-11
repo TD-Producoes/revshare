@@ -662,7 +662,7 @@ enum VisibilityMode {
 
 model Waitlist {
   id        String   @id @default(cuid())
-  name      String
+  name      String?
   email     String   @unique
   source    String?  @default("landing")
   createdAt DateTime @default(now())
