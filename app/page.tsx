@@ -1,5 +1,6 @@
 "use client";
 
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { LifecycleSection } from "@/components/sections/lifecycle-section";
@@ -359,7 +360,7 @@ function ExpandingCardSection() {
                 I&apos;m Founder
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
+            <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:text-white hover:bg-white/5 font-bold transition-all" asChild>
               <Link href="/solutions/for-marketers">
                 I&apos;m Marketer
               </Link>
@@ -510,6 +511,7 @@ export default function Home() {
 
   return (
     <>
+      <ForceLightMode />
       <main className="relative bg-white selection:bg-primary/10">
         <Navbar isTransparent forceTransparent={navbarForceTransparent} />
 

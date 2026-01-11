@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
@@ -44,8 +45,10 @@ export default function HowItWorks() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-[#818CF8]/20">
-      <Navbar isTransparent forceTransparent={isTransparent} theme="how-it-works" />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-[#818CF8]/20">
+        <Navbar isTransparent forceTransparent={isTransparent} theme="how-it-works" />
 
       <div ref={containerRef}>
         {/* Hero Section */}
@@ -347,6 +350,7 @@ export default function HowItWorks() {
           source="product-how-it-works"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }
