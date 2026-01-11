@@ -393,7 +393,11 @@ export function Header() {
               </DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={theme ?? "system"}
-                onValueChange={(value) => setTheme(value)}
+                onValueChange={(value) => {
+                  if (value === "dark" || value === "light" || value === "system") {
+                    setTheme(value);
+                  }
+                }}
               >
                 <DropdownMenuRadioItem value="dark">
                   Dark

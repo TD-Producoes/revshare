@@ -1,6 +1,7 @@
-import { SignupForm } from "@/components/auth/signup-form";
 import { ChartPie } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
+import { SignupForm } from "@/components/auth/signup-form";
 
 export default function SignupPage() {
   return (
@@ -13,7 +14,9 @@ export default function SignupPage() {
           <ChartPie className="h-5 w-5" />
           <span>RevShare</span>
         </Link>
-        <SignupForm />
+        <Suspense fallback={null}>
+          <SignupForm />
+        </Suspense>
       </div>
     </div>
   );
