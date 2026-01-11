@@ -111,9 +111,13 @@ const formatDateForInput = (value?: string | null) => {
 export function ProjectRewardsTab({
   projectId,
   creatorId,
+  autoOpenCreate,
+  onAutoOpenHandled,
 }: {
   projectId: string;
   creatorId?: string | null;
+  autoOpenCreate?: boolean;
+  onAutoOpenHandled?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -318,6 +322,12 @@ export function ProjectRewardsTab({
       );
     }
   };
+
+  useEffect(() => {
+    if (!autoOpenCreate || !creatorId) return;
+    openCreate();
+    onAutoOpenHandled?.();
+  }, [autoOpenCreate, creatorId]);
 
   return (
     <div className="space-y-6">

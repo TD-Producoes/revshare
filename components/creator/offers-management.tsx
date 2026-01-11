@@ -90,7 +90,12 @@ function ContractsTable({
             return (
               <TableRow key={contract.id}>
                 <TableCell className="font-medium">
-                  {contract.userName}
+                  <Link
+                    href={`/founder/affiliates/${contract.userId}`}
+                    className="hover:underline"
+                  >
+                    {contract.userName}
+                  </Link>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {contract.userEmail}

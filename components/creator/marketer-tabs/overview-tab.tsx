@@ -30,7 +30,7 @@ export function MarketerOverviewTab({
 }: {
   summary: OverviewSummary;
   currency: string;
-  projects: Array<{ id: string; name: string }>;
+  projects: Array<{ id: string; name: string; status?: string }>;
 }) {
   const affiliateShare =
     summary.projectRevenue > 0
@@ -97,7 +97,9 @@ export function MarketerOverviewTab({
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      Active
+                      {project.status?.toLowerCase() === "paused"
+                        ? "Paused"
+                        : "Active"}
                     </TableCell>
                   </TableRow>
                 ))}

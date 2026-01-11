@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { ReactElement } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUserId } from "@/lib/hooks/auth";
@@ -157,8 +158,21 @@ function formatDateForInput(dateStr: string | null): string {
   return "";
 }
 
-export function CreateProjectForm() {
-  const [open, setOpen] = useState(false);
+type CreateProjectFormProps = {
+  trigger?: ReactElement | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+export function CreateProjectForm({
+  trigger,
+  open: openProp,
+  onOpenChange,
+}: CreateProjectFormProps) {
+  const [openState, setOpenState] = useState(false);
+  const isControlled = typeof openProp === "boolean";
+  const open = isControlled ? openProp : openState;
+  const setOpen = isControlled ? onOpenChange ?? (() => {}) : setOpenState;
   const [step, setStep] = useState<1 | "loading" | 2 | "success">(1); // Step 1: URL input, loading: scraping, Step 2: Form, success: success message
   const [urlInput, setUrlInput] = useState("");
   const [error, setError] = useState("");
@@ -408,12 +422,16 @@ export function CreateProjectForm() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Project
-        </Button>
-      </DialogTrigger>
+      {trigger ? (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : trigger === undefined ? (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            New Project
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className={`sm:max-w-[600px] flex flex-col p-0 overflow-hidden ${
         step === 1 || step === "loading" || step === "success" ? "max-h-[400px]" : "h-[90vh]"
       }`}>

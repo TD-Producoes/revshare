@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
+import { useCreatorDashboard } from "@/lib/hooks/creator";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -15,12 +16,27 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/lib/hooks/notifications";
 import { toast } from "sonner";
-import { ChevronDown, Sun, Moon, Bell, Settings, PieChart, ImagePlus } from "lucide-react";
+import { CreateProjectForm } from "@/components/creator/create-project-form";
+import {
+  ChevronDown,
+  Bell,
+  Settings,
+  PieChart,
+  ImagePlus,
+  Plus,
+  TicketPercent,
+  Gift,
+} from "lucide-react";
 
 export function Header() {
   const router = useRouter();
@@ -33,9 +49,15 @@ export function Header() {
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackError, setFeedbackError] = useState("");
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const { data: notificationsPayload } = useNotifications(user?.id, 10);
   const markNotificationRead = useMarkNotificationRead();
   const markAllNotificationsRead = useMarkAllNotificationsRead();
+  const isFounder = user?.role === "founder";
+  const { data: creatorDashboard } = useCreatorDashboard(
+    isFounder ? user?.id : undefined,
+  );
+  const creatorProjects = creatorDashboard?.projects ?? [];
 
   const displayName = useMemo(() => user?.name ?? "User", [user?.name]);
   const notifications = notificationsPayload?.data ?? [];
@@ -79,10 +101,6 @@ export function Header() {
       .map((n) => n[0])
       .join("")
       .toUpperCase();
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   const handleLogout = async () => {
@@ -134,14 +152,95 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-12 items-center px-4">
-        <div className="flex items-center gap-2 font-semibold">
-          <PieChart className="h-3.5 w-3.5" />
-          <span className="text-base">RevShare</span>
-        </div>
+    <>
+      <CreateProjectForm
+        open={isCreateProjectOpen}
+        onOpenChange={setIsCreateProjectOpen}
+        trigger={null}
+      />
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-12 items-center px-4">
+          <div className="flex items-center gap-2 font-semibold">
+            <PieChart className="h-3.5 w-3.5" />
+            <span className="text-base">RevShare</span>
+          </div>
 
-        <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
+          {isFounder ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="h-8 gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    setIsCreateProjectOpen(true);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create project
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <TicketPercent className="h-3.5 w-3.5" />
+                    Create coupon
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {creatorProjects.length === 0 ? (
+                      <DropdownMenuItem disabled>
+                        No projects yet
+                      </DropdownMenuItem>
+                    ) : (
+                      creatorProjects.map((project) => (
+                        <DropdownMenuItem
+                          key={project.id}
+                          onSelect={() =>
+                            router.push(
+                              `/founder/projects/${project.id}?tab=coupons&create=coupon`,
+                            )
+                          }
+                        >
+                          {project.name}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Gift className="h-3.5 w-3.5" />
+                    Create reward
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {creatorProjects.length === 0 ? (
+                      <DropdownMenuItem disabled>
+                        No projects yet
+                      </DropdownMenuItem>
+                    ) : (
+                      creatorProjects.map((project) => (
+                        <DropdownMenuItem
+                          key={project.id}
+                          onSelect={() =>
+                            router.push(
+                              `/founder/projects/${project.id}?tab=rewards&create=reward`,
+                            )
+                          }
+                        >
+                          {project.name}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+
           <Popover open={feedbackOpen} onOpenChange={setFeedbackOpen}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 px-3">
@@ -180,16 +279,6 @@ export function Header() {
             </PopoverContent>
           </Popover>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={toggleTheme}
-          >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle theme</span>
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -287,15 +376,9 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 text-xs">
-              <div className="px-2 py-1.5 text-muted-foreground">
+              <div className="px-2 py-1.5 space-y-1 text-muted-foreground">
                 <div className="truncate">{user.email}</div>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 py-1">
-                Role
-              </DropdownMenuLabel>
-              <div className="px-2 py-1.5 text-muted-foreground capitalize">
-                {user.role}
+                <div className="truncate">{user.role}</div>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push(notificationsPath)}>
@@ -304,6 +387,24 @@ export function Header() {
               <DropdownMenuItem onClick={() => router.push(settingsPath)}>
                 Settings
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 py-1">
+                Theme
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={theme ?? "system"}
+                onValueChange={(value) => setTheme(value)}
+              >
+                <DropdownMenuRadioItem value="dark">
+                  Dark
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="light">
+                  Light
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="system">
+                  System
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 Logout
@@ -315,6 +416,7 @@ export function Header() {
       {logoutError && (
         <div className="px-4 pb-2 text-xs text-destructive">{logoutError}</div>
       )}
-    </header>
+      </header>
+    </>
   );
 }
