@@ -539,9 +539,8 @@ export default function Home() {
               opacity: heroOpacity,
               scale: heroContentScale,
               pointerEvents: heroPointerEvents,
-              y: -50 // Move text up
             }}
-            className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-40 pt-20"
+            className="flex flex-col items-center mx-auto max-w-4xl px-6 relative z-40 pt-32 md:pt-48"
           >
             <div className="flex flex-col items-center space-y-8 text-center">
               <motion.div
@@ -1175,7 +1174,7 @@ export default function Home() {
                     <div className="absolute top-6 right-6 bg-gray-100 px-2 py-0.5 rounded-full text-[9px] font-bold text-gray-500 uppercase tracking-wider">
                       Claimed
                     </div>
-                  
+
                     <div className="mb-4">
                       <h3 className="text-lg font-bold text-black mb-0.5">1 month free</h3>
                       <p className="text-[11px] text-gray-400 font-medium">Unlock at: 1 completed sales</p>
@@ -1210,7 +1209,7 @@ export default function Home() {
                 <h3 className="text-xl md:text-2xl font-bold tracking-tight text-black leading-tight">
                   How Milestone-based Incentives drive genuine performance.
                 </h3>
-                
+
                 <div className="space-y-4">
                   <ul className="space-y-4">
                     <li>
