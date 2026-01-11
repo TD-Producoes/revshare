@@ -6,6 +6,7 @@ import React, { useRef } from "react";
 import { ArrowUpRight, Sparkles, Trophy, Star, Target, Gift, Zap, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
@@ -34,8 +35,10 @@ export default function PerformanceRewardsPage() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-[#F97316]/20">
-      <Navbar isTransparent forceTransparent={isTransparent} theme="rewards" />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-[#F97316]/20">
+        <Navbar isTransparent forceTransparent={isTransparent} theme="rewards" />
 
       <div ref={containerRef}>
         {/* Hero Section */}
@@ -274,6 +277,7 @@ export default function PerformanceRewardsPage() {
           source="product-rewards"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }

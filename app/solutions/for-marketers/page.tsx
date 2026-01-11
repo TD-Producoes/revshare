@@ -1,5 +1,6 @@
 "use client";
 
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Badge } from "@/components/ui/badge";
@@ -667,8 +668,10 @@ export default function ForMarketers() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-primary/10">
-      <Navbar isTransparent forceTransparent={navbarForceTransparent} isDashboardHidden={navbarHideDashboard} />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-primary/10">
+        <Navbar isTransparent forceTransparent={navbarForceTransparent} isDashboardHidden={navbarHideDashboard} />
 
       {/* Hero with Reveal Animation */}
       <div ref={containerRef} className="relative h-[250vh]">
@@ -916,6 +919,7 @@ export default function ForMarketers() {
           source="for-marketers"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }

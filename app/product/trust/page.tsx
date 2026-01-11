@@ -6,6 +6,7 @@ import React, { useRef } from "react";
 import { ArrowUpRight, ShieldCheck, Wallet, Lock, History, Search, FileCheck, CheckCircle2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
@@ -34,8 +35,10 @@ export default function TrustPaymentsPage() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-[#0EA5E9]/20">
-      <Navbar isTransparent forceTransparent={isTransparent} theme="trust" />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-[#0EA5E9]/20">
+        <Navbar isTransparent forceTransparent={isTransparent} theme="trust" />
 
       <div ref={containerRef}>
         {/* Hero Section */}
@@ -302,6 +305,7 @@ export default function TrustPaymentsPage() {
           source="product-trust"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }

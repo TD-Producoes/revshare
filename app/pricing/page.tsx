@@ -6,6 +6,7 @@ import React, { useRef } from "react";
 import { CheckCircle2, ArrowUpRight, Shield, CreditCard, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { isWaitlistMode } from "@/lib/utils";
@@ -33,8 +34,10 @@ export default function PricingPage() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-amber-500/10">
-      <Navbar isTransparent forceTransparent={isTransparent} />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-amber-500/10">
+        <Navbar isTransparent forceTransparent={isTransparent} />
 
       <div ref={containerRef}>
         {/* Hero Section */}
@@ -619,6 +622,7 @@ export default function PricingPage() {
           source="pricing"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }
