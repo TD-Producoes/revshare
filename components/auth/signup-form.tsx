@@ -31,14 +31,14 @@ export function SignupForm({
   const initialRole = (roleParam === "marketer" || roleParam === "founder") ? roleParam : "founder";
   const [role, setRole] = useState<"founder" | "marketer">(initialRole);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setMessage("");
 
     const supabase = createClient();
+    const redirectUrl = new URL("/auth/callback", window.location.origin);
+    redirectUrl.searchParams.set("role", role);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -47,6 +47,7 @@ export function SignupForm({
           name,
           role,
         },
+        emailRedirectTo: redirectUrl.toString(),
       },
     });
 
@@ -55,37 +56,36 @@ export function SignupForm({
       return;
     }
 
-    if (data.user?.id) {
-      const ensureResponse = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: data.user.id,
-          email,
-          name,
-          role,
-        }),
-      });
-
-      if (!ensureResponse.ok) {
-        const payload = await ensureResponse.json().catch(() => null);
-        setError(payload?.error ?? "Unable to create user profile.");
-        return;
-      }
-    }
-
     if (data.session) {
+      if (data.user?.id) {
+        const ensureResponse = await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: data.user.id,
+            email,
+            name,
+            role,
+          }),
+        });
+
+        if (!ensureResponse.ok) {
+          const payload = await ensureResponse.json().catch(() => null);
+          setError(payload?.error ?? "Unable to create user profile.");
+          return;
+        }
+      }
+
       router.push(role === "marketer" ? "/marketer" : "/founder");
       router.refresh();
       return;
     }
 
-    setMessage("Check your email to confirm your account before signing in.");
+    router.push(`/confirm-email?email=${encodeURIComponent(email)}`);
   };
 
   const handleGoogleSignup = async () => {
     setError("");
-    setMessage("");
     const supabase = createClient();
     const redirectTo = new URL("/auth/callback", window.location.origin);
     redirectTo.searchParams.set("role", role);
@@ -115,7 +115,7 @@ export function SignupForm({
             <div className="flex flex-col gap-4">
               <Button
                 variant="outline"
-                className="w-full h-12 rounded-xl border-2 border-black/10 bg-white hover:bg-amber-50/50 text-black font-semibold"
+                className="w-full h-12 rounded-xl border-2 border-black/10 bg-white hover:bg-primary/10 text-black font-semibold"
                 type="button"
                 onClick={handleGoogleSignup}
               >
@@ -144,7 +144,7 @@ export function SignupForm({
                   onChange={(e) => setName(e.target.value)}
                   required
                   autoFocus
-                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-amber-500/50 focus:ring-0 text-black placeholder:text-black/40"
+                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40"
                 />
               </div>
               <div className="grid gap-2">
@@ -156,7 +156,7 @@ export function SignupForm({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-amber-500/50 focus:ring-0 text-black placeholder:text-black/40"
+                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40"
                 />
               </div>
               <div className="grid gap-2">
@@ -168,13 +168,13 @@ export function SignupForm({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-amber-500/50 focus:ring-0 text-black placeholder:text-black/40"
+                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40"
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="role" className="text-sm font-semibold text-black">I want to join as</Label>
                 <Select value={role} onValueChange={(v: "founder" | "marketer") => setRole(v)}>
-                  <SelectTrigger className="!h-12 rounded-xl border-2 border-black/10 bg-white focus:border-amber-500/50 focus:ring-0 text-black data-[size=default]:!h-12">
+                  <SelectTrigger className="!h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black data-[size=default]:!h-12">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-2 border-black/10">
@@ -190,23 +190,20 @@ export function SignupForm({
               {error && (
                 <p className="text-sm text-destructive font-medium">{error}</p>
               )}
-              {message && (
-                <p className="text-sm text-black/60 font-medium">{message}</p>
-              )}
-              <Button type="submit" className="w-full h-12 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold border-none text-base">
+              <Button type="submit" className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold border-none text-base">
                 Create account
               </Button>
             </div>
             <div className="text-center text-sm text-black/60">
               Already have an account?{" "}
-              <Link href="/login" className="text-amber-600 hover:text-amber-700 font-semibold underline underline-offset-4">
+              <Link href="/login" className="font-semibold underline underline-offset-4">
                 Login
               </Link>
             </div>
           </div>
         </form>
       </div>
-      <div className="text-balance text-center text-xs text-black/50 [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-amber-600 [&_a]:text-amber-600">
+      <div className="text-balance text-center text-xs text-black/50 [&_a]:underline [&_a]:underline-offset-4">
         By clicking continue, you agree to our <a href="/terms">Terms of Service</a>{" "}
         and <a href="/privacy">Privacy Policy</a>.
       </div>
