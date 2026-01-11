@@ -659,3 +659,14 @@ enum VisibilityMode {
   GHOST
   PRIVATE
 }
+
+model Waitlist {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  source    String?  @default("landing")
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
