@@ -179,17 +179,19 @@ export function MobileNav({ isAuthed, theme, dashboardHref, dashboardLabel, trig
                   <motion.div variants={itemVariants} className="flex flex-col gap-4 pt-1">
                     <Link
                       href="/projects"
-                      className="text-lg font-medium tracking-tight hover:text-primary transition-colors"
+                      className="text-lg font-medium tracking-tight hover:text-primary transition-colors flex items-center gap-2"
                       onClick={() => setIsOpen(false)}
                     >
                       Projects
+                      <span className="text-[9px] font-bold uppercase text-muted-foreground/50">(Preview)</span>
                     </Link>
                     <Link
                       href="/marketers"
-                      className="text-lg font-medium tracking-tight hover:text-primary transition-colors"
+                      className="text-lg font-medium tracking-tight hover:text-primary transition-colors flex items-center gap-2"
                       onClick={() => setIsOpen(false)}
                     >
                       Marketers
+                      <span className="text-[9px] font-bold uppercase text-muted-foreground/50">(Preview)</span>
                     </Link>
                     <Link
                       href="/pricing"

@@ -2,21 +2,21 @@
 
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { MarketersDirectory } from "@/components/marketers/marketers-directory";
+import { PreviewBanner } from "@/components/preview/preview-banner";
+import { PreviewMarketersDirectory } from "@/components/preview/preview-marketers-directory";
 
 /**
- * Public Marketers Directory Page
- * Displays the marketers directory with public navigation (Navbar)
+ * Public Marketers Directory Page (Preview Mode)
+ * Shows example marketer profiles with waitlist CTAs during pre-launch
  */
 export default function MarketersDirectoryPage() {
   return (
     <main className="min-h-screen bg-background">
       <Navbar />
       <div className="mx-auto max-w-7xl pt-24 px-6 py-8">
-        <MarketersDirectory isPrivate={false} />
+        <PreviewMarketersDirectory />
       </div>
       <Footer className="bg-white" />
     </main>
   );
 }
-
