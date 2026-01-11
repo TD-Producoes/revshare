@@ -6,6 +6,7 @@ import React, { useRef } from "react";
 import { ArrowUpRight, Cpu, Layers, Link2, Code2, Globe, Database, Zap, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
@@ -34,8 +35,10 @@ export default function IntegrationsPage() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-[#14B8A6]/20">
-      <Navbar isTransparent forceTransparent={isTransparent} theme="integrations" />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-[#14B8A6]/20">
+        <Navbar isTransparent forceTransparent={isTransparent} theme="integrations" />
 
       <div ref={containerRef}>
         {/* Hero Section */}
@@ -264,6 +267,7 @@ export default function IntegrationsPage() {
           source="product-integrations"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }

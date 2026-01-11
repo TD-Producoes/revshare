@@ -6,6 +6,7 @@ import React, { useRef } from "react";
 import { ArrowUpRight, Zap, CheckCircle2, Search, LayoutGrid, ShieldCheck, Wallet, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
@@ -40,8 +41,10 @@ export default function RevShareVsAffiliates() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-[#BFF2A0]/20">
-      <Navbar isTransparent forceTransparent={isTransparent} theme="founders" />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-[#BFF2A0]/20">
+        <Navbar isTransparent forceTransparent={isTransparent} theme="founders" />
 
       <div ref={containerRef}>
         {/* Hero Section - Inspired by Campfire */}
@@ -275,6 +278,7 @@ export default function RevShareVsAffiliates() {
           source="product-revshare-vs-networks"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }

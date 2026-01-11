@@ -7,6 +7,7 @@ import Image from "next/image";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FoundersHeroCards } from "@/components/founders/founders-hero-visuals";
@@ -92,16 +93,18 @@ export default function ForFounders() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-emerald-500/10">
-      <Navbar
-        isTransparent
-        forceTransparent={navbarForceTransparent}
-        isDashboardHidden={navbarHideDashboard}
-        theme="founders"
-      />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-emerald-500/10">
+        <Navbar
+          isTransparent
+          forceTransparent={navbarForceTransparent}
+          isDashboardHidden={navbarHideDashboard}
+          theme="founders"
+        />
 
-      {/* Hero with Reveal Animation */}
-      <div ref={containerRef} className="relative h-[250vh]">
+        {/* Hero with Reveal Animation */}
+        <div ref={containerRef} className="relative h-[250vh]">
         <div className="sticky top-0 h-screen w-full overflow-hidden bg-[#0B1710]">
           {/* Background circles with parallax and expansion entrance */}
           <motion.div style={{ opacity: heroOpacity }} className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -330,6 +333,7 @@ export default function ForFounders() {
           source="for-founders"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }

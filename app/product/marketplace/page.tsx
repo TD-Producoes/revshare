@@ -6,6 +6,7 @@ import React, { useRef } from "react";
 import { ArrowUpRight, Globe, Users, BarChart3, Search, LayoutGrid, Zap, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ForceLightMode } from "@/components/force-light-mode";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
@@ -34,8 +35,10 @@ export default function MarketplacePage() {
   });
 
   return (
-    <main className="relative bg-white selection:bg-[#8B5CF6]/20">
-      <Navbar isTransparent forceTransparent={isTransparent} theme="marketplace" />
+    <>
+      <ForceLightMode />
+      <main className="relative bg-white selection:bg-[#8B5CF6]/20">
+        <Navbar isTransparent forceTransparent={isTransparent} theme="marketplace" />
 
       <div ref={containerRef}>
         {/* Hero Section */}
@@ -243,6 +246,7 @@ export default function MarketplacePage() {
           source="product-marketplace"
         />
       )}
-    </main>
+      </main>
+    </>
   );
 }
