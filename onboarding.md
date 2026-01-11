@@ -1,11 +1,11 @@
-Great question. Onboarding is where a lot of marketplace products win or lose users — especially **two-sided** ones like RevShare.
+Onboarding is where a lot of marketplace products win or lose users — especially **two-sided** ones like RevShare.
 
 Below is a **clear, role-aware onboarding flow** that:
 
-* minimizes friction
-* teaches the mental model early
-* gets users to a “first win” fast
-* doesn’t overwhelm with setup too early
+- minimizes friction
+- teaches the mental model early
+- gets users to a “first win” fast
+- doesn’t overwhelm with setup too early
 
 I’ll split it into:
 
@@ -28,18 +28,18 @@ Before steps, lock these rules:
 2. **Progressive disclosure**
    Do NOT ask for:
 
-   * Stripe
-   * RevenueCat
-   * payout details
-     until the user *understands why*
+   - Stripe
+   - RevenueCat
+   - payout details
+     until the user _understands why_
 
 3. **First win < 5 minutes**
 
-   * Creator: publish a project (even draft)
-   * Marketer: apply to or save a project
+   - Creator: publish a project (even draft)
+   - Marketer: apply to or save a project
 
 4. **Explain before you ask**
-   Every “technical” step needs a *why* sentence.
+   Every “technical” step needs a _why_ sentence.
 
 ---
 
@@ -51,14 +51,14 @@ Before steps, lock these rules:
 
 Buttons:
 
-* 🏗️ **I’m a Creator** (I want marketers to promote my product)
-* 📣 **I’m a Marketer** (I want to promote products)
+- 🏗️ **I’m a Creator** (I want marketers to promote my product)
+- 📣 **I’m a Marketer** (I want to promote products)
 
 Small copy:
 
 > You can switch roles later.
 
-This decision personalizes *everything* that follows.
+This decision personalizes _everything_ that follows.
 
 ---
 
@@ -80,20 +80,21 @@ Get them to:
 
 Fields:
 
-* Project name
-* Website / app URL
-* Business type:
+- Project name
+- Website / app URL
+- Business type:
 
-  * SaaS
-  * Shopify / Ecommerce
-  * Mobile app
-* Public or private (default: Public)
+  - SaaS
+  - Shopify / Ecommerce
+  - Mobile app
+
+- Public or private (default: Public)
 
 Why this works:
 
-* No Stripe
-* No RevenueCat
-* No fear yet
+- No Stripe
+- No RevenueCat
+- No fear yet
 
 CTA:
 **Continue**
@@ -108,8 +109,8 @@ CTA:
 
 Fields:
 
-* Commission percentage (e.g. 20%)
-* Refund window (e.g. 30 days)
+- Commission percentage (e.g. 20%)
+- Refund window (e.g. 30 days)
 
 Inline explanation:
 
@@ -117,12 +118,12 @@ Inline explanation:
 
 Optional (collapsed):
 
-* Allow performance rewards (toggle)
+- Allow performance rewards (toggle)
 
 CTA:
 **Preview program**
 
-This step teaches the *RevShare philosophy*.
+This step teaches the _RevShare philosophy_.
 
 ---
 
@@ -134,9 +135,9 @@ This step teaches the *RevShare philosophy*.
 
 Options:
 
-* ✔ List in public directory
-* ✔ Show revenue stats publicly (optional)
-* ✔ Accept applications automatically or manually
+- ✔ List in public directory
+- ✔ Show revenue stats publicly (optional)
+- ✔ Accept applications automatically or manually
 
 Short reassurance:
 
@@ -157,9 +158,9 @@ CTA:
 
 Options:
 
-* Connect Stripe
-* Connect RevenueCat
-* Skip for now
+- Connect Stripe
+- Connect RevenueCat
+- Skip for now
 
 Copy:
 
@@ -167,9 +168,9 @@ Copy:
 
 This step should be:
 
-* skippable
-* clearly explained
-* not blocking exploration
+- skippable
+- clearly explained
+- not blocking exploration
 
 ---
 
@@ -177,8 +178,8 @@ This step should be:
 
 Only prompt this when:
 
-* commissions exist
-* or before first payout
+- commissions exist
+- or before first payout
 
 > “Before paying marketers, connect your Stripe account.”
 
@@ -202,20 +203,21 @@ Get them to:
 
 Fields:
 
-* Display name
-* Country
-* Promotion type:
+- Display name
+- Country
+- Promotion type:
 
-  * Content
-  * Ads
-  * Email
-  * Social
-* Public profile: on/off (default: on)
+  - Content
+  - Ads
+  - Email
+  - Social
+
+- Public profile: on/off (default: on)
 
 Why:
 
-* Enables discovery
-* Sets expectations for creators
+- Enables discovery
+- Sets expectations for creators
 
 CTA:
 **Continue**
@@ -230,14 +232,14 @@ CTA:
 
 Show:
 
-* Public project directory
-* Filters: commission, category, revenue
-* “Trending” / “New” sections
+- Public project directory
+- Filters: commission, category, revenue
+- “Trending” / “New” sections
 
 Encourage:
 
-* Save a project
-* Apply to a project
+- Save a project
+- Apply to a project
 
 CTA:
 **Apply to a program** or **Save & continue**
@@ -260,9 +262,9 @@ Your link / coupon → customer → revenue → commission → payout
 
 Key points:
 
-* First-touch attribution (or your chosen rule)
-* Refund windows
-* When earnings become available
+- First-touch attribution (or your chosen rule)
+- Refund windows
+- When earnings become available
 
 This builds trust early.
 
@@ -277,8 +279,8 @@ Do NOT force Stripe immediately.
 
 Trigger this when:
 
-* earnings > $0
-* or marketer clicks “Earnings”
+- earnings > $0
+- or marketer clicks “Earnings”
 
 Screen:
 
@@ -296,11 +298,11 @@ This is critical.
 
 ### 🚫 Do NOT ask early for:
 
-* Stripe Connect
-* Bank account
-* RevenueCat API keys
-* Webhooks
-* Tax info
+- Stripe Connect
+- Bank account
+- RevenueCat API keys
+- Webhooks
+- Tax info
 
 Early onboarding should feel:
 
@@ -314,17 +316,17 @@ Show a checklist in dashboard after onboarding:
 
 ### Creator checklist
 
-* ✔ Create project
-* ⏳ Connect revenue source
-* ⏳ Review first application
-* ⏳ Set up payouts
+- ✔ Create project
+- ⏳ Connect revenue source
+- ⏳ Review first application
+- ⏳ Set up payouts
 
 ### Marketer checklist
 
-* ✔ Create profile
-* ✔ Apply to first program
-* ⏳ Share first link
-* ⏳ Connect payout method
+- ✔ Create profile
+- ✔ Apply to first program
+- ⏳ Share first link
+- ⏳ Connect payout method
 
 This keeps users moving without modal fatigue.
 
@@ -334,15 +336,15 @@ This keeps users moving without modal fatigue.
 
 > **Onboarding should explain the rules of the game before asking users to play.**
 
-You’re building a *financial marketplace* — clarity beats speed.
+You’re building a _financial marketplace_ — clarity beats speed.
 
 ---
 
 If you want next, I can:
 
-* design **exact onboarding screens & copy**
-* define **when to branch Stripe vs RevenueCat**
-* help you build **tooltips vs full screens**
-* or design **onboarding analytics** (drop-off points)
+- design **exact onboarding screens & copy**
+- define **when to branch Stripe vs RevenueCat**
+- help you build **tooltips vs full screens**
+- or design **onboarding analytics** (drop-off points)
 
 Just tell me which one to do next.

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormInput } from "@/components/shared/form-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -134,43 +134,34 @@ export function SignupForm({
               </span>
             </div>
             <div className="grid gap-5">
-              <div className="grid gap-2">
-                <Label htmlFor="name" className="text-sm font-semibold text-black">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoFocus
-                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email" className="text-sm font-semibold text-black">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password" className="text-sm font-semibold text-black">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Create a password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40"
-                />
-              </div>
+              <FormInput
+                id="name"
+                label="Full Name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={setName}
+                required
+                autoFocus
+              />
+              <FormInput
+                id="email"
+                label="Email"
+                type="email"
+                placeholder="m@example.com"
+                value={email}
+                onChange={setEmail}
+                required
+              />
+              <FormInput
+                id="password"
+                label="Password"
+                type="password"
+                placeholder="Create a password"
+                value={password}
+                onChange={setPassword}
+                required
+              />
               <div className="grid gap-2">
                 <Label htmlFor="role" className="text-sm font-semibold text-black">I want to join as</Label>
                 <Select value={role} onValueChange={(v: "founder" | "marketer") => setRole(v)}>

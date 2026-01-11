@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FormInput } from "@/components/shared/form-input";
 import { Label } from "@/components/ui/label";
 
 export function LoginForm({
@@ -92,19 +92,16 @@ export function LoginForm({
               </span>
             </div>
             <div className="grid gap-5">
-              <div className="grid gap-2">
-                <Label htmlFor="email" className="text-sm font-semibold text-black">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoFocus
-                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40"
-                />
-              </div>
+              <FormInput
+                id="email"
+                label="Email"
+                type="email"
+                placeholder="m@example.com"
+                value={email}
+                onChange={setEmail}
+                required
+                autoFocus
+              />
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password" className="text-sm font-semibold text-black">Password</Label>
@@ -115,14 +112,15 @@ export function LoginForm({
                     Forgot your password?
                   </Link>
                 </div>
-                <Input
+                <FormInput
                   id="password"
+                  label=""
                   type="password"
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={setPassword}
                   required
-                  className="h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40"
+                  hideLabel
                 />
               </div>
               {error && (
