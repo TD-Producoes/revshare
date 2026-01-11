@@ -191,7 +191,7 @@ export function Footer({ className }: { className?: string }) {
               rel="noopener noreferrer"
               className="underline hover:text-amber-600 transition-colors"
             >
-              buildPublic.dev
+              BuildPublic.dev
             </a>
           </p>
         </div>

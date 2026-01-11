@@ -187,7 +187,7 @@ export function Navbar({
                     navigationMenuTriggerStyle(),
                     "!bg-transparent transition-all duration-300 rounded-2xl",
                     isTransparentActive
-                      ? "text-white hover:text-white hover:!bg-white/10"
+                      ? "text-white/80 hover:text-white hover:!bg-white/10"
                       : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
                   )}>
                     <Link href="/marketers">
@@ -246,7 +246,7 @@ export function Navbar({
                               ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
                               : theme === 'marketplace'
                                 ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
-                                : "bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-none px-4 h-8"
                     : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-lg px-3 shadow-amber-500/10"
                 )}
                 asChild
