@@ -268,7 +268,7 @@ export default function RevShareVsAffiliateMarketing() {
         </div>
       </section>
 
-      <Footer className="bg-white" />
+      <Footer className="bg-white" theme="affiliate-marketing" />
       {waitlistMode && (
         <WaitlistModal
           isOpen={isWaitlistModalOpen}
