@@ -11,13 +11,19 @@ import { OnboardingStepWrapper } from "@/components/onboarding/onboarding-step-w
 import { SelectableCard } from "@/components/onboarding/selectable-card";
 import { OnboardingInput } from "@/components/onboarding/onboarding-input";
 import { BulletList } from "@/components/onboarding/bullet-list";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { X, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Types for onboarding state
 type Role = "founder" | "marketer" | null;
 
 type FounderData = {
+  name: string;
   projectName: string;
+  projectDescription: string;
+  projectIcon: string | null;
   website: string;
   businessType: string;
   isPublic: boolean;
@@ -42,7 +48,10 @@ export default function OnboardingNewPage() {
   const [marketerStep, setMarketerStep] = useState(1);
 
   const [founderData, setFounderData] = useState<FounderData>({
+    name: "",
     projectName: "",
+    projectDescription: "",
+    projectIcon: null,
     website: "",
     businessType: "",
     isPublic: true,
@@ -62,7 +71,7 @@ export default function OnboardingNewPage() {
   });
 
   // Founder flow constants
-  const FOUNDER_STEPS_COUNT = 4; // Project basics → Commission → Publish → Connect revenue (skippable)
+  const FOUNDER_STEPS_COUNT = 6; // Name → Project website (optional) → Project details → Commission → Publish → Connect revenue (skippable)
 
   // Marketer flow constants
   const MARKETER_STEPS_COUNT = 3; // Profile → Discover → Attribution
@@ -127,6 +136,48 @@ export default function OnboardingNewPage() {
         return (
           <>
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
+              Set up your first project.
+            </h2>
+            <p className="mb-8 text-lg text-muted-foreground tracking-tight font-bold">
+              Start with just your website. We&apos;ll help you retrieve the rest later.
+            </p>
+            <BulletList
+              items={[
+                "Just your website URL",
+                "We&apos;ll fetch details automatically",
+                "You can skip and add later",
+              ]}
+              className="space-y-4"
+            />
+          </>
+        );
+      }
+
+      if (founderStep === 3) {
+        return (
+          <>
+            <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
+              Project details.
+            </h2>
+            <p className="mb-8 text-lg text-muted-foreground tracking-tight font-bold">
+              Add basic information about your project. All fields are editable.
+            </p>
+            <BulletList
+              items={[
+                "Icon helps with recognition",
+                "Name and description are editable",
+                "You can update these anytime",
+              ]}
+              className="space-y-4"
+            />
+          </>
+        );
+      }
+
+      if (founderStep === 4) {
+        return (
+          <>
+            <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
               Define your revenue-share terms.
             </h2>
             <p className="mb-8 text-lg text-muted-foreground tracking-tight font-bold">
@@ -144,7 +195,7 @@ export default function OnboardingNewPage() {
         );
       }
 
-      if (founderStep === 3) {
+      if (founderStep === 5) {
         return (
           <>
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
@@ -165,7 +216,7 @@ export default function OnboardingNewPage() {
         );
       }
 
-      if (founderStep === 4) {
+      if (founderStep === 6) {
         return (
           <>
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
@@ -332,72 +383,25 @@ export default function OnboardingNewPage() {
           <OnboardingProgress currentStep={founderStep} totalSteps={FOUNDER_STEPS_COUNT} />
 
           <OnboardingStepWrapper currentStep={founderStep}>
-            {/* Founder Step 1: Project basics */}
+            {/* Founder Step 1: Name */}
             {founderStep === 1 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
-                  <h1 className="text-2xl font-black tracking-tight">Create your first project</h1>
+                  <h1 className="text-2xl font-black tracking-tight">What&apos;s your name?</h1>
                   <p className="text-sm text-muted-foreground tracking-tight font-bold">
-                    Start with the basics. No technical setup required.
+                    Let&apos;s start with the basics. Project setup is optional.
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <OnboardingInput
-                    id="projectName"
-                    label="Project name"
-                    value={founderData.projectName}
-                    onChange={(value) => updateFounderData({ projectName: value })}
-                    placeholder="Acme Analytics"
+                    id="name"
+                    label="Full name"
+                    value={founderData.name}
+                    onChange={(value) => updateFounderData({ name: value })}
+                    placeholder="John Doe"
                     autoFocus
                   />
-
-                  <OnboardingInput
-                    id="website"
-                    label="Website / app URL"
-                    value={founderData.website}
-                    onChange={(value) => updateFounderData({ website: value })}
-                    placeholder="https://..."
-                  />
-
-                  <div className="space-y-2">
-                    <p className="ml-3 text-[11px] font-black text-muted-foreground">
-                      Business type
-                    </p>
-                    <div className="grid gap-2.5 sm:grid-cols-1">
-                      {[
-                        { id: "saas", label: "SaaS", color: "bg-blue-50/50" },
-                        { id: "ecommerce", label: "Shopify / Ecommerce", color: "bg-green-50/50" },
-                        { id: "mobile", label: "Mobile app", color: "bg-orange-50/50" },
-                      ].map((item) => (
-                        <SelectableCard
-                          key={item.id}
-                          selected={founderData.businessType === item.id}
-                          onClick={() => updateFounderData({ businessType: item.id })}
-                          color={item.color}
-                          className="p-4"
-                        >
-                          <p className="font-black text-base tracking-tight">{item.label}</p>
-                        </SelectableCard>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-5 bg-secondary/30 rounded-2xl">
-                    <div className="space-y-0.5">
-                      <p className="font-black tracking-tight text-sm">Public project</p>
-                      <p className="text-[11px] text-muted-foreground font-bold">
-                        Visible in public directory
-                      </p>
-                    </div>
-                    <Checkbox
-                      checked={founderData.isPublic}
-                      onCheckedChange={(checked) =>
-                        updateFounderData({ isPublic: checked as boolean })
-                      }
-                      className="size-6 rounded-md bg-background data-[state=checked]:bg-primary shadow-none"
-                    />
-                  </div>
                 </div>
 
                 <OnboardingNavigation
@@ -411,14 +415,141 @@ export default function OnboardingNewPage() {
                     }
                   }}
                   onNext={() => setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT))}
-                  disableNext={!founderData.projectName || !founderData.businessType}
+                  disableNext={!founderData.name}
                   allowBackOnFirstStep={true}
                 />
               </div>
             )}
 
-            {/* Founder Step 2: Commission & rules */}
+            {/* Founder Step 2: Project website (optional) */}
             {founderStep === 2 && (
+              <div className="space-y-5">
+                <div className="space-y-1.5">
+                  <h1 className="text-2xl font-black tracking-tight">Set up your first project</h1>
+                  <p className="text-sm text-muted-foreground tracking-tight font-bold">
+                    Just your website URL. We&apos;ll retrieve the remaining info later. You can skip this step.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <OnboardingInput
+                    id="website"
+                    label="Website / app URL"
+                    value={founderData.website}
+                    onChange={(value) => updateFounderData({ website: value })}
+                    placeholder="https://..."
+                    autoFocus
+                  />
+                </div>
+
+                <OnboardingNavigation
+                  currentStep={founderStep}
+                  totalSteps={FOUNDER_STEPS_COUNT}
+                  onBack={() => setFounderStep((prev) => Math.max(prev - 1, 1))}
+                  onNext={() => setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT))}
+                  nextButtonText="Continue"
+                />
+              </div>
+            )}
+
+            {/* Founder Step 3: Project details */}
+            {founderStep === 3 && (
+              <div className="space-y-5">
+                <div className="space-y-1.5">
+                  <h1 className="text-2xl font-black tracking-tight">Project details</h1>
+                  <p className="text-sm text-muted-foreground tracking-tight font-bold">
+                    Add basic information about your project. All fields are editable.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="icon" className="text-sm font-semibold text-black">
+                      Project icon
+                    </Label>
+                    <div className="flex items-start gap-4">
+                      {founderData.projectIcon ? (
+                        <div className="relative group">
+                          <img
+                            src={founderData.projectIcon}
+                            alt="Project icon"
+                            className="h-20 w-20 rounded-xl object-cover border-2 border-black/10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateFounderData({ projectIcon: null })}
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="icon-upload"
+                          className="h-20 w-20 rounded-xl border-2 border-dashed border-black/10 bg-white flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                        >
+                          <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
+                          <span className="text-xs text-muted-foreground">Upload</span>
+                          <input
+                            id="icon-upload"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  updateFounderData({
+                                    projectIcon: reader.result as string,
+                                  });
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <OnboardingInput
+                    id="projectName"
+                    label="Project name"
+                    value={founderData.projectName}
+                    onChange={(value) => updateFounderData({ projectName: value })}
+                    placeholder="Acme Analytics"
+                    autoFocus={!founderData.projectIcon}
+                  />
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description" className="text-sm font-semibold text-black">
+                      Short description
+                    </Label>
+                    <Textarea
+                      id="description"
+                      placeholder="A brief description of your project..."
+                      value={founderData.projectDescription}
+                      onChange={(e) =>
+                        updateFounderData({ projectDescription: e.target.value })
+                      }
+                      className="min-h-[100px] rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40 resize-none"
+                    />
+                  </div>
+                </div>
+
+                <OnboardingNavigation
+                  currentStep={founderStep}
+                  totalSteps={FOUNDER_STEPS_COUNT}
+                  onBack={() => setFounderStep((prev) => Math.max(prev - 1, 1))}
+                  onNext={() => setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT))}
+                  nextButtonText="Continue"
+                />
+              </div>
+            )}
+
+            {/* Founder Step 4: Commission & rules */}
+            {founderStep === 4 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <h1 className="text-2xl font-black tracking-tight">
@@ -431,16 +562,16 @@ export default function OnboardingNewPage() {
 
                 <div className="space-y-5">
                   <div className="space-y-2">
-                    <p className="ml-3 text-[11px] font-black text-muted-foreground">
+                    <Label htmlFor="commission" className="text-sm font-semibold text-black">
                       Commission percentage
-                    </p>
-                    <div className="flex items-center justify-between px-2 text-2xl font-black tracking-tight">
-                      <span>Reward</span>
+                    </Label>
+                    <div className="flex items-center justify-between px-2 text-xl font-black tracking-tight">
                       <span className="text-primary tabular-nums">
                         {founderData.commissionPercentage}%
                       </span>
                     </div>
                     <input
+                      id="commission"
                       type="range"
                       min="5"
                       max="50"
@@ -449,19 +580,19 @@ export default function OnboardingNewPage() {
                       onChange={(e) =>
                         updateFounderData({ commissionPercentage: parseInt(e.target.value) })
                       }
-                      className="w-full h-2 bg-secondary rounded-full appearance-none cursor-pointer accent-primary"
+                      className="w-full h-1 bg-secondary rounded-full appearance-none cursor-pointer accent-primary"
                     />
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground font-black px-2">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold px-2">
                       <span>5%</span>
                       <span>50%</span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <p className="ml-3 text-[11px] font-black text-muted-foreground">
+                    <Label htmlFor="refundWindow" className="text-sm font-semibold text-black">
                       Refund window
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    </Label>
+                    <div className="grid grid-cols-4 gap-2.5">
                       {["7", "14", "30", "60"].map((days) => (
                         <SelectableCard
                           key={days}
@@ -472,11 +603,11 @@ export default function OnboardingNewPage() {
                               ? "bg-primary"
                               : "bg-secondary/20"
                           }
-                          height="h-20"
+                          height="h-16"
                           className="flex flex-col items-center justify-center"
                         >
-                          <p className="text-3xl font-black tabular-nums">{days}</p>
-                          <p className="text-[11px] font-black opacity-80">Days</p>
+                          <p className="text-xl font-black tabular-nums">{days}</p>
+                          <p className="text-[10px] font-black opacity-80">Days</p>
                         </SelectableCard>
                       ))}
                     </div>
@@ -519,8 +650,8 @@ export default function OnboardingNewPage() {
               </div>
             )}
 
-            {/* Founder Step 3: Publish & discovery */}
-            {founderStep === 3 && (
+            {/* Founder Step 5: Publish & discovery */}
+            {founderStep === 5 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <h1 className="text-2xl font-black tracking-tight">
@@ -567,9 +698,9 @@ export default function OnboardingNewPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <p className="ml-3 text-[11px] font-black text-muted-foreground">
+                    <Label htmlFor="approval" className="text-sm font-semibold text-black">
                       Application approval
-                    </p>
+                    </Label>
                     <div className="space-y-2.5">
                       <SelectableCard
                         selected={founderData.acceptApplicationsAuto}
@@ -618,8 +749,8 @@ export default function OnboardingNewPage() {
               </div>
             )}
 
-            {/* Founder Step 4: Connect revenue source (skippable) */}
-            {founderStep === 4 && (
+            {/* Founder Step 6: Connect revenue source (skippable) */}
+            {founderStep === 6 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <h1 className="text-2xl font-black tracking-tight">
@@ -719,18 +850,10 @@ export default function OnboardingNewPage() {
                     autoFocus
                   />
 
-                  <OnboardingInput
-                    id="country"
-                    label="Country"
-                    value={marketerData.country}
-                    onChange={(value) => updateMarketerData({ country: value })}
-                    placeholder="United States"
-                  />
-
                   <div className="space-y-2">
-                    <p className="ml-3 text-[11px] font-black text-muted-foreground">
+                    <Label htmlFor="promotionType" className="text-sm font-semibold text-black">
                       Promotion type
-                    </p>
+                    </Label>
                     <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
                       {[
                         { id: "content", label: "Content", color: "bg-blue-50/50" },
