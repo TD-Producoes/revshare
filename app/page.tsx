@@ -830,7 +830,7 @@ export default function Home() {
           )}
 
           {/* Public Snapshot Stats */}
-          <section className="py-12 border-y border-gray-50 bg-gray-50/20">
+          {/* <section className="py-12 border-y border-gray-50 bg-gray-50/20">
             <div className="mx-auto max-w-5xl px-6">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
                 {[
@@ -846,7 +846,7 @@ export default function Home() {
                 ))}
               </div>
             </div>
-          </section>
+          </section> */}
 
           <LifecycleSection />
 
@@ -1277,9 +1277,9 @@ export default function Home() {
                   </Button>
                 )}
               </div>
-              <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
+              {/* <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
                 Join the growing network of 1,200+ partners
-              </p>
+              </p> */}
             </div>
           </section>
 
