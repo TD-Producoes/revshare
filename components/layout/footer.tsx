@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { PieChart, ArrowRight, Heart } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isWaitlistMode } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -46,6 +46,7 @@ export function Footer({
   const colors = themeColors[theme];
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const waitlistMode = isWaitlistMode();
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,21 +171,23 @@ export function Footer({
             </div>
 
             {/* Legal Links */}
-            <div>
-              <h3 className="text-sm font-bold text-white/80 mb-4 uppercase tracking-wider">Legal</h3>
-              <ul className="space-y-3">
-                <li>
-                  <Link href="/terms" className="text-sm text-white/70 hover:text-white transition-colors">
-                    Terms and Conditions
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy" className="text-sm text-white/70 hover:text-white transition-colors">
-                    Privacy Policy
-                  </Link>
-                </li>
-              </ul>
-            </div>
+            {!waitlistMode && (
+              <div>
+                <h3 className="text-sm font-bold text-white/80 mb-4 uppercase tracking-wider">Legal</h3>
+                <ul className="space-y-3">
+                  <li>
+                    <Link href="/terms" className="text-sm text-white/70 hover:text-white transition-colors">
+                      Terms and Conditions
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/privacy" className="text-sm text-white/70 hover:text-white transition-colors">
+                      Privacy Policy
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Newsletter Section */}
