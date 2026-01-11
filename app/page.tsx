@@ -1035,10 +1035,9 @@ export default function Home() {
                 </div>
 
                 {/* Row 2 */}
-                {/* Smart Coupons */}
                 <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
                   <div>
-                    <h3 className="font-bold text-lg mb-2 text-black">Smart Coupons</h3>
+                    <h3 className="font-bold text-lg mb-2 text-black">Tracking Codes</h3>
                     <p className="text-sm text-black/40">Unique codes & attribution.</p>
                   </div>
                   <div className="mt-auto">
@@ -1082,18 +1081,14 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Enterprise Infrastructure Section */}
           <section className="py-24 bg-white border-t border-gray-50">
             <div className="mx-auto max-w-5xl px-6">
               <div className="mb-16 max-w-2xl">
-                <Badge variant="outline" className="rounded-full border-amber-500/10 bg-amber-50/50 px-3 py-1 text-[11px] font-bold text-amber-600 mb-4">
-                  Enterprise Ready
-                </Badge>
                 <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black mb-4">
                   Built for global scale
                 </h2>
                 <p className="text-black text-lg leading-relaxed">
-                  Connect your entire revenue ecosystem and monitor every conversion touchpoint with automated compliance and real-time intelligence.
+                  Connect your entire revenue and monitor every sales with automated compliance and real-time intelligence.
                 </p>
               </div>
 
@@ -1114,9 +1109,9 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="px-8 pb-8 flex flex-col flex-1">
-                    <h3 className="font-bold text-[17px] text-black mb-2">Automated Partner Approvals</h3>
+                    <h3 className="font-bold text-[17px] text-black mb-2">Auto-approve the good ones</h3>
                     <p className="text-[13px] text-black/40 leading-relaxed">
-                      Set custom qualification rules and let our engine handle the vetting. Only high-quality partners get through.
+                      Set your rules. We filter. Only serious marketers get in.
                     </p>
                   </div>
                 </div>
@@ -1137,9 +1132,9 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="px-8 pb-8 flex flex-col flex-1">
-                    <h3 className="font-bold text-[17px] text-black mb-2">Immutable Compliance Ledger</h3>
+                    <h3 className="font-bold text-[17px] text-black mb-2">Audit Trail You Can Trust</h3>
                     <p className="text-[13px] text-black/40 leading-relaxed">
-                      Every event, payout, and contract is signed and stored in a cryptographically secure audit trail.
+                      Every sale, payout, and agreement is logged. Forever. Can't be changed.
                     </p>
                   </div>
                 </div>
@@ -1174,7 +1169,7 @@ export default function Home() {
           <section className="py-24 bg-white">
             <div className="mx-auto max-w-5xl px-6 text-center">
               <h2 className="text-3xl md:text-4xl font-semibold  leading-[1.05] text-black text-balance mb-12">
-                Expert marketers get <br /> ahead with Rewards
+                Reward marketers <br /> who actually sell
               </h2>
 
               <div className="bg-[#F9F8F6] rounded-[2.5rem] p-8 md:p-12 flex flex-col lg:flex-row items-center gap-10 text-left">
@@ -1230,19 +1225,19 @@ export default function Home() {
                 {/* Right Content */}
                 <div className="w-full lg:w-1/2 space-y-6">
                   <h3 className="text-xl md:text-2xl font-bold tracking-tight text-black leading-tight">
-                    How Milestone-based Incentives drive genuine performance.
+                    Give bonuses when they hit targets.
                   </h3>
 
                   <div className="space-y-4">
                     <ul className="space-y-4">
                       <li>
                         <p className="text-sm text-gray-600 leading-relaxed">
-                          <strong className="text-black">Milestone-based:</strong> Create performance rewards that automatically unlock when marketers hit specific revenue targets.
+                          <strong className="text-black">Milestone-based:</strong> Hit $10k? Get a bonus. It's automatic.
                         </p>
                       </li>
                       <li>
                         <p className="text-sm text-gray-600 leading-relaxed">
-                          <strong className="text-black">Systematic growth:</strong> Auto-generated coupons and perks keep your army of sellers motivated and engaged.
+                          <strong className="text-black">Consistent growth:</strong> Auto-generated coupons and perks keep your army of sellers motivated and engaged.
                         </p>
                       </li>
                       <li>
