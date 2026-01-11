@@ -1,0 +1,11 @@
+-- AlterTable
+ALTER TABLE "MetricsSnapshot" ADD COLUMN     "affiliateCustomersDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "affiliatePurchasesCountDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "affiliateRevenueDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "affiliateShareOwedDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "directPurchasesCountDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "mrrDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "platformFeeDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "purchasesCountDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "totalRevenueDay" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "uniqueCustomersDay" INTEGER NOT NULL DEFAULT 0;

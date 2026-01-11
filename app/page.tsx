@@ -1,851 +1,1291 @@
 "use client";
 
-import Link from "next/link";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
+import { LifecycleSection } from "@/components/sections/lifecycle-section";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Navbar } from "@/components/layout/navbar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/data/metrics";
+import { useMarketersLeaderboard } from "@/lib/hooks/marketer";
+import { useProjectsLeaderboard } from "@/lib/hooks/projects";
+import { getAvatarFallback, isAnonymousName } from "@/lib/utils/anonymous";
+import { motion, useMotionValueEvent, useScroll, useTransform } from "framer-motion";
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
   ArrowUpRight,
-  Globe2,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
-  Users,
-  Zap,
-  CreditCard,
-  DollarSign,
-  FileCheck,
-  BarChart3,
-  Layers,
-  Wallet,
-  FileSignature,
-  PlugZap,
-  Ticket,
-  LineChart,
-  PieChart,
-  ReceiptText,
-  Banknote,
+  CheckCircle2,
 } from "lucide-react";
+import { cn, isWaitlistMode } from "@/lib/utils";
+import Image from "next/image";
+import Link from "next/link";
+import React, { useRef, useState } from "react";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
+import { PreviewLeaderboards } from "@/components/preview/preview-leaderboards";
 
-const topMarketers = [
-  {
-    name: "Lara Finch",
-    focus: "B2B SaaS",
-    revenue: 84500,
-    commission: 16900,
-    activeProjects: 6,
-    trend: "+12%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Lara",
-  },
-  {
-    name: "Koji Tanaka",
-    focus: "E-commerce",
-    revenue: 78200,
-    commission: 15640,
-    activeProjects: 8,
-    trend: "+5%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Koji",
-  },
-  {
-    name: "Tiago Mark",
-    focus: "Dev Tools",
-    revenue: 61200,
-    commission: 12240,
-    activeProjects: 4,
-    trend: "+8%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Tiago",
-  },
-  {
-    name: "Elena Rodriguez",
-    focus: "Web3",
-    revenue: 58900,
-    commission: 11780,
-    activeProjects: 5,
-    trend: "+22%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Elena",
-  },
-  {
-    name: "Ava Chen",
-    focus: "Creator Apps",
-    revenue: 49800,
-    commission: 9960,
-    activeProjects: 5,
-    trend: "+24%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Ava",
-  },
-  {
-    name: "Marcus Reid",
-    focus: "Fintech",
-    revenue: 45200,
-    commission: 9040,
-    activeProjects: 3,
-    trend: "+15%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Marcus",
-  },
-  {
-    name: "Sarah Lee",
-    focus: "AI Tools",
-    revenue: 38500,
-    commission: 7700,
-    activeProjects: 5,
-    trend: "+2%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah",
-  },
-  {
-    name: "David Kim",
-    focus: "HealthTech",
-    revenue: 32100,
-    commission: 6420,
-    activeProjects: 4,
-    trend: "+9%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=David",
-  },
-  {
-    name: "Priya Patel",
-    focus: "EdTech",
-    revenue: 28400,
-    commission: 5680,
-    activeProjects: 2,
-    trend: "+18%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Priya",
-  },
-  {
-    name: "Sam Wilson",
-    focus: "Marketing",
-    revenue: 22100,
-    commission: 4420,
-    activeProjects: 3,
-    trend: "+4%",
-    image: "https://api.dicebear.com/9.x/avataaars/svg?seed=Sam",
-  },
-];
+// Preview mode flag - set to false when launching with real data
+const IS_PREVIEW_MODE = true;
 
-const topProjects = [
-  {
-    name: "SocialPulse",
-    category: "Social Media",
-    revenue: 150000,
-    marketers: 12,
-    commission: 30000,
-    growth: "+20%",
-    image: "https://ui-avatars.com/api/?name=SP&background=EC4899&color=fff",
-  },
-  {
-    name: "CryptoTracker",
-    category: "Web3",
-    revenue: 130500,
-    marketers: 20,
-    commission: 26100,
-    growth: "+40%",
-    image: "https://ui-avatars.com/api/?name=CT&background=F59E0B&color=fff",
-  },
-  {
-    name: "BuildPublic",
-    category: "Creator Tools",
-    revenue: 121000,
-    marketers: 9,
-    commission: 24200,
-    growth: "+15%",
-    image: "https://ui-avatars.com/api/?name=BP&background=2563EB&color=fff",
-  },
-  {
-    name: "Designify",
-    category: "Design Tools",
-    revenue: 110200,
-    marketers: 15,
-    commission: 22040,
-    growth: "+12%",
-    image: "https://ui-avatars.com/api/?name=DS&background=8B5CF6&color=fff",
-  },
-  {
-    name: "TaskMaster",
-    category: "Productivity",
-    revenue: 95400,
-    marketers: 8,
-    commission: 19080,
-    growth: "+5%",
-    image: "https://ui-avatars.com/api/?name=TM&background=10B981&color=fff",
-  },
-  {
-    name: "Flowdesk Pro",
-    category: "Sales Enablement",
-    revenue: 88200,
-    marketers: 7,
-    commission: 17640,
-    growth: "+7%",
-    image: "https://ui-avatars.com/api/?name=FP&background=7C3AED&color=fff",
-  },
-  {
-    name: "HealthDash",
-    category: "Healthcare",
-    revenue: 80100,
-    marketers: 10,
-    commission: 16020,
-    growth: "+15%",
-    image: "https://ui-avatars.com/api/?name=HD&background=EF4444&color=fff",
-  },
-  {
-    name: "MetricForge",
-    category: "Analytics",
-    revenue: 73400,
-    marketers: 5,
-    commission: 14680,
-    growth: "+32%",
-    image: "https://ui-avatars.com/api/?name=MF&background=059669&color=fff",
-  },
-  {
-    name: "CodeStream",
-    category: "Dev Tools",
-    revenue: 60500,
-    marketers: 6,
-    commission: 12100,
-    growth: "+8%",
-    image: "https://ui-avatars.com/api/?name=CS&background=6366F1&color=fff",
-  },
-  {
-    name: "LearnEasy",
-    category: "Education",
-    revenue: 45200,
-    marketers: 5,
-    commission: 9040,
-    growth: "+3%",
-    image: "https://ui-avatars.com/api/?name=LE&background=F97316&color=fff",
-  },
-];
-
-const highlights = [
-  {
-    title: "Creator-first payouts",
-    description:
-      "Control when commissions move. Keep cash flow predictable while affiliates stay motivated.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Marketer rankings",
-    description:
-      "Promote top performers with social proof and live revenue visibility across your network.",
-    icon: TrendingUp,
-  },
-  {
-    title: "Global-ready referrals",
-    description:
-      "Track coupon performance and pay across borders with a clean Stripe Connect trail.",
-    icon: Globe2,
-  },
-];
-
-export default function Home() {
+// Skeleton Loader for Leaderboard Tables
+function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number, columns?: number }) {
   return (
-    <main className="relative min-h-screen bg-background selection:bg-primary/10">
-      <Navbar />
-      {/* Vertical Lines Background Pattern */}
-      <div className="pointer-events-none absolute inset-0 z-0 mx-auto max-w-7xl border-x border-border/40">
-        <div className="absolute inset-y-0 left-1/3 w-px bg-border/40" />
-        <div className="absolute inset-y-0 right-1/3 w-px bg-border/40" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.02)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)]" />
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <tr key={i} className="border-b border-black/[0.03] last:border-none">
+          {Array.from({ length: columns }).map((_, j) => (
+            <td key={j} className="py-5 px-2">
+              <Skeleton className={j === 0 ? "h-4 w-4" : j === 1 ? "h-5 w-40" : "h-5 w-20 ms-auto"} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+// Browser Preview component for consistency
+function BrowserPreview() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 1, delay: 1.2, ease: [0.21, 0.47, 0.32, 0.98] }}
+      className="w-full max-w-5xl mx-auto px-4 pointer-events-none"
+    >
+      <div className="bg-white rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.1)] border border-border/40 overflow-hidden transform-gpu transition-all duration-700">
+        {/* macOS Browser Header */}
+        <div className="h-10 bg-gray-50/50 border-b border-border/40 flex items-center px-4 gap-2">
+          <div className="flex gap-1.5 grayscale opacity-40">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
+            <div className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+          </div>
+          <div className="flex-1 flex justify-center">
+            <div className="h-6 w-1/2 bg-white rounded-md border border-border/40 flex items-center px-3 gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-500/20" />
+              <div className="h-1.5 w-24 bg-gray-100 rounded-full" />
+            </div>
+          </div>
+        </div>
+        {/* Main Dashboard Image */}
+        <div className="relative aspect-[16/10] overflow-hidden bg-white">
+          <Image
+            src="/founder-dashboard-light.png"
+            alt="Dashboard Preview"
+            fill
+            className="object-cover object-left-top scale-100"
+            priority
+          />
+        </div>
       </div>
+      <div className="mt-12 text-center">
+        <h2 className="text-2xl font-bold text-black tracking-tight mb-2">Manage your entire partner ecosystem.</h2>
+      </div>
+    </motion.div>
+  );
+}
 
-      {/* Hero Section */}
-      <section className="relative z-10 overflow-hidden border-b border-border/40 pb-20 pt-24 lg:pt-32">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background opacity-50" />
+// Helper to get a consistent pastel color based on a string
+const getPastelColor = (name: string) => {
+  const colors = [
+    'bg-blue-50',
+    'bg-green-50',
+    'bg-purple-50',
+    'bg-rose-50',
+    'bg-amber-50',
+    'bg-cyan-50',
+    'bg-indigo-50',
+    'bg-teal-50',
+  ];
+  const textColors = [
+    'text-blue-600',
+    'text-green-600',
+    'text-purple-600',
+    'text-rose-600',
+    'text-amber-600',
+    'text-cyan-600',
+    'text-indigo-600',
+    'text-teal-600',
+  ];
+  const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  return { bg: colors[index], text: textColors[index] };
+};
 
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
-            <div className="max-w-2xl space-y-8">
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 hover:text-primary transition-colors"
-                >
-                  <Sparkles className="mr-2 h-3.5 w-3.5" />
-                  Marketplace Intelligence v2.0
-                </Badge>
+// Revenue Squares Visual Component (separate component to use hooks properly)
+function RevenueSquaresVisual({ progress }: { progress: any }) {
+  // Sample data for each square: MRR values and chart data
+  const squaresData = [
+    { mrr: 45200, chartData: [32, 38, 42, 45, 48, 45] },
+    { mrr: 12800, chartData: [10, 12, 11, 13, 12, 13] },
+    { mrr: 89500, chartData: [65, 72, 78, 82, 85, 90] },
+    { mrr: 23400, chartData: [18, 20, 22, 21, 23, 23] },
+  ];
+
+  // Create transformed values (hooks can be used here since this is a component)
+  const scale = useTransform(progress, [0.2, 0.4], [0.8, 1]);
+  const opacity = useTransform(progress, [0.2, 0.4], [0, 1]);
+
+  return (
+    <div className="relative w-full max-w-sm aspect-square bg-amber-50/30 rounded-full flex items-center justify-center p-12">
+      <div className="grid grid-cols-2 gap-4 w-full h-full">
+        {squaresData.map((data, i) => (
+          <motion.div
+            key={i}
+            style={{
+              scale,
+              opacity
+            }}
+            className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col"
+          >
+            {/* Stripe Reference Badge */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                <span className="text-[9px] font-bold text-gray-600 uppercase tracking-wider">Stripe</span>
               </div>
+              <div className="h-1 w-1 rounded-full bg-emerald-500" />
+            </div>
 
-              <h1 className="text-5xl font-semibold tracking-tighter sm:text-6xl md:text-7xl">
-                Scale with an <br />
-                <span className="bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500 bg-clip-text text-transparent">
-                  Army of Sellers
-                </span>
-              </h1>
-
-              <p className="max-w-xl text-lg text-muted-foreground leading-relaxed">
-                The first marketplace that connects high-quality SaaS products with expert marketers. Makers build. Marketers sell. Everyone wins.
+            {/* MRR Number */}
+            <div className="mb-2">
+              <p className="text-[10px] text-gray-400 font-medium mb-0.5">MRR</p>
+              <p className="text-lg font-bold text-black leading-none">
+                ${(data.mrr / 1000).toFixed(0)}k
               </p>
-
-              <div className="flex flex-wrap items-center gap-4">
-                <Button size="lg" className="h-12 rounded-full px-8 text-base shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/20 transition-all" asChild>
-                  <Link href="/signup">
-                    Get started
-                    <ArrowUpRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button size="lg" variant="ghost" className="h-12 rounded-full px-8 text-base hover:bg-primary/5" asChild>
-                  <Link href="/login">View live demo</Link>
-                </Button>
-              </div>
             </div>
 
-            {/* Hero Card / Snapshot - stylized like a dashboard widget */}
-            <div className="relative mt-8 lg:mt-0">
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-primary/20 to-secondary/20 blur-2xl opacity-50" />
-              <Card className="relative overflow-hidden border-border/50 bg-background/60 shadow-2xl backdrop-blur-xl">
-                <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
-                  <div className="space-y-1">
-                    <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Weekly Snapshot</CardTitle>
-                    <CardDescription>Live revenue metrics</CardDescription>
-                  </div>
-                  <Badge variant="secondary" className="font-mono text-xs">LIVE</Badge>
-                </CardHeader>
-                <CardContent className="space-y-8">
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <span className="text-sm text-muted-foreground">Creator Payouts</span>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold tracking-tight">{formatCurrency(38200)}</span>
-                        <span className="text-xs font-medium text-emerald-500 flex items-center">
-                          <TrendingUp className="mr-1 h-3 w-3" /> +12%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <span className="text-sm text-muted-foreground">Marketer Earnings</span>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold tracking-tight">{formatCurrency(14650)}</span>
-                        <span className="text-xs font-medium text-emerald-500 flex items-center">
-                          <TrendingUp className="mr-1 h-3 w-3" /> +8%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+            {/* Simple Bar Chart */}
+            <div className="flex-1 flex items-end gap-0.5 mt-auto">
+              {data.chartData.map((height, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ height: 0 }}
+                  animate={{ height: `${height}%` }}
+                  transition={{
+                    delay: 0.3 + (idx * 0.05),
+                    duration: 0.4,
+                    ease: "easeOut"
+                  }}
+                  className="flex-1 bg-gradient-to-t from-amber-500/80 to-amber-400/60 rounded-t-sm min-h-[2px]"
+                />
+              ))}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-                  <div className="rounded-xl bg-card border border-border/50 p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="rounded-full bg-primary/10 p-2 text-primary">
-                        <Zap className="h-4 w-4" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">Top Mover</p>
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-semibold text-foreground">BuildPublic</span> jumped +22% after a new affiliate bundle launch.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+// Revenue Split Visual Component - Shows transaction and automatic money splitting
+function RevenueSplitVisual({ progress }: { progress: any }) {
+  // Create transformed values for animations (finish earlier in scroll)
+  const transactionY = useTransform(progress, [0.2, 0.4], [100, 0]);
+  const transactionOpacity = useTransform(progress, [0.2, 0.35], [0, 1]);
+  const recipientsOpacity = useTransform(progress, [0.35, 0.5], [0, 1]);
+  const recipientsY = useTransform(progress, [0.35, 0.5], [20, 0]);
+
+  // Sample split data with explicit color classes
+  const totalAmount = 1000;
+  const splits = [
+    { label: "Founder", amount: 700, bgColor: "bg-emerald-500/20", barColor: "bg-gradient-to-r from-emerald-500 to-emerald-400" },
+    { label: "Marketer", amount: 250, bgColor: "bg-amber-500/20", barColor: "bg-gradient-to-r from-amber-500 to-amber-400" },
+    { label: "Platform", amount: 50, bgColor: "bg-blue-500/20", barColor: "bg-gradient-to-r from-blue-500 to-blue-400" },
+  ];
+
+  return (
+    <div className="relative w-full max-w-sm aspect-square bg-emerald-50/30 rounded-full flex items-center justify-center p-8 overflow-hidden">
+      <div className="w-full h-full flex flex-col items-center justify-center gap-4 relative">
+        {/* Transaction Card - Shows incoming payment */}
+        <motion.div
+          style={{
+            y: transactionY,
+            opacity: transactionOpacity
+          }}
+          className="w-full max-w-[280px] bg-white rounded-2xl border border-gray-100 p-4 z-10"
+        >
+          {/* Stripe Connect Badge */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wider">Stripe Connect</span>
+            </div>
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </div>
+
+          {/* Transaction Details */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-gray-500 font-medium">Payment Received</span>
+              <span className="text-[11px] text-emerald-600 font-bold">✓ Verified</span>
+            </div>
+            <div className="pt-2 border-t border-gray-100">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] text-gray-400">Amount</span>
+                <span className="text-xl font-bold text-black">${totalAmount.toLocaleString()}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </motion.div>
 
-      {/* Tables Section (Now immediately after Hero) */}
-      <section className="relative z-10 border-b border-border/40 py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-12 flex items-center justify-between">
-            <h2 className="text-3xl font-semibold tracking-tight">Leaderboard</h2>
-            <Button variant="outline" className="gap-2">
-              View full report <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
-            {/* Marketers Table */}
-            <Card className="overflow-hidden bg-background/50 border-border/50 shadow-sm">
-              <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
-                <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Top Marketers</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="grid grid-cols-[1fr_120px_120px] gap-4 px-5 py-2 border-b border-border/40 bg-muted/10 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  <div>Rank & Details</div>
-                  <div className="text-right">Revenue</div>
-                  <div className="text-right">Commission</div>
-                </div>
-                <div className="divide-y divide-border/40">
-                  {topMarketers.map((marketer, i) => (
-                    <div
-                      key={marketer.name}
-                      className="group grid grid-cols-[1fr_120px_120px] gap-4 items-center p-5 hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background text-sm font-bold text-muted-foreground shadow-sm">
-                          {i < 9 ? `0${i + 1}` : i + 1}
-                        </div>
-                        <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarImage src={marketer.image} alt={marketer.name} />
-                          <AvatarFallback>{marketer.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">{marketer.name}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="truncate">{marketer.focus}</span>
-                            <span>•</span>
-                            <span className="truncate">{marketer.activeProjects} projects</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-foreground">{formatCurrency(marketer.revenue)}</p>
-                        <p className="text-xs text-muted-foreground">{marketer.trend}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(marketer.commission)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-4 bg-muted/10 border-t border-border/40">
-                  <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground justify-between group">
-                    View all marketers <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Projects List */}
-            <Card className="overflow-hidden bg-background/50 border-border/50 shadow-sm h-fit">
-              <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
-                <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Top Projects</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="flex items-center justify-between px-5 py-2 border-b border-border/40 bg-muted/10 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  <div>Rank & Details</div>
-                  <div className="text-right">Revenue & Growth</div>
-                </div>
-                <div className="divide-y divide-border/40">
-                  {topProjects.map((project, i) => (
-                    <Link
-                      href={`/projects/${project.name.toLowerCase().replace(/\s+/g, '-')}`}
-                      key={project.name}
-                      className="group flex items-center justify-between p-5 hover:bg-muted/30 transition-colors block"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-sm font-bold text-muted-foreground shadow-sm">
-                          {i < 9 ? `0${i + 1}` : i + 1}
-                        </div>
-                        <Avatar className="h-10 w-10 rounded-lg">
-                          <AvatarImage src={project.image} alt={project.name} />
-                          <AvatarFallback className="rounded-lg">{project.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{project.name}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{project.category}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {project.marketers}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-foreground">{formatCurrency(project.revenue)}</p>
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400">{project.growth}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                <div className="p-4 bg-muted/10 border-t border-border/40">
-                  <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground justify-between group">
-                    View all projects <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Public Snapshot - High Level Stats */}
-      <section className="relative z-10 border-b border-border/40 bg-muted/10 py-16">
-        <div className="mx-auto max-w-7xl px-6 text-center">
-          <p className="mb-8 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-            Trusted by modern teams
-          </p>
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-            {[
-              { label: "Total Revenue Shared", value: "$4.2M+" },
-              { label: "Active Partners", value: "850+" },
-              { label: "Payouts Processed", value: "12k+" },
-              { label: "Avg. Commission", value: "22%" },
-            ].map((stat) => (
-              <div key={stat.label} className="space-y-2">
-                <h3 className="text-3xl font-bold tracking-tight md:text-4xl text-foreground">
-                  {stat.value}
-                </h3>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+        {/* Split Recipients - Shows money being distributed */}
+        <motion.div
+          style={{
+            opacity: recipientsOpacity,
+            y: recipientsY
+          }}
+          className="w-full grid grid-cols-3 gap-2"
+        >
+          {splits.map((split, i) => (
+            <motion.div
+              key={i}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{
+                delay: 0.6 + (i * 0.1),
+                duration: 0.3
+              }}
+              className="bg-white rounded-xl border border-gray-100 p-3 flex flex-col items-center"
+            >
+              <div className={`h-1.5 w-full rounded-full mb-2 ${split.bgColor}`}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{
+                    delay: 0.8 + (i * 0.1),
+                    duration: 0.5,
+                    ease: "easeOut"
+                  }}
+                  className={`h-full rounded-full ${split.barColor}`}
+                />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              <p className="text-[9px] text-gray-500 font-medium mb-1">{split.label}</p>
+              <p className="text-sm font-bold text-black">${split.amount}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    </div>
+  );
+}
 
-      {/* Bento Grid Features */}
-      <section className="relative z-10 py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-16 max-w-2xl text-center mx-auto">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl mb-4">
-              Everything you need to <span className="text-primary">scale revenue</span>
+// Helper components for the features sections
+function FeatureSection({
+  title,
+  description,
+  visual,
+  reversed = false
+}: {
+  badge: string,
+  title: string,
+  description: string,
+  items: string[],
+  visual: (progress: any) => React.ReactNode,
+  reversed?: boolean
+}) {
+  const sectionRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+
+  return (
+    <section ref={sectionRef} className="relative z-10 py-10 overflow-hidden">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className={`space-y-6 ${reversed ? 'lg:order-2' : 'lg:order-1'}`}>
+            <h2 className="text-[28px] md:text-[32px] font-semibold tracking-tight leading-tight text-black text-balance">
+              {title}
             </h2>
-            <p className="text-lg text-muted-foreground">
-              A complete toolkit for managing partnerships, payouts, and performance.
+            <p className="text-black text-lg max-w-xl mx-auto">
+              {description}
             </p>
           </div>
+          <div className={`relative flex items-center ${reversed ? 'lg:order-1 justify-start' : 'lg:order-2 justify-end'}`}>
+            {visual(scrollYProgress)}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+// Card to fullscreen transition
+function ExpandingCardSection() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"],
+  });
 
-            {/* 1. Creator Payout Console (Wide) */}
-            <Card className="col-span-1 md:col-span-2 overflow-hidden border-border/50 bg-background/50 backdrop-blur-sm group hover:border-primary/50 transition-colors h-[280px] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <Wallet className="h-4 w-4 text-primary" />
-                  Creator Payout Console
-                </CardTitle>
-                <CardDescription className="line-clamp-1">
-                  Track what’s owed, ready, and paid with receipts.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 p-4 pt-0 min-h-0">
-                <div className="h-full w-full bg-card border border-border/40 rounded-lg shadow-sm flex flex-col overflow-hidden">
-                  <div className="flex justify-between items-center p-3 border-b border-border/40 bg-muted/20">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-xs font-semibold text-foreground">Processing Batch #4092</span>
+  const scale = useTransform(scrollYProgress, [0.3, 0.6], [0.95, 1]);
+  const borderRadius = useTransform(scrollYProgress, [0.4, 0.6], ["2rem", "0rem"]);
+  const marginSide = useTransform(scrollYProgress, [0.3, 0.6], ["3%", "0%"]);
+
+  return (
+    <section ref={containerRef} className="relative z-20 py-16 lg:py-32 bg-background">
+      <motion.div
+        style={{
+          scale,
+          borderRadius,
+          marginLeft: marginSide,
+          marginRight: marginSide,
+        }}
+        className="relative min-h-[60vh] flex flex-col items-center justify-center overflow-hidden bg-[#24211A] text-white p-8 text-center"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,191,0,0.03)_0%,_transparent_70%)] opacity-40" />
+
+        <div className="relative z-10 max-w-3xl mx-auto space-y-8">
+          <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/60">
+            Scale your infrastructure
+          </Badge>
+
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
+            Stop coding payouts. <br />
+            Start <span className="text-amber-400">scaling revenue.</span>
+          </h2>
+
+          <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto leading-relaxed">
+            The marketplace infrastructure for the next generation of SaaS.
+            Automated, compliant, and ready for your army of sellers.
+          </p>
+
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
+            <Button size="lg" className="h-12 rounded-full px-8 bg-amber-500 text-base text-white hover:bg-amber-600 font-bold border-none transition-all" asChild>
+              <Link href="/solutions/for-founders">
+                I&apos;m Founder
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
+              <Link href="/solutions/for-marketers">
+                I&apos;m Marketer
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+
+// Hero Dashboard Components
+function HeroDashboardCards() {
+  return (
+    <div className="flex flex-col md:flex-row items-end gap-5 max-w-5xl w-full px-4 mb-[-20px] scale-75 md:scale-80 transform-gpu">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 text-left shadow-2xl backdrop-blur-lg"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Revenue Flow</div>
+          <div className="text-[10px] text-amber-500 font-bold">+12.4%</div>
+        </div>
+        <div className="flex items-end gap-1 h-32 mb-4">
+          {[0.5, 0.7, 0.6, 0.9, 1, 0.8].map((h, i) => (
+            <motion.div
+              key={i}
+              initial={{ height: 0 }}
+              animate={{ height: `${h * 100}%` }}
+              transition={{ duration: 1, delay: 0.8 + (i * 0.1), ease: [0.21, 0.47, 0.32, 0.98] }}
+              className="w-2 bg-amber-500/40 rounded-t-sm"
+            />
+          ))}
+          <div className="h-full flex-1" />
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="w-full md:w-[260px] bg-white/10 border border-white/10 rounded-xl p-6 flex flex-col items-center shadow-2xl z-10"
+      >
+        <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Total Shared</div>
+        <div className="text-[11px] text-white/20 mb-4">Marketplace Volume</div>
+        <div className="relative h-24 w-24 mb-4">
+          <svg className="h-full w-full" viewBox="0 0 36 36">
+            <path className="text-white/5" strokeDasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="2.5" />
+            <motion.path
+              initial={{ strokeDasharray: "0, 100" }}
+              animate={{ strokeDasharray: "85, 100" }}
+              transition={{ duration: 1.5, delay: 1, ease: "easeInOut" }}
+              className="text-amber-500"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.5, delay: 1.5 }}
+              className="h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_10px_#f59e0b]"
+            />
+          </div>
+        </div>
+        <div className="text-3xl font-bold text-white">$4.2M</div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 text-left shadow-2xl backdrop-blur-lg"
+      >
+        <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-4">Active Distribution</div>
+        <div className="space-y-3">
+          {[
+            { label: "Makers", value: "420", color: "text-white/80" },
+            { label: "Marketers", value: "850+", color: "text-amber-500" },
+            { label: "Integrations", value: "12", color: "text-white/80" }
+          ].map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 1.2 + (i * 0.1) }}
+              className="flex justify-between items-center text-[11px]"
+            >
+              <span className="text-white/40">{item.label}</span>
+              <span className={cn(item.color, "font-medium")}>{item.value}</span>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// Helper function to generate avatar URL
+function getProjectAvatarUrl(name: string, logoUrl: string | null): string {
+  if (logoUrl) return logoUrl;
+  const initials = name.split(" ").map((word) => word[0]).join("").toUpperCase().slice(0, 2);
+  const colors = ["EC4899", "F59E0B", "2563EB", "8B5CF6", "10B981"];
+  const colorIndex = name.length % colors.length;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${colors[colorIndex]}&color=fff`;
+}
+
+export default function Home() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [navbarForceTransparent, setNavbarForceTransparent] = useState(true);
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+
+  const {
+    data: topProjects = [],
+    isLoading: isLoadingProjects,
+  } = useProjectsLeaderboard();
+  const { data: topMarketers = [], isLoading: isLoadingMarketers } =
+    useMarketersLeaderboard();
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
+
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
+  const heroContentScale = useTransform(scrollYProgress, [0, 0.4], [1, 0.95]);
+  const heroPointerEvents = useTransform(scrollYProgress, [0, 0.4], ["auto", "none"] as any);
+
+  // Browser Animation Transforms
+  const browserY = useTransform(scrollYProgress, [0, 0.7], ["55vh", "0vh"]);
+  const browserScale = useTransform(scrollYProgress, [0, 0.7], [0.9, 1]);
+  const browserOpacity = useTransform(scrollYProgress, [0, 0.3], [0.6, 1]);
+  const backgroundColor = useTransform(scrollYProgress, [0.4, 0.7], ["#1F1C16", "#ffffff"]);
+
+  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    if (latest > 0.6) {
+      setNavbarForceTransparent(false);
+    } else {
+      setNavbarForceTransparent(true);
+    }
+  });
+
+  return (
+    <>
+      <main className="relative bg-white selection:bg-primary/10">
+        <Navbar isTransparent forceTransparent={navbarForceTransparent} />
+
+        {/* Hero with Scroll Transition */}
+        <div ref={containerRef} className="relative h-[250vh]">
+          <motion.div
+            style={{ backgroundColor }}
+            className="sticky top-0 h-screen w-full overflow-hidden"
+          >
+            {/* Background circles with parallax and expansion entrance */}
+            <motion.div
+              style={{ opacity: useTransform(scrollYProgress, [0, 0.4], [1, 0]) }}
+              className="absolute inset-0 pointer-events-none overflow-hidden"
+            >
+              {/* Outer Circle */}
+              <motion.div
+                style={{ y: useTransform(scrollYProgress, [0, 0.4], [0, -100]) }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 1.5, delay: 0.4, ease: [0.21, 0.47, 0.32, 0.98] }}
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[120vw] h-[120vw] rounded-full border border-white/[0.02] border-dashed"
+              />
+              {/* Middle Circle */}
+              <motion.div
+                style={{ y: useTransform(scrollYProgress, [0, 0.4], [0, -60]) }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 1.5, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[90vw] rounded-full border border-white/[0.03]"
+              />
+              {/* Inner Circle */}
+              <motion.div
+                style={{ y: useTransform(scrollYProgress, [0, 0.4], [0, -30]) }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 1.5, delay: 0, ease: [0.21, 0.47, 0.32, 0.98] }}
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[65vw] h-[65vw] rounded-full border border-white/[0.04]"
+              />
+            </motion.div>
+
+            {/* Hero Content */}
+            <motion.div
+              style={{
+                opacity: heroOpacity,
+                scale: heroContentScale,
+                pointerEvents: heroPointerEvents,
+              }}
+              className="flex flex-col items-center mx-auto max-w-4xl px-6 relative z-40 pt-32 md:pt-48"
+            >
+              <div className="flex flex-col items-center space-y-8 text-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                >
+                  <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/40 tracking-wide uppercase">
+                    Launch Special — Only 5% Platform Fee
+                  </Badge>
+                </motion.div>
+
+                <motion.h1
+                  className="text-[44px] md:text-[62px] font-semibold tracking-tighter leading-[1.05] text-white text-balance"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    visible: {
+                      transition: {
+                        staggerChildren: 0.08,
+                        delayChildren: 0.2
+                      }
+                    }
+                  }}
+                >
+                  {"Scale fast with an".split(" ").map((word, i) => (
+                    <motion.span
+                      key={i}
+                      className="inline-block mr-[0.2em] last:mr-0"
+                      variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        visible: { opacity: 1, y: 0 }
+                      }}
+                      transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+                    >
+                      {word}
+                    </motion.span>
+                  ))}
+                  <br />
+                  <span className="text-amber-400">
+                    {"Army of Sellers.".split(" ").map((word, i) => (
+                      <motion.span
+                        key={i}
+                        className="inline-block mr-[0.2em] last:mr-0"
+                        variants={{
+                          hidden: { opacity: 0, y: 20 },
+                          visible: { opacity: 1, y: 0 }
+                        }}
+                        transition={{ duration: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+                      >
+                        {word}
+                      </motion.span>
+                    ))}
+                  </span>
+                </motion.h1>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
+                  className="max-w-xl text-base md:text-lg text-white/40 leading-relaxed mx-auto"
+                >
+                  A marketplace that connects high-quality Indie Hackers products with expert marketers. Makers build. Marketers sell. Everyone wins.
+                </motion.p>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 1, ease: [0.21, 0.47, 0.32, 0.98] }}
+                  className="flex flex-wrap items-center justify-center gap-4 pt-2"
+                >
+                  <Button
+                    size="lg"
+                    className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold border-none transition-all"
+                    onClick={() => setIsWaitlistOpen(true)}
+                  >
+                    Join the Waitlist
+                    <ArrowUpRight className="ml-1.5 h-4 w-4" />
+                  </Button>
+                  {/* <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
+                    <Link href="/projects">Explore Projects</Link>
+                  </Button> */}
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* BROWSER PREVIEW TRANSITION */}
+            <motion.div
+              style={{
+                y: browserY,
+                scale: browserScale,
+                opacity: browserOpacity
+              }}
+              className="absolute inset-0 flex items-center justify-center z-30 pt-20"
+            >
+              <BrowserPreview />
+            </motion.div>
+          </motion.div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="relative z-40 bg-white">
+
+          {/* Leaderboard Section - Conditional Preview/Live */}
+          {IS_PREVIEW_MODE ? (
+            <PreviewLeaderboards />
+          ) : (
+            <section className="py-24">
+              <div className="mx-auto max-w-7xl px-6">
+                <div className="mb-12 px-4">
+                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black">Leaderboard</h2>
+                </div>
+
+                {/* Side-by-side layout on large screens, stacked on smaller screens */}
+                <div className="flex flex-col lg:flex-row gap-6 lg:gap-4">
+                  {/* Projects Table Card */}
+                  <div className="bg-[#F9F8F6] rounded-[2.5rem] p-6 lg:p-8 flex-1 min-w-0">
+                    <div className="flex items-center justify-between px-2 mb-6">
+                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Top Startups</div>
+                      <Link href="/projects" className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-bold text-xs transition-colors">
+                        Startup Directory <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
-                    <Badge variant="secondary" className="text-[10px] h-5">4 Items</Badge>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-black/5">
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 w-10">#</th>
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60">Startup</th>
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 hidden xl:table-cell">Founder</th>
+                            <th className="text-right pb-4 px-2 text-xs font-bold text-black/60">MRR</th>
+                            <th className="text-right pb-4 px-2 text-xs font-bold text-black/60 w-24">Growth</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-black/[0.03]">
+                          {isLoadingProjects ? (
+                            <TableSkeleton rows={5} columns={5} />
+                          ) : (
+                            topProjects.slice(0, 10).map((project, i) => (
+                              <tr key={project.id} className="group hover:bg-white/50 transition-colors">
+                                <td className="py-3 px-2">
+                                  <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
+                                </td>
+                                <td className="py-3 px-2">
+                                  <Link href={`/projects/${project.id}`} className="flex items-center gap-3">
+                                    <div className={`h-8 w-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.name || "Project").bg}`}>
+                                      <Avatar className="h-full w-full border-none shadow-none rounded-none">
+                                        <AvatarImage src={getProjectAvatarUrl(project.name, project.logoUrl)} />
+                                        <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(project.name || "Project").text}`}>
+                                          {getAvatarFallback(project.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className={`font-bold text-[14px] leading-tight text-black flex items-center gap-2 ${isAnonymousName(project.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
+                                        {project.name}
+                                        {project.revenue > 10000 && (
+                                          <Badge className="bg-amber-100/80 text-amber-700 hover:bg-amber-100 border-none text-[8px] font-bold px-1.5 h-4">top</Badge>
+                                        )}
+                                      </p>
+                                      <p className="text-[11px] text-gray-500 truncate max-w-[120px] lg:max-w-[150px] xl:max-w-[180px] mt-0.5">
+                                        {project.description || "Leading the future of digital innovation."}
+                                      </p>
+                                    </div>
+                                  </Link>
+                                </td>
+                                <td className="py-3 px-2 hidden xl:table-cell">
+                                  {project.founder ? (
+                                    <Link href={`/founders/${project.founder.id}`} className="flex items-center gap-2">
+                                      <div className={`h-5 w-5 rounded-lg overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.founder.name || "U").bg}`}>
+                                        <Avatar className="h-full w-full border-none shadow-none rounded-none">
+                                          <AvatarImage src={project.founder.image || undefined} />
+                                          <AvatarFallback className={`text-[8px] font-extrabold ${getPastelColor(project.founder.name || "U").text}`}>
+                                            {getAvatarFallback(project.founder.name ?? "U")}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      </div>
+                                      <span className="text-[13px] font-medium text-gray-700">{project.founder.name}</span>
+                                    </Link>
+                                  ) : (
+                                    <span className="text-[13px] text-gray-300">-</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  <p className="font-bold text-[14px] text-black tracking-tight">{formatCurrency(project.revenue)}</p>
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${project.growth.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
+                                    {project.growth.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                    {project.growth.replace(/[+-]/, "")}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <div className="flex-1 p-2 space-y-2 overflow-hidden">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">LF</div>
-                          <div className="space-y-0.5">
-                            <div className="h-2 w-16 bg-muted/60 rounded" />
-                            <div className="h-1.5 w-10 bg-muted/40 rounded" />
+
+                  {/* Marketers Table Card */}
+                  <div className="bg-[#F9F8F6] rounded-[2.5rem] p-6 lg:p-8 flex-1 min-w-0">
+                    <div className="flex items-center justify-between px-2 mb-6">
+                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Top Marketers</div>
+                      <Link href="/marketers" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 font-bold text-xs transition-colors">
+                        Marketers <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-black/5">
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 w-10">#</th>
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60">Marketer</th>
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 hidden xl:table-cell">Focus</th>
+                            <th className="text-right pb-4 px-2 text-xs font-bold text-black/60">Revenue</th>
+                            <th className="text-right pb-4 px-2 text-xs font-bold text-black/60 w-24">Trend</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-black/[0.03]">
+                          {isLoadingMarketers ? (
+                            <TableSkeleton rows={5} columns={5} />
+                          ) : (
+                            topMarketers.slice(0, 5).map((marketer, i) => (
+                              <tr key={marketer.id} className="group hover:bg-white/50 transition-colors">
+                                <td className="py-3 px-2">
+                                  <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
+                                </td>
+                                <td className="py-3 px-2">
+                                  <Link href={`/marketers/${marketer.id}`} className="flex items-center gap-3">
+                                    <div className={`h-8 w-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(marketer.name || "Anonymous").bg}`}>
+                                      <Avatar className="h-full w-full border-none shadow-none rounded-none">
+                                        <AvatarImage src={marketer.image || undefined} />
+                                        <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(marketer.name || "Anonymous").text}`}>
+                                          {getAvatarFallback(marketer.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </div>
+                                    <div>
+                                      <p className={`font-bold text-[14px] leading-tight text-black ${isAnonymousName(marketer.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
+                                        {marketer.name || "Anonymous"}
+                                      </p>
+                                    </div>
+                                  </Link>
+                                </td>
+                                <td className="py-3 px-2 hidden xl:table-cell">
+                                  <p className="text-[12px] text-gray-600 font-medium">{marketer.focus}</p>
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  <p className="font-bold text-[14px] text-black tracking-tight">{formatCurrency(marketer.revenue)}</p>
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${marketer.trend.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
+                                    {marketer.trend.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                    {marketer.trend.replace(/[+-]/, "")}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Public Snapshot Stats */}
+          <section className="py-12 border-y border-gray-50 bg-gray-50/20">
+            <div className="mx-auto max-w-5xl px-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                {[
+                  { label: "Revenue Shared", value: "$4.2M+" },
+                  { label: "Active Partners", value: "850+" },
+                  { label: "Payouts Processed", value: "12k+" },
+                  { label: "Avg. Commission", value: "22%" },
+                ].map((stat) => (
+                  <div key={stat.label} className="text-center">
+                    <p className="text-2xl font-bold text-black tracking-tight">{stat.value}</p>
+                    <p className="text-[10px] font-bold text-gray-400 mt-1">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <LifecycleSection />
+
+          {/* Dynamic Features mapped to FeatureSection */}
+          <FeatureSection
+            badge="Marketplace"
+            title="Direct access to verified SaaS revenue."
+            description="Stop guessing which products are actually making money. Browse projects with real Stripe revenue data and locked-in commission rates. No fluff, no fake numbers."
+            items={["Verified data", "Direct connections", "Zero fees"]}
+            visual={(progress) => <RevenueSquaresVisual progress={progress} />}
+          />
+
+          <FeatureSection
+            reversed
+            badge="Compliance"
+            title="Global scaling. Zero extra paperwork."
+            description="Revenue is automatically split at the source. No more manual invoicing, no more chasing partners for payments. Stripe Connect handles the complexity so you can focus on building."
+            items={["Automated payouts", "Tax compliance", "Global reach"]}
+            visual={(progress) => <RevenueSplitVisual progress={progress} />}
+          />
+
+          {/* Bento Features Grid */}
+          <section className="py-24 bg-white">
+            <div className="mx-auto max-w-5xl px-6">
+              <div className="text-center mb-16">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black mb-4">
+                  Everything you need to scale revenue
+                </h2>
+                <p className="text-black text-lg max-w-xl mx-auto">
+                  A complete toolkit for managing partnerships, payouts, and performance.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Founder Payout Console */}
+                <div className="md:col-span-2 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg mb-2 text-black">Founder Payout Console</h3>
+                    <p className="text-sm text-black/40">Track what&apos;s owed, ready, and paid with receipts.</p>
+                  </div>
+                  {/* macOS Window */}
+                  <div className="mt-8 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    {/* macOS Window Title Bar */}
+                    <div className="bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center gap-2">
+                      <div className="flex gap-1.5">
+                        <div className="h-3 w-3 rounded-full bg-red-500" />
+                        <div className="h-3 w-3 rounded-full bg-yellow-500" />
+                        <div className="h-3 w-3 rounded-full bg-green-500" />
+                      </div>
+                      <div className="flex-1 text-center">
+                        <span className="text-[11px] text-gray-600 font-medium">Payouts</span>
+                      </div>
+                    </div>
+
+                    {/* Window Content - Image */}
+                    <div className="bg-white overflow-hidden">
+                      <Image
+                        src="/payouts-dashboard.png"
+                        alt="Founder Payout Console - Payouts Dashboard"
+                        width={1200}
+                        height={800}
+                        className="w-full h-auto"
+                        priority
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contracting */}
+                <div className="md:col-span-2 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg mb-1 text-black">Contracting</h3>
+                    <p className="text-sm text-black/40">Approve contracts and set commissions.</p>
+                  </div>
+                  {/* Contract Document */}
+                  <div className="mt-8 bg-white rounded-xl p-3 border border-gray-200 flex flex-col gap-2 relative overflow-hidden flex-1">
+                    {/* Approved Badge */}
+                    <div className="absolute top-3 right-3">
+                      <div className="bg-emerald-100/80 text-emerald-700 border border-emerald-200 text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="h-2 w-2" />
+                        APPROVED
+                      </div>
+                    </div>
+
+                    {/* Contract Header */}
+                    <div className="border-b border-gray-100 pb-1.5">
+                      <h4 className="text-xs font-bold text-black mb-0.5">Revenue Share Agreement</h4>
+                      <p className="text-[9px] text-gray-400 font-mono">#RS-2025-0428</p>
+                    </div>
+
+                    {/* Contract Terms */}
+                    <div className="space-y-2 flex-1 relative">
+                      {/* Fade out at bottom */}
+                      <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+
+                      <div>
+                        <p className="text-[9px] text-gray-500 mb-0.5">Parties</p>
+                        <div className="text-[10px] text-black space-y-0.5">
+                          <p className="font-medium">Founder: Flowceipt Inc.</p>
+                          <p className="font-medium">Marketer: Tiago Mark</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-[9px] text-gray-500 mb-0.5">Commission Structure</p>
+                        <div className="bg-amber-50 rounded-lg p-1.5 border border-amber-100">
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-[10px] text-gray-600">Commission Rate</span>
+                            <span className="text-base font-bold text-amber-700">25%</span>
+                          </div>
+                          <p className="text-[9px] text-gray-500 mt-0.5">Of all referred revenue</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-[9px] text-gray-500 mb-0.5">Terms</p>
+                        <div className="text-[10px] text-gray-700 space-y-0.5">
+                          <div className="flex items-start gap-1.5">
+                            <div className="h-1 w-1 rounded-full bg-gray-400 mt-1.5 shrink-0" />
+                            <p>Payouts processed monthly</p>
+                          </div>
+                          <div className="flex items-start gap-1.5">
+                            <div className="h-1 w-1 rounded-full bg-gray-400 mt-1.5 shrink-0" />
+                            <p>30-day refund window applies</p>
+                          </div>
+                          <div className="flex items-start gap-1.5">
+                            <div className="h-1 w-1 rounded-full bg-gray-400 mt-1.5 shrink-0" />
+                            <p>Immutable commission structure</p>
                           </div>
                         </div>
-                        <div className="text-xs font-mono font-medium">$420.00</div>
                       </div>
+                    </div>
+
+                    {/* Signatures Section */}
+                    <div className="border-t border-gray-200 pt-2 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-[9px] text-gray-500 mb-0.5">Founder Signature</p>
+                          <div className="flex items-center gap-2">
+                            <div className="h-5 w-14 bg-gray-100 rounded border border-gray-200" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                          </div>
+                        </div>
+                        <div className="flex-1 ml-2">
+                          <p className="text-[9px] text-gray-500 mb-0.5">Marketer Signature</p>
+                          <div className="flex items-center gap-2">
+                            <div className="h-5 w-14 bg-gray-100 rounded border border-gray-200" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stripe Connect */}
+                <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg mb-2 text-black">Stripe Connect</h3>
+                    <p className="text-sm text-black/40">Onboarding for all partners.</p>
+                  </div>
+                  <div className="mt-8 space-y-3">
+                    {/* Connected Partner */}
+                    <div className="bg-white rounded-xl p-3 border border-gray-200 ">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="py-2.5 px-4 bg-yellow-50 rounded-lg border-2 border-yellow-200 text-center">
+                            <span className="font-bold text-yellow-600 text-base">Tiago Mark</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 text-[10px]">
+                        <div className="flex items-center justify-between text-gray-600">
+                          <span>Status:</span>
+                          <span className="font-semibold text-emerald-600">Connected</span>
+                        </div>
+                        <div className="flex items-center justify-between text-gray-600">
+                          <span>Stripe ID:</span>
+                          <span className="font-semibold text-black">acct_***</span>
+                        </div>
+                        <div className="flex items-center justify-between text-gray-600">
+                          <span>Connected:</span>
+                          <span className="font-semibold text-black">Dec 15, 2025</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2 */}
+                <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg mb-2 text-black">Tracking Codes</h3>
+                    <p className="text-sm text-black/40">Unique codes & attribution.</p>
+                  </div>
+                  <div className="mt-auto">
+                    <div className="py-4 px-6 bg-white rounded-xl border-2 border-dashed border-amber-500/30 text-center">
+                      <span className="font-bold text-amber-500 tracking-widest text-lg">BMK20</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Public Dashboard */}
+                <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg mb-2 text-black">Public Dashboard</h3>
+                    <p className="text-sm text-black/40">Showcase best performers.</p>
+                  </div>
+                  <div className="mt-auto flex items-end gap-1.5 h-20">
+                    {[40, 70, 45, 90].map((h, i) => (
+                      <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-amber-500/20 rounded-t-lg" />
                     ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* 2. Contracting */}
-            <Card className="overflow-hidden border-border/50 bg-background/50 backdrop-blur-sm group hover:border-primary/50 transition-colors h-[280px] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <FileSignature className="h-4 w-4 text-orange-500" />
-                  Contracting
-                </CardTitle>
-                <CardDescription className="line-clamp-2">
-                  Approve contracts and set commissions.
-                </CardDescription>
-              </CardHeader>
-              <div className="flex-1 p-4 min-h-0 flex flex-col justify-end">
-                <div className="relative w-full h-32 bg-muted/10 rounded-lg border border-border/40 overflow-hidden">
-                  <div className="absolute top-3 left-3 w-16 h-2 bg-muted/40 rounded" />
-                  <div className="absolute top-7 left-3 right-3 space-y-1.5">
-                    <div className="h-1.5 w-full bg-muted/20 rounded" />
-                    <div className="h-1.5 w-4/5 bg-muted/20 rounded" />
-                    <div className="h-1.5 w-full bg-muted/20 rounded" />
+                {/* Revenue & Earnings */}
+                <div className="md:col-span-1 p-8 rounded-[2rem] bg-[#F9F8F6] flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg mb-2 text-black">Revenue & Earnings</h3>
+                    <p className="text-sm text-black/40">Live maker & marketer stats.</p>
                   </div>
-                  <div className="absolute bottom-3 right-3 flex gap-2">
-                    <div className="h-6 w-16 bg-orange-500/10 rounded border border-orange-500/20 flex items-center justify-center text-[10px] text-orange-500 font-medium">Sign</div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* 3. Connect */}
-            <Card className="overflow-hidden border-border/50 bg-background/50 backdrop-blur-sm group hover:border-primary/50 transition-colors h-[280px] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <PlugZap className="h-4 w-4 text-purple-500" />
-                  Stripe Connect
-                </CardTitle>
-                <CardDescription className="line-clamp-2">
-                  Guided onboarding for all partners.
-                </CardDescription>
-              </CardHeader>
-              <div className="flex-1 p-4 min-h-0 flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-gradient-to-t from-purple-500/5 to-transparent" />
-                <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-purple-500/20 group-hover:scale-110 transition-transform duration-500">
-                  <Zap className="h-10 w-10 text-white fill-white" />
-                </div>
-              </div>
-            </Card>
-
-            {/* 4. Smart Coupons */}
-            <Card className="overflow-hidden border-border/50 bg-background/50 backdrop-blur-sm group hover:border-primary/50 transition-colors h-[280px] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <Ticket className="h-4 w-4 text-pink-500" />
-                  Smart Coupons
-                </CardTitle>
-                <CardDescription>
-                  Unique codes & real attribution.
-                </CardDescription>
-              </CardHeader>
-              <div className="flex-1 p-4 min-h-0 flex items-end">
-                <div className="w-full border-2 border-dashed border-pink-500/30 bg-pink-500/5 rounded-lg p-3 flex flex-col items-center justify-center gap-1 group-hover:border-pink-500/50 transition-colors">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Code</span>
-                  <span className="font-mono text-lg font-bold text-pink-500 tracking-wider">BMK20</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* 5. Public Dashboard */}
-            <Card className="overflow-hidden border-border/50 bg-background/50 backdrop-blur-sm group hover:border-primary/50 transition-colors h-[280px] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <LineChart className="h-4 w-4 text-blue-500" />
-                  Public Dashboard
-                </CardTitle>
-                <CardDescription>
-                  Showcase best performers.
-                </CardDescription>
-              </CardHeader>
-              <div className="flex-1 px-6 pb-6 pt-2 flex items-end min-h-0">
-                <div className="flex items-end gap-1.5 h-full w-full max-h-[120px]">
-                  {[40, 65, 50, 80, 55, 90, 70].map((h, i) => (
-                    <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-blue-500/20 rounded-t-sm group-hover:bg-blue-500/40 transition-colors" />
-                  ))}
-                </div>
-              </div>
-            </Card>
-
-            {/* 6. Revenue & Earnings (Merged) */}
-            <Card className="overflow-hidden border-border/50 bg-background/50 backdrop-blur-sm group hover:border-primary/50 transition-colors h-[280px] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <PieChart className="h-4 w-4 text-green-500" />
-                  Revenue & Earnings
-                </CardTitle>
-                <CardDescription>
-                  Live maker & marketer stats.
-                </CardDescription>
-              </CardHeader>
-              <div className="flex-1 p-4 pt-2 flex flex-col gap-3 min-h-0 justify-end">
-                <div className="rounded-md bg-muted/20 p-2.5 border border-border/40">
-                  <div className="text-[10px] text-muted-foreground uppercase mb-0.5">Platform Sales</div>
-                  <div className="text-lg font-bold text-foreground">$124,500</div>
-                </div>
-                <div className="rounded-md bg-emerald-500/10 p-2.5 border border-emerald-500/20">
-                  <div className="text-[10px] text-emerald-600/80 uppercase mb-0.5">My Earnings</div>
-                  <div className="text-lg font-bold text-emerald-500">$2,840.00</div>
-                </div>
-              </div>
-            </Card>
-
-            {/* 7. Auto Ledger */}
-            <Card className="overflow-hidden border-border/50 bg-background/50 backdrop-blur-sm group hover:border-primary/50 transition-colors h-[280px] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <ReceiptText className="h-4 w-4 text-gray-500" />
-                  Auto Ledger
-                </CardTitle>
-                <CardDescription>
-                  Automated audit trail.
-                </CardDescription>
-              </CardHeader>
-              <div className="flex-1 p-4 pt-2 space-y-3 min-h-0 overflow-hidden flex flex-col justify-end">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="flex gap-2">
-                    <div className="h-2 w-2 rounded-full bg-zinc-700 shrink-0 mt-1" />
-                    <div className="h-2 w-full bg-zinc-800/50 rounded-full" />
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works - 3 Step Flow */}
-      <section className="relative z-10 border-y border-border/40 bg-muted/5 py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-16 text-center">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              How it works
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Your partnership engine in three simple steps.
-            </p>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-3">
-            {[
-              {
-                step: "01",
-                title: "Makers List Products",
-                desc: "Connect your Stripe account and set your commission rules (e.g. 20% on first 3 months).",
-                icon: Layers,
-              },
-              {
-                step: "02",
-                title: "Marketers Apply",
-                desc: "Verified experts request to promote your tool. You review their profile and approve.",
-                icon: Users,
-              },
-              {
-                step: "03",
-                title: "Revenue Flows",
-                desc: "Sales are tracked automatically. Commissions are split instantly at the point of sale.",
-                icon: Zap,
-              },
-            ].map((item, i) => (
-              <div key={item.step} className="relative">
-                <div className="group rounded-2xl border border-border/60 bg-background p-8 hover:border-border/80 transition-colors">
-                  <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:scale-110 transition-transform">
-                    <item.icon className="h-6 w-6" />
-                  </div>
-                  <div className="mb-2 font-mono text-sm font-semibold text-primary/50">
-                    STEP {item.step}
-                  </div>
-                  <h3 className="mb-3 text-xl font-semibold">{item.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {item.desc}
-                  </p>
-                </div>
-                {i < 2 && (
-                  <div className="hidden md:block absolute top-1/2 -right-4 translate-x-1/2 -translate-y-1/2 z-10 text-muted-foreground/30">
-                    <ArrowRight className="h-8 w-8" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Trust & Safety */}
-      <section className="relative z-10 py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary">Trust & Safety</Badge>
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Enterprise-grade security without the enterprise friction.
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                We built RevShare on top of Stripe Connect to ensure money flows directly between verified parties. We never hold your funds.
-              </p>
-              <ul className="space-y-4 pt-4">
-                {[
-                  "Stripe Connect integration for direct payouts",
-                  "Full audit logs for every click and conversion",
-                  "Identity verification for all marketers",
-                  "Dispute resolution & refund handling logic"
-                ].map(item => (
-                  <li key={item} className="flex items-center gap-3">
-                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                  <div className="mt-auto space-y-2">
+                    <div className="p-3 bg-white rounded-xl border border-gray-200">
+                      <p className="text-[9px] font-bold text-amber-500/60 mb-1">Sales</p>
+                      <p className="text-sm font-bold text-black">$124.5k</p>
                     </div>
-                    <span className="text-foreground/80">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="relative">
-              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-primary/20 via-blue-500/10 to-purple-500/20 blur-2xl opacity-70" />
-              <div className="relative rounded-2xl border border-border/60 bg-background/50 backdrop-blur-xl p-8 shadow-2xl">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4 border-b border-border/40 pb-6">
-                    <div className="h-10 w-10 bg-[#635BFF] rounded-lg flex items-center justify-center text-white font-bold">S</div>
-                    <div>
-                      <p className="font-semibold">Stripe Verified Partner</p>
-                      <p className="text-xs text-muted-foreground">Payment infrastructure</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-sm p-3 bg-muted/20 rounded-lg">
-                      <span className="text-muted-foreground">Compliance</span>
-                      <span className="flex items-center gap-1.5 text-emerald-600 font-medium text-xs bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                        <ShieldCheck className="h-3 w-3" /> SOC2 Ready
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm p-3 bg-muted/20 rounded-lg">
-                      <span className="text-muted-foreground">Encryption</span>
-                      <span className="text-foreground font-medium">AES-256</span>
+                    <div className="p-3 bg-amber-500 rounded-xl text-white">
+                      <p className="text-[9px] font-bold text-white/60 mb-1">Earnings</p>
+                      <p className="text-sm font-bold text-white">$2.8k</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* Testimonials / Logos */}
-      <section className="relative z-10 border-t border-border/40 bg-muted/5 py-20 overflow-hidden">
-        <div className="mx-auto max-w-7xl px-6 text-center mb-12">
-          <h2 className="text-2xl font-semibold tracking-tight">Joined by fast-growing teams</h2>
-        </div>
-        <div className="relative flex w-full overflow-hidden">
-          {/* Logo Marquee */}
-          <div className="flex w-full animate-in fade-in zoom-in duration-1000 justify-center gap-12 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all">
-            {/* Placeholder Logos represented by text for now, in a real app these would be SVGs */}
-            {['Acme Corp', 'Waave', 'Catalog', 'Sisyphus', 'Quotient', 'Layers'].map(brand => (
-              <div key={brand} className="text-xl font-bold tracking-tight text-foreground/40 hover:text-foreground/80 cursor-default">
-                {brand}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative z-10 border-t border-border/40">
-        <div className="mx-auto max-w-7xl px-6 py-16">
-          <div className="rounded-3xl bg-gradient-to-tr from-muted/50 via-background to-muted/50 p-1 border border-border/40">
-            <div className="rounded-[1.4rem] bg-background p-8 md:p-12 lg:p-16 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-              <div className="space-y-4 max-w-2xl">
-                <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Ready to scale your <span className="text-primary italic">partnerships?</span>
+          <section className="py-24 bg-white border-t border-gray-50">
+            <div className="mx-auto max-w-5xl px-6">
+              <div className="mb-16 max-w-2xl">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black mb-4">
+                  Built for global scale
                 </h2>
-                <p className="text-lg text-muted-foreground">
-                  Join the network where top creators and elite marketers build wealth together.
+                <p className="text-black text-lg leading-relaxed">
+                  Connect your entire revenue and monitor every sales with automated compliance and real-time intelligence.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 shrink-0">
-                <Button size="lg" className="rounded-full px-8 h-12 text-base shadow-lg shadow-primary/10" asChild>
-                  <Link href="/signup">
-                    Create workspace
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Card 1: Partner Approvals */}
+                <div className="rounded-[2rem] bg-[#F9F8F6] overflow-hidden flex flex-col h-full">
+                  <div className="p-6">
+                    <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                      <Image
+                        src="/approved-afil.png"
+                        alt="Partner Approvals"
+                        fill
+                        className="object-cover"
+                        quality={100}
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        unoptimized
+                      />
+                    </div>
+                  </div>
+                  <div className="px-8 pb-8 flex flex-col flex-1">
+                    <h3 className="font-bold text-[17px] text-black mb-2">Auto-approve the good ones</h3>
+                    <p className="text-[13px] text-black/40 leading-relaxed">
+                      Set your rules. We filter. Only serious marketers get in.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card 2: Compliance Ledger */}
+                <div className="rounded-[2rem] bg-[#F9F8F6] overflow-hidden flex flex-col h-full">
+                  <div className="p-6">
+                    <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                      <Image
+                        src="/audit-log-light.png"
+                        alt="Compliance Ledger"
+                        fill
+                        className="object-cover"
+                        quality={100}
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        unoptimized
+                      />
+                    </div>
+                  </div>
+                  <div className="px-8 pb-8 flex flex-col flex-1">
+                    <h3 className="font-bold text-[17px] text-black mb-2">Audit Trail You Can Trust</h3>
+                    <p className="text-[13px] text-black/40 leading-relaxed">
+                      Every sale, payout, and agreement is logged. Forever. Can't be changed.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card 3: Growth Analytics */}
+                <div className="rounded-[2rem] bg-[#F9F8F6] overflow-hidden flex flex-col h-full">
+                  <div className="p-6">
+                    <div className="h-[200px] shrink-0 relative bg-white rounded-[1.5rem] overflow-hidden border border-black/5">
+                      <Image
+                        src="/dash-stats-light.png"
+                        alt="Growth Analytics"
+                        fill
+                        className="object-cover"
+                        quality={100}
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        unoptimized
+                      />
+                    </div>
+                  </div>
+                  <div className="px-8 pb-8 flex flex-col flex-1">
+                    <h3 className="font-bold text-[17px] text-black mb-2">Advanced Growth Analytics</h3>
+                    <p className="text-[13px] text-black/40 leading-relaxed">
+                      Gain deep insights into your revenue waterfalls. Track attribution from the first click to the final payout.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          </section>
+
+          {/* Rewards & Incentives Section */}
+          <section className="py-24 bg-white">
+            <div className="mx-auto max-w-5xl px-6 text-center">
+              <h2 className="text-3xl md:text-4xl font-semibold  leading-[1.05] text-black text-balance mb-12">
+                Reward marketers <br /> who actually sell
+              </h2>
+
+              <div className="bg-[#F9F8F6] rounded-[2.5rem] p-8 md:p-12 flex flex-col lg:flex-row items-center gap-10 text-left">
+                {/* Left Visual: Reward Claim Card */}
+                <div className="w-full lg:w-1/2 flex justify-center">
+                  <div className="bg-white rounded-2xl w-full max-w-[340px] border border-black/5 relative overflow-hidden flex flex-col">
+                    {/* macOS Window Header */}
+                    <div className="bg-gray-50/80 border-b border-black/5 px-4 py-2.5 flex items-center relative">
+                      <div className="flex gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] opacity-80" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] opacity-80" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F] opacity-80" />
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="text-[11px] text-gray-600 font-medium">Reward</span>
+                      </div>
+                    </div>
+
+                    <div className="p-6 relative">
+                      <div className="absolute top-6 right-6 bg-gray-100 px-2 py-0.5 rounded-full text-[9px] font-bold text-gray-500 uppercase tracking-wider">
+                        Claimed
+                      </div>
+
+                      <div className="mb-4">
+                        <h3 className="text-lg font-bold text-black mb-0.5">1 month free</h3>
+                        <p className="text-[11px] text-gray-400 font-medium">Unlock at: 1 completed sales</p>
+                      </div>
+
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold text-gray-600">4 / 1</span>
+                          <span className="text-[11px] font-bold text-gray-400">100%</span>
+                        </div>
+                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full w-full bg-amber-400 rounded-full" />
+                        </div>
+                      </div>
+
+                      <div className="mb-6">
+                        <p className="text-[11px] font-bold text-gray-500 mb-3 uppercase tracking-tight">Reward: Free 3 months</p>
+                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex items-center justify-between">
+                          <span className="text-[11px] font-medium text-gray-600 font-mono">1MONTH-2AF61F3D</span>
+                        </div>
+                      </div>
+
+                      <Button className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-black font-bold text-sm rounded-lg shadow-md shadow-amber-400/10">
+                        Claim reward
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Content */}
+                <div className="w-full lg:w-1/2 space-y-6">
+                  <h3 className="text-xl md:text-2xl font-bold tracking-tight text-black leading-tight">
+                    Give bonuses when they hit targets.
+                  </h3>
+
+                  <div className="space-y-4">
+                    <ul className="space-y-4">
+                      <li>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          <strong className="text-black">Milestone-based:</strong> Hit $10k? Get a bonus. It's automatic.
+                        </p>
+                      </li>
+                      <li>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          <strong className="text-black">Consistent growth:</strong> Auto-generated coupons and perks keep your army of sellers motivated and engaged.
+                        </p>
+                      </li>
+                      <li>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          <strong className="text-black">Refund protection:</strong> Rewards only unlock after refund windows close, ensuring you only reward real, verified value.
+                        </p>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <ExpandingCardSection />
+
+          <section className="relative z-10 py-24 text-center">
+            <div className="mx-auto max-w-2xl px-6">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
+                Ready to build the future of <br />
+                <span className="text-amber-500 italic">revenue sharing?</span>
+              </h2>
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                {isWaitlistMode() ? (
+                  <Button
+                    size="lg"
+                    className="h-12 rounded-full px-8 text-base shadow-amber-500/20 transition-all font-bold bg-amber-400 text-white"
+                    onClick={() => setIsWaitlistOpen(true)}
+                  >
+                    Claim Early Access
+                  </Button>
+                ) : (
+                  <Button size="lg" className="h-12 rounded-full px-8 text-base shadow-amber-500/20 transition-all font-bold bg-amber-400 text-white" asChild>
+                    <Link href="/signup">Get Started Now</Link>
+                  </Button>
+                )}
+              </div>
+              <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
+                Join the growing network of 1,200+ partners
+              </p>
+            </div>
+          </section>
+
+          <Footer className="bg-gray-50/30" />
         </div>
-      </section>
-    </main>
+      </main>
+
+      <WaitlistModal isOpen={isWaitlistOpen} onOpenChange={setIsWaitlistOpen} />
+    </>
   );
 }

@@ -1,17 +1,29 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { CommissionStatus } from "@prisma/client";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   const { projectId } = await params;
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
 
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  }
+  if (userId !== authUser.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const [marketer, project, contract] = await Promise.all([
@@ -21,7 +33,7 @@ export async function GET(
     }),
     prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, refundWindowDays: true },
     }),
     prisma.contract.findUnique({
       where: { projectId_userId: { projectId, userId } },
@@ -42,9 +54,54 @@ export async function GET(
     );
   }
 
+  const now = new Date();
+  const missingEligible = await prisma.purchase.findMany({
+    where: {
+      projectId,
+      coupon: { marketerId: userId },
+      commissionStatus: "AWAITING_REFUND_WINDOW",
+      refundEligibleAt: null,
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      refundWindowDays: true,
+      creatorPaymentId: true,
+    },
+  });
+
+  if (missingEligible.length > 0) {
+    const fallbackDays = project.refundWindowDays ?? 30;
+    await Promise.all(
+      missingEligible.map((purchase) => {
+        const effectiveDays = purchase.refundWindowDays ?? fallbackDays;
+        const refundEligibleAt = new Date(
+          purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
+        );
+        const nextStatus =
+          refundEligibleAt <= now
+            ? purchase.creatorPaymentId
+              ? "READY_FOR_PAYOUT"
+              : "PENDING_CREATOR_PAYMENT"
+            : "AWAITING_REFUND_WINDOW";
+        return prisma.purchase.update({
+          where: { id: purchase.id },
+          data: {
+            refundWindowDays: effectiveDays,
+            refundEligibleAt,
+            commissionStatus: nextStatus,
+          },
+        });
+      }),
+    );
+  }
+
   const purchaseWhere = {
     projectId,
     coupon: { marketerId: userId },
+    commissionStatus: {
+      notIn: [CommissionStatus.REFUNDED, CommissionStatus.CHARGEBACK],
+    },
   };
 
   const [purchaseTotals, commissionGroups] = await Promise.all([
@@ -85,6 +142,8 @@ export async function GET(
       commissions: {
         awaitingCreator:
           commissionByStatus.PENDING_CREATOR_PAYMENT ?? { count: 0, amount: 0 },
+        awaitingRefundWindow:
+          commissionByStatus.AWAITING_REFUND_WINDOW ?? { count: 0, amount: 0 },
         ready:
           commissionByStatus.READY_FOR_PAYOUT ?? { count: 0, amount: 0 },
         paid: commissionByStatus.PAID ?? { count: 0, amount: 0 },

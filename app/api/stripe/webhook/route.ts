@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import * as React from "react";
 
 import { prisma } from "@/lib/prisma";
+import { platformStripe } from "@/lib/stripe";
+import { notificationMessages } from "@/lib/notifications/messages";
+import { sendEmail } from "@/lib/email/send-email";
+import ReferralSaleEmail from "@/emails/ReferralSaleEmail";
 
 export const runtime = "nodejs";
 
@@ -30,6 +35,67 @@ function promotionCodeIdFromAny(
     return null;
   }
   return promotionCodeIdFromDiscount(discounts[0]);
+}
+
+function resolvePurchaseStatusAfterDispute(
+  purchase: {
+    commissionAmount: number;
+    couponId: string | null;
+    refundEligibleAt: Date | null;
+    creatorPaymentId: string | null;
+    status: "PENDING" | "PAID" | "FAILED";
+  },
+  now: Date,
+) {
+  if (!purchase.couponId || purchase.commissionAmount <= 0) {
+    return "PAID" as const;
+  }
+  if (purchase.status === "PAID") {
+    return "PAID" as const;
+  }
+  if (purchase.refundEligibleAt && purchase.refundEligibleAt > now) {
+    return "AWAITING_REFUND_WINDOW" as const;
+  }
+  return purchase.creatorPaymentId ? "READY_FOR_PAYOUT" : "PENDING_CREATOR_PAYMENT";
+}
+
+async function findPurchaseForCharge(params: {
+  chargeId: string;
+  paymentIntentId?: string | null;
+  invoiceId?: string | null;
+}) {
+  const { chargeId, paymentIntentId, invoiceId } = params;
+  const orConditions = [
+    { stripeChargeId: chargeId },
+    paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : null,
+    invoiceId ? { stripeInvoiceId: invoiceId } : null,
+  ].filter(Boolean) as Array<{
+    stripeChargeId?: string;
+    stripePaymentIntentId?: string;
+    stripeInvoiceId?: string;
+  }>;
+
+  return prisma.purchase.findFirst({
+    where: { OR: orConditions },
+    select: {
+      id: true,
+      projectId: true,
+      couponId: true,
+      amount: true,
+      currency: true,
+      commissionAmount: true,
+      commissionAmountOriginal: true,
+      commissionStatus: true,
+      refundedAmount: true,
+      refundEligibleAt: true,
+      disputeId: true,
+      disputeStatus: true,
+      creatorPaymentId: true,
+      status: true,
+      project: { select: { name: true, userId: true } },
+      coupon: { select: { marketerId: true } },
+    },
+  });
 }
 
 function parseEventDetails(event: Stripe.Event) {
@@ -121,6 +187,8 @@ function parseEventDetails(event: Stripe.Event) {
   return null;
 }
 
+type EventDetails = NonNullable<ReturnType<typeof parseEventDetails>>;
+
 function extractProjectId(event: Stripe.Event) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
@@ -201,7 +269,7 @@ export async function POST(request: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     const creatorPaymentId = session.metadata?.creatorPaymentId ?? null;
     if (creatorPaymentId) {
-      await prisma.creatorPayment.update({
+      const updatedPayment = await prisma.creatorPayment.update({
         where: { id: creatorPaymentId },
         data: {
           status: "PAID",
@@ -211,22 +279,484 @@ export async function POST(request: Request) {
               ? session.payment_intent
               : null,
         },
+        select: { id: true, creatorId: true },
       });
-      await prisma.purchase.updateMany({
+      const purchases = await prisma.purchase.findMany({
         where: { creatorPaymentId },
-        data: { commissionStatus: "READY_FOR_PAYOUT" },
+        select: {
+          id: true,
+          createdAt: true,
+          refundEligibleAt: true,
+          refundWindowDays: true,
+          project: { select: { refundWindowDays: true } },
+        },
+      });
+      const now = new Date();
+      const readyIds: string[] = [];
+      const awaitingIds: string[] = [];
+      const backfillUpdates: Promise<unknown>[] = [];
+
+      purchases.forEach((purchase) => {
+        const effectiveDays =
+          purchase.refundWindowDays ??
+          purchase.project.refundWindowDays ??
+          30;
+        const eligibleAt =
+          purchase.refundEligibleAt ??
+          new Date(
+            purchase.createdAt.getTime() + effectiveDays * 24 * 60 * 60 * 1000,
+          );
+        const nextStatus =
+          eligibleAt <= now ? "READY_FOR_PAYOUT" : "AWAITING_REFUND_WINDOW";
+
+        if (purchase.refundEligibleAt == null || purchase.refundWindowDays == null) {
+          backfillUpdates.push(
+            prisma.purchase.update({
+              where: { id: purchase.id },
+              data: {
+                refundWindowDays: effectiveDays,
+                refundEligibleAt: eligibleAt,
+                commissionStatus: nextStatus,
+              },
+            }),
+          );
+        } else if (nextStatus === "READY_FOR_PAYOUT") {
+          readyIds.push(purchase.id);
+        } else {
+          awaitingIds.push(purchase.id);
+        }
+      });
+
+      if (readyIds.length > 0) {
+        await prisma.purchase.updateMany({
+          where: { id: { in: readyIds } },
+          data: { commissionStatus: "READY_FOR_PAYOUT" },
+        });
+      }
+      if (awaitingIds.length > 0) {
+        await prisma.purchase.updateMany({
+          where: { id: { in: awaitingIds } },
+          data: { commissionStatus: "AWAITING_REFUND_WINDOW" },
+        });
+      }
+      if (backfillUpdates.length > 0) {
+        await Promise.all(backfillUpdates);
+      }
+      await prisma.event.create({
+        data: {
+          type: "CREATOR_PAYMENT_COMPLETED",
+          actorId: updatedPayment.creatorId,
+          subjectType: "CreatorPayment",
+          subjectId: updatedPayment.id,
+          data: {
+            creatorPaymentId: updatedPayment.id,
+          },
+        },
+      });
+      await prisma.notification.create({
+        data: {
+          userId: updatedPayment.creatorId,
+          type: "SYSTEM",
+          ...notificationMessages.payoutInvoicePaid(),
+          data: {
+            creatorPaymentId: updatedPayment.id,
+          },
+        },
       });
       return NextResponse.json({ received: true, creatorPaymentId });
     }
+    if (session.mode === "subscription") {
+      return NextResponse.json({ received: true });
+    }
   }
 
-  const details = parseEventDetails(event);
+  if (event.type === "payment_intent.succeeded") {
+    return NextResponse.json({ received: true });
+  }
+
+  if (event.type === "charge.succeeded") {
+    return NextResponse.json({ received: true });
+  }
+
+  const eventType = event.type as string;
+  if (
+    eventType === "charge.refunded" ||
+    eventType === "charge.refund.created" ||
+    eventType === "charge.refund.updated"
+  ) {
+    const eventCreatedAt = new Date(event.created * 1000);
+    const charge =
+      eventType === "charge.refunded"
+        ? (event.data.object as Stripe.Charge)
+        : null;
+    const refund =
+      eventType === "charge.refunded"
+        ? null
+        : (event.data.object as Stripe.Refund);
+    const chargeId =
+      typeof charge?.id === "string"
+        ? charge.id
+        : typeof refund?.charge === "string"
+          ? refund.charge
+          : null;
+
+    if (!chargeId) {
+      return NextResponse.json({ received: true });
+    }
+
+    const purchase = await findPurchaseForCharge({
+      chargeId,
+      paymentIntentId:
+        charge && typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : null,
+      invoiceId:
+        charge && typeof (charge as Stripe.Charge & { invoice?: string }).invoice === "string"
+          ? (charge as Stripe.Charge & { invoice?: string }).invoice
+          : null,
+    });
+
+    if (!purchase) {
+      return NextResponse.json({ received: true });
+    }
+
+    const nextRefundedAmount = Math.min(
+      purchase.amount,
+      charge?.amount_refunded != null
+        ? charge.amount_refunded
+        : (purchase.refundedAmount ?? 0) + (refund?.amount ?? 0),
+    );
+    const previousRefundedAmount = purchase.refundedAmount ?? 0;
+    if (nextRefundedAmount === previousRefundedAmount) {
+      return NextResponse.json({ received: true });
+    }
+    const commissionBase =
+      purchase.commissionAmountOriginal ?? purchase.commissionAmount;
+    const deltaRefunded = Math.max(0, nextRefundedAmount - previousRefundedAmount);
+    const deltaCommission =
+      purchase.amount > 0
+        ? Math.round((commissionBase * deltaRefunded) / purchase.amount)
+        : 0;
+    const netAmount = Math.max(0, purchase.amount - nextRefundedAmount);
+    const nextCommissionAmount =
+      purchase.amount > 0
+        ? Math.round((commissionBase * netAmount) / purchase.amount)
+        : 0;
+    const isFullyRefunded = nextRefundedAmount >= purchase.amount;
+    const isSettled =
+      purchase.commissionStatus === "PAID" || purchase.status === "PAID";
+
+    const updateData: {
+      refundedAmount: number;
+      refundedAt: Date;
+      commissionAmountOriginal?: number;
+      commissionAmount?: number;
+      commissionStatus?: "REFUNDED";
+    } = {
+      refundedAmount: nextRefundedAmount,
+      refundedAt: eventCreatedAt,
+    };
+
+    if (purchase.commissionAmountOriginal == null) {
+      updateData.commissionAmountOriginal = purchase.commissionAmount;
+    }
+    if (!isSettled) {
+      updateData.commissionAmount = nextCommissionAmount;
+      if (isFullyRefunded) {
+        updateData.commissionStatus = "REFUNDED";
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.purchase.update({
+        where: { id: purchase.id },
+        data: updateData,
+      });
+
+      if (
+        isSettled &&
+        deltaCommission > 0 &&
+        purchase.coupon?.marketerId
+      ) {
+        await tx.commissionAdjustment.create({
+          data: {
+            creatorId: purchase.project.userId,
+            marketerId: purchase.coupon.marketerId,
+            projectId: purchase.projectId,
+            purchaseId: purchase.id,
+            amount: -deltaCommission,
+            currency: purchase.currency,
+            reason: "REFUND",
+          },
+        });
+      }
+
+      await tx.event.create({
+        data: {
+          type: "PURCHASE_REFUNDED",
+          actorId: null,
+          projectId: purchase.projectId,
+          subjectType: "Purchase",
+          subjectId: purchase.id,
+          data: {
+            purchaseId: purchase.id,
+            refundAmount: nextRefundedAmount,
+            commissionAmount: nextCommissionAmount,
+            currency: purchase.currency,
+          },
+        },
+      });
+
+      const projectName = purchase.project?.name ?? "your project";
+      if (purchase.coupon?.marketerId) {
+        await tx.notification.create({
+          data: {
+            userId: purchase.coupon.marketerId,
+            type: "REFUND",
+            ...notificationMessages.refundRecorded(
+              projectName,
+              nextRefundedAmount,
+              nextCommissionAmount,
+              purchase.currency,
+            ),
+            data: {
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              refundAmount: nextRefundedAmount,
+            },
+          },
+        });
+      }
+
+      if (purchase.project?.userId) {
+        await tx.notification.create({
+          data: {
+            userId: purchase.project.userId,
+            type: "REFUND",
+            ...notificationMessages.refundRecorded(
+              projectName,
+              nextRefundedAmount,
+              nextCommissionAmount,
+              purchase.currency,
+            ),
+            data: {
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              refundAmount: nextRefundedAmount,
+            },
+          },
+        });
+      }
+    });
+
+    return NextResponse.json({ received: true });
+  }
+
+  if (
+    event.type === "charge.dispute.created" ||
+    event.type === "charge.dispute.updated" ||
+    event.type === "charge.dispute.closed"
+  ) {
+    const dispute = event.data.object as Stripe.Dispute;
+    const chargeId = typeof dispute.charge === "string" ? dispute.charge : null;
+    if (!chargeId) {
+      return NextResponse.json({ received: true });
+    }
+
+    const purchase = await findPurchaseForCharge({ chargeId });
+    if (!purchase) {
+      return NextResponse.json({ received: true });
+    }
+
+    const eventCreatedAt = new Date(event.created * 1000);
+    const now = new Date();
+    const isWon = dispute.status === "won";
+    const nextStatus = isWon
+      ? resolvePurchaseStatusAfterDispute(purchase, now)
+      : "CHARGEBACK";
+
+    if (
+      purchase.disputeId === dispute.id &&
+      purchase.disputeStatus === dispute.status &&
+      purchase.commissionStatus === nextStatus
+    ) {
+      return NextResponse.json({ received: true });
+    }
+
+    const commissionBase =
+      purchase.commissionAmountOriginal ?? purchase.commissionAmount;
+    const commissionFromDispute =
+      purchase.amount > 0
+        ? Math.round((commissionBase * (dispute.amount ?? 0)) / purchase.amount)
+        : commissionBase;
+
+    await prisma.$transaction(async (tx) => {
+      const existingAdjustments = await tx.commissionAdjustment.findMany({
+        where: {
+          purchaseId: purchase.id,
+          reason: "CHARGEBACK",
+          status: { in: ["PENDING", "APPLIED"] },
+        },
+      });
+
+      await tx.purchase.update({
+        where: { id: purchase.id },
+        data: {
+          disputeId: dispute.id,
+          disputeStatus: dispute.status ?? null,
+          chargebackAt: !isWon ? eventCreatedAt : null,
+          commissionStatus:
+            purchase.commissionStatus === "PAID" || purchase.status === "PAID"
+              ? purchase.commissionStatus
+              : nextStatus,
+        },
+      });
+
+      if (purchase.coupon?.marketerId) {
+        if (!isWon && existingAdjustments.length === 0 && commissionFromDispute > 0) {
+          await tx.commissionAdjustment.create({
+            data: {
+              creatorId: purchase.project.userId,
+              marketerId: purchase.coupon.marketerId,
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              amount: -commissionFromDispute,
+              currency: purchase.currency,
+              reason: "CHARGEBACK",
+            },
+          });
+        }
+        if (isWon && existingAdjustments.length > 0) {
+          const totalAdjustment = existingAdjustments.reduce(
+            (acc, adj) => acc + adj.amount,
+            0,
+          );
+          if (totalAdjustment < 0) {
+            await tx.commissionAdjustment.create({
+              data: {
+                creatorId: purchase.project.userId,
+                marketerId: purchase.coupon.marketerId,
+                projectId: purchase.projectId,
+                purchaseId: purchase.id,
+                amount: Math.abs(totalAdjustment),
+                currency: purchase.currency,
+                reason: "CHARGEBACK_REVERSAL",
+              },
+            });
+          }
+          await tx.commissionAdjustment.updateMany({
+            where: { id: { in: existingAdjustments.map((adj) => adj.id) } },
+            data: { status: "REVERSED" },
+          });
+        }
+      }
+
+      await tx.event.create({
+        data: {
+          type: isWon ? "PURCHASE_CHARGEBACK_RESOLVED" : "PURCHASE_CHARGEBACK",
+          actorId: null,
+          projectId: purchase.projectId,
+          subjectType: "Purchase",
+          subjectId: purchase.id,
+          data: {
+            purchaseId: purchase.id,
+            disputeId: dispute.id,
+            disputeStatus: dispute.status,
+            amount: dispute.amount,
+            currency: dispute.currency,
+          },
+        },
+      });
+
+      const projectName = purchase.project?.name ?? "your project";
+      const notificationPayload = isWon
+        ? notificationMessages.chargebackResolved(
+            projectName,
+            dispute.amount,
+            dispute.currency ?? purchase.currency,
+          )
+        : notificationMessages.chargebackCreated(
+            projectName,
+            dispute.amount,
+            dispute.currency ?? purchase.currency,
+          );
+
+      if (purchase.coupon?.marketerId) {
+        await tx.notification.create({
+          data: {
+            userId: purchase.coupon.marketerId,
+            type: "CHARGEBACK",
+            ...notificationPayload,
+            data: {
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              disputeId: dispute.id,
+              disputeStatus: dispute.status,
+            },
+          },
+        });
+      }
+
+      if (purchase.project?.userId) {
+        await tx.notification.create({
+          data: {
+            userId: purchase.project.userId,
+            type: "CHARGEBACK",
+            ...notificationPayload,
+            data: {
+              projectId: purchase.projectId,
+              purchaseId: purchase.id,
+              disputeId: dispute.id,
+              disputeStatus: dispute.status,
+            },
+          },
+        });
+      }
+    });
+
+    return NextResponse.json({ received: true });
+  }
+
+  let details = parseEventDetails(event) as EventDetails | null;
   const accountId = event.account ?? null;
+  if (details && !details.promotionCodeId && accountId) {
+    const stripe = platformStripe();
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const refreshed = await stripe.checkout.sessions.retrieve(
+        session.id,
+        { expand: ["discounts"] },
+        { stripeAccount: accountId },
+      );
+      const promo = promotionCodeIdFromAny(refreshed.discounts ?? undefined);
+      details = {
+        ...details,
+        promotionCodeId: promo ?? details.promotionCodeId ?? null,
+      } as EventDetails;
+    } else if (event.type === "invoice.payment_succeeded") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const refreshed = await stripe.invoices.retrieve(
+        invoice.id,
+        { expand: ["discounts"] },
+        { stripeAccount: accountId },
+      );
+      const promo = promotionCodeIdFromAny(
+        (refreshed.discounts as Stripe.Discount[] | null) ?? undefined,
+      );
+      details = {
+        ...details,
+        promotionCodeId: promo ?? details.promotionCodeId ?? null,
+      } as EventDetails;
+    }
+  }
   let projectMatch = accountId
     ? await prisma.project.findFirst({
         where: { creatorStripeAccountId: accountId },
         select: {
           id: true,
+          userId: true,
+          name: true,
+          refundWindowDays: true,
         },
       })
     : null;
@@ -237,7 +767,10 @@ export async function POST(request: Request) {
       select: { projectId: true },
     });
     if (couponMatch?.projectId) {
-      projectMatch = { id: couponMatch.projectId };
+      projectMatch = await prisma.project.findFirst({
+        where: { id: couponMatch.projectId },
+        select: { id: true, userId: true, name: true, refundWindowDays: true },
+      });
     }
   }
 
@@ -248,6 +781,9 @@ export async function POST(request: Request) {
         where: { id: projectId },
         select: {
           id: true,
+          userId: true,
+          name: true,
+          refundWindowDays: true,
         },
       });
     }
@@ -309,26 +845,58 @@ export async function POST(request: Request) {
   const coupon = details.promotionCodeId
     ? await prisma.coupon.findUnique({
         where: { stripePromotionCodeId: details.promotionCodeId },
-        include: { marketer: true },
+        select: {
+          id: true,
+          marketerId: true,
+          commissionPercent: true,
+        },
       })
     : null;
 
-  const commissionPercent = coupon ? Number(coupon.commissionPercent) : 0;
-  const commissionAmount = coupon
+  const contract = coupon
+    ? await prisma.contract.findUnique({
+        where: {
+          projectId_userId: {
+            projectId: projectMatch.id,
+            userId: coupon.marketerId,
+          },
+        },
+        select: { refundWindowDays: true, status: true },
+      })
+    : null;
+
+  // Only associate purchase with marketer if contract is approved
+  const isContractApproved = contract?.status === "APPROVED";
+  const commissionPercent = coupon && isContractApproved ? Number(coupon.commissionPercent) : 0;
+  const commissionAmount = coupon && isContractApproved
     ? Math.round(details.amount * commissionPercent)
     : 0;
 
   const transferId: string | null = null;
   const status: "PENDING" | "PAID" | "FAILED" =
     coupon && commissionAmount > 0 ? "PENDING" : "PAID";
-  const commissionStatus: "PENDING_CREATOR_PAYMENT" | "PAID" =
-    coupon && commissionAmount > 0 ? "PENDING_CREATOR_PAYMENT" : "PAID";
+  const refundWindowDays =
+    contract?.refundWindowDays ?? projectMatch.refundWindowDays ?? 30;
+  const eventCreatedAt = new Date(event.created * 1000);
+  const refundEligibleAt = new Date(
+    eventCreatedAt.getTime() + refundWindowDays * 24 * 60 * 60 * 1000,
+  );
+  const isRefundEligible = refundEligibleAt <= new Date();
+  const commissionStatus:
+    | "AWAITING_REFUND_WINDOW"
+    | "PENDING_CREATOR_PAYMENT"
+    | "PAID" =
+    coupon && commissionAmount > 0
+      ? isRefundEligible
+        ? "PENDING_CREATOR_PAYMENT"
+        : "AWAITING_REFUND_WINDOW"
+      : "PAID";
 
   console.log(`Creating purchase record for event ${event.id}`);
-  await prisma.purchase.create({
+  const purchase = await prisma.purchase.create({
     data: {
       projectId: projectMatch.id,
-      couponId: coupon?.id ?? null,
+      couponId: coupon && isContractApproved ? coupon.id : null,
       stripeEventId: event.id,
       stripeChargeId: details.stripeChargeId,
       stripeInvoiceId: details.stripeInvoiceId,
@@ -337,11 +905,115 @@ export async function POST(request: Request) {
       currency: details.currency,
       customerEmail: details.customerEmail,
       commissionAmount,
+      commissionAmountOriginal: commissionAmount,
+      refundWindowDays,
+      refundEligibleAt,
       transferId,
       commissionStatus,
       status,
     },
+    select: {
+      id: true,
+      projectId: true,
+      couponId: true,
+    },
   });
+
+  await prisma.event.create({
+    data: {
+      type: "PURCHASE_CREATED",
+      actorId: coupon && isContractApproved ? coupon.marketerId : null,
+      projectId: projectMatch.id,
+      subjectType: "Purchase",
+      subjectId: purchase.id,
+      data: {
+        projectId: projectMatch.id,
+        couponId: coupon && isContractApproved ? coupon.id : null,
+        amount: details.amount,
+        currency: details.currency,
+      },
+    },
+  });
+
+  if (coupon?.marketerId && isContractApproved) {
+    await prisma.notification.create({
+      data: {
+        userId: coupon.marketerId,
+        type: "SALE",
+        ...notificationMessages.referralSale(commissionAmount, details.currency),
+        data: {
+          projectId: projectMatch.id,
+          purchaseId: purchase.id,
+          commissionAmount,
+        },
+      },
+    });
+
+    const canSendEmail = Boolean(
+      process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL,
+    );
+    const marketer = await prisma.user.findUnique({
+      where: { id: coupon.marketerId },
+      select: {
+        email: true,
+        name: true,
+        notificationPreference: { select: { emailEnabled: true } },
+      },
+    });
+    const emailEnabled = marketer?.notificationPreference?.emailEnabled;
+    const marketerEmail = marketer?.email;
+
+    if (canSendEmail && emailEnabled && marketerEmail) {
+      const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+
+      try {
+        void sendEmail({
+          to: marketerEmail,
+          subject: "New referral sale",
+          react: React.createElement(ReferralSaleEmail, {
+            name: marketer?.name,
+            projectName: projectMatch.name ?? "your project",
+            commissionAmount,
+            currency: details.currency,
+            dashboardUrl: `${baseUrl}/marketer/earnings`,
+          }),
+          text: `New referral sale on ${
+            projectMatch.name ?? "your project"
+          }. Commission ${Math.round(commissionAmount) / 100} ${details.currency.toUpperCase()}.`,
+        }).catch((error) => {
+          console.error("Failed to send referral sale email", error);
+        });
+      } catch (error) {
+        console.error("Failed to queue referral sale email", error);
+      }
+    }
+  }
+
+  if (projectMatch.userId) {
+    await prisma.notification.create({
+      data: {
+        userId: projectMatch.userId,
+        type: coupon?.id && isContractApproved ? "COMMISSION_DUE" : "SALE",
+        ...(coupon?.id && isContractApproved
+          ? notificationMessages.commissionDue(
+              projectMatch.name ?? "your project",
+              details.amount,
+              commissionAmount,
+              details.currency,
+            )
+          : notificationMessages.newSale(
+              projectMatch.name ?? "your project",
+              details.amount,
+              details.currency,
+            )),
+        data: {
+          projectId: projectMatch.id,
+          purchaseId: purchase.id,
+          commissionAmount,
+        },
+      },
+    });
+  }
 
   return NextResponse.json({ received: true });
 }

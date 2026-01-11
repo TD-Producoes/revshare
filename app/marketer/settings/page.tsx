@@ -2,16 +2,15 @@
 
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { CheckCircle, CreditCard, ExternalLink, Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MarketerAccountTab } from "@/components/marketer/settings-tabs/account-tab";
+import { MarketerPayoutsTab } from "@/components/marketer/settings-tabs/payouts-tab";
+import { MarketerNotificationsTab } from "@/components/marketer/settings-tabs/notifications-tab";
+import { MarketerVisibilityTab } from "@/components/marketer/settings-tabs/visibility-tab";
+import { MarketerDangerTab } from "@/components/marketer/settings-tabs/danger-tab";
 
 export default function SettingsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
@@ -28,22 +27,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  if (isAuthLoading || isUserLoading) {
-    return (
-      <div className="flex h-40 items-center justify-center text-muted-foreground">
-        Loading...
-      </div>
-    );
-  }
-
-  if (!currentUser || currentUser.role !== "marketer") {
-    return (
-      <div className="text-muted-foreground">
-        This section is only available to marketers.
-      </div>
-    );
-  }
+  const [activeTab, setActiveTab] = useState("account");
 
   useEffect(() => {
     const status = searchParams.get("onboarding");
@@ -75,7 +59,7 @@ export default function SettingsPage() {
       }
     };
 
-    void finalize();
+    finalize();
   }, [authUserId, queryClient, router, searchParams]);
 
   useEffect(() => {
@@ -111,8 +95,24 @@ export default function SettingsPage() {
       }
     };
 
-    void refresh();
+    refresh();
   }, [authUserId, currentUser, queryClient]);
+
+  if (isAuthLoading || isUserLoading) {
+    return (
+      <div className="flex h-40 items-center justify-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!currentUser || currentUser.role !== "marketer") {
+    return (
+      <div className="text-muted-foreground">
+        This section is only available to marketers.
+      </div>
+    );
+  }
 
   const handleConnectStripe = async () => {
     setConnectError(null);
@@ -228,6 +228,24 @@ export default function SettingsPage() {
     }
   };
 
+  const handleVisibilitySave = async (data: {
+    visibility: "PUBLIC" | "GHOST" | "PRIVATE";
+  }) => {
+    if (!currentUser) return;
+    const response = await fetch(`/api/users/${currentUser.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibility: data.visibility }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.error ?? "Failed to update visibility");
+    }
+    await queryClient.invalidateQueries({
+      queryKey: ["user", authUserId ?? "none"],
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
@@ -237,277 +255,70 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Profile</CardTitle>
-          <CardDescription>Your account information.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Name</Label>
-            <Input value={currentUser.name} readOnly />
-          </div>
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input value={currentUser.email} readOnly />
-          </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <div>
-              <Badge className="capitalize">{currentUser.role}</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="border-b">
+          <TabsList variant="line" className="h-auto bg-transparent p-0">
+            <TabsTrigger className="px-3 py-2 text-sm" value="account">
+              Account
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="payouts">
+              Payouts
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="visibility">
+              Visibility
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="notifications">
+              Notifications
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="danger">
+              Danger
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      {/* Stripe Connection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Stripe Connection</CardTitle>
-          <CardDescription>
-            Connect your Stripe account to receive commission payouts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {onboardingError ? (
-            <p className="text-sm text-destructive">{onboardingError}</p>
-          ) : null}
-          {manageError ? (
-            <p className="text-sm text-destructive">{manageError}</p>
-          ) : null}
-          {currentUser.stripeConnectedAccountId ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-green-600">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium">Stripe Connected</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleManageStripe}
-                  disabled={isManaging}
-                >
-                  Manage
-                  <ExternalLink className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-              {currentUser.onboardingStatus ? (
-                <div className="flex items-center gap-2 text-sm">
-                  <Badge variant="outline" className="capitalize">
-                    {currentUser.onboardingStatus}
-                  </Badge>
-                  {currentUser.onboardingStatus === "complete" ? (
-                    <span className="text-muted-foreground">
-                      Account is fully verified.
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">
-                      Additional verification may be required.
-                    </span>
-                  )}
-                </div>
-              ) : null}
-              {currentUser.onboardingStatus === "pending" &&
-              currentUser.onboardingData?.requirements ? (
-                <div className="space-y-3 rounded-md border bg-muted/40 p-3 text-sm">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleContinueOnboarding}
-                      disabled={isContinuingOnboarding}
-                    >
-                      {isContinuingOnboarding ? "Opening..." : "Continue onboarding"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleRefreshStatus}
-                      disabled={isRefreshingStatus}
-                    >
-                      {isRefreshingStatus ? "Refreshing..." : "Refresh status"}
-                    </Button>
-                  </div>
-                  {currentUser.onboardingData.requirements.disabled_reason ? (
-                    <div>
-                      <p className="font-medium">Disabled reason</p>
-                      <p className="text-muted-foreground">
-                        {currentUser.onboardingData.requirements.disabled_reason}
-                      </p>
-                    </div>
-                  ) : null}
-                  {currentUser.onboardingData.requirements.currently_due?.length ? (
-                    <div>
-                      <p className="font-medium">Currently due</p>
-                      <p className="text-muted-foreground">
-                        {currentUser.onboardingData.requirements.currently_due.join(
-                          ", ",
-                        )}
-                      </p>
-                    </div>
-                  ) : null}
-                  {currentUser.onboardingData.requirements.past_due?.length ? (
-                    <div>
-                      <p className="font-medium">Past due</p>
-                      <p className="text-muted-foreground">
-                        {currentUser.onboardingData.requirements.past_due.join(
-                          ", ",
-                        )}
-                      </p>
-                    </div>
-                  ) : null}
-                  {currentUser.onboardingData.requirements.errors?.length ? (
-                    <div className="space-y-2">
-                      <p className="font-medium">Errors</p>
-                      {currentUser.onboardingData.requirements.errors.map(
-                        (error, index) => (
-                          <div key={`${error.code ?? "error"}-${index}`}>
-                            <p className="text-muted-foreground">
-                              {error.reason ?? "Additional information required."}
-                            </p>
-                            {error.requirement ? (
-                              <p className="text-xs text-muted-foreground">
-                                Requirement: {error.requirement}
-                              </p>
-                            ) : null}
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Connect your Stripe account to start receiving affiliate
-                payments and manage payouts.
-              </p>
-              {connectError ? (
-                <p className="text-sm text-destructive">{connectError}</p>
-              ) : null}
-              <Button onClick={handleConnectStripe} disabled={isConnecting}>
-                {isConnecting ? "Connecting..." : "Connect Stripe Account"}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="account">
+          <MarketerAccountTab
+            name={currentUser.name}
+            email={currentUser.email}
+            role={currentUser.role}
+            profileUser={currentUser}
+          />
+        </TabsContent>
 
-      {/* Payout Method */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Payout Method</CardTitle>
-          <CardDescription>
-            Configure how you receive your earnings.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-3 border rounded-md">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-muted rounded-md">
-                <CreditCard className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="font-medium">Bank Account</p>
-                <p className="text-sm text-muted-foreground">
-                  **** **** **** 4242
-                </p>
-              </div>
-            </div>
-            <Badge variant="outline">Default</Badge>
-          </div>
-          <Button variant="outline" className="w-full">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Payout Method
-          </Button>
-        </CardContent>
-      </Card>
+        <TabsContent value="payouts">
+          <MarketerPayoutsTab
+            stripeConnectedAccountId={currentUser.stripeConnectedAccountId}
+            onboardingStatus={currentUser.onboardingStatus}
+            onboardingData={currentUser.onboardingData}
+            onboardingError={onboardingError}
+            manageError={manageError}
+            connectError={connectError}
+            isConnecting={isConnecting}
+            isManaging={isManaging}
+            isRefreshingStatus={isRefreshingStatus}
+            isContinuingOnboarding={isContinuingOnboarding}
+            onConnectStripe={handleConnectStripe}
+            onManageStripe={handleManageStripe}
+            onContinueOnboarding={handleContinueOnboarding}
+            onRefreshStatus={handleRefreshStatus}
+          />
+        </TabsContent>
 
-      {/* Tax Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Tax Information</CardTitle>
-          <CardDescription>
-            Required for payouts above $600/year.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">W-9 Form</p>
-              <p className="text-sm text-muted-foreground">
-                Required for US-based affiliates
-              </p>
-            </div>
-            <Badge variant="outline">Not Submitted</Badge>
-          </div>
-          <Button variant="outline">Submit W-9</Button>
-        </CardContent>
-      </Card>
+        <TabsContent value="visibility">
+          <MarketerVisibilityTab
+            visibility={currentUser.visibility || "PUBLIC"}
+            onSave={handleVisibilitySave}
+          />
+        </TabsContent>
 
-      {/* Notification Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Notifications</CardTitle>
-          <CardDescription>
-            Configure email notification preferences.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Application Updates</p>
-              <p className="text-sm text-muted-foreground">
-                When your applications are approved or rejected
-              </p>
-            </div>
-            <Badge>Enabled</Badge>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Payout Notifications</p>
-              <p className="text-sm text-muted-foreground">
-                When payments are processed
-              </p>
-            </div>
-            <Badge>Enabled</Badge>
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Weekly Summary</p>
-              <p className="text-sm text-muted-foreground">
-                Weekly performance summary email
-              </p>
-            </div>
-            <Badge variant="outline">Disabled</Badge>
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="notifications">
+          <MarketerNotificationsTab userId={currentUser.id} />
+        </TabsContent>
 
-      {/* Danger Zone */}
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="text-base text-destructive">
-            Danger Zone
-          </CardTitle>
-          <CardDescription>Irreversible actions.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="destructive" disabled>
-            Delete Account
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">
-            This action cannot be undone. All your data and pending earnings
-            will be forfeited.
-          </p>
-        </CardContent>
-      </Card>
+        <TabsContent value="danger">
+          <MarketerDangerTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

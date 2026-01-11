@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 const autoChargeInput = z.object({
   enabled: z.boolean(),
@@ -12,6 +13,12 @@ export async function PATCH(
   { params }: { params: Promise<{ userId: string }> },
 ) {
   const { userId } = await params;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const parsed = autoChargeInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(

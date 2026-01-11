@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export type ContractStatus = "pending" | "approved" | "rejected";
+export type ContractStatus = "pending" | "approved" | "rejected" | "paused";
 
 export type Contract = {
   id: string;
@@ -13,6 +13,10 @@ export type Contract = {
   userEmail: string;
   userRole: string;
   commissionPercent: number;
+  projectCommissionPercent: number;
+  message?: string | null;
+  refundWindowDays?: number | null;
+  projectRefundWindowDays?: number | null;
   status: ContractStatus;
   createdAt: string | Date;
 };
@@ -89,6 +93,8 @@ export function useCreateContract() {
       projectId: string;
       userId: string;
       commissionPercent: number;
+      message?: string;
+      refundWindowDays?: number;
     }) => {
       const response = await fetch("/api/contracts", {
         method: "POST",
@@ -104,6 +110,51 @@ export function useCreateContract() {
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({
         queryKey: ["contracts", "marketer", variables.userId],
+      });
+    },
+  });
+}
+
+export type Testimonial = {
+  id: string;
+  contractId: string;
+  creatorId: string;
+  creatorName: string;
+  marketerId: string;
+  marketerName: string;
+  projectId: string;
+  projectName: string;
+  rating: number;
+  text: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+export function useCreateTestimonial() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      contractId: string;
+      creatorId: string;
+      rating: number;
+      text: string;
+    }) => {
+      const response = await fetch("/api/testimonials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to create testimonial.");
+      }
+      return data?.data as Testimonial;
+    },
+    onSuccess: async () => {
+      // Invalidate contracts queries to refresh the data
+      await queryClient.invalidateQueries({
+        queryKey: ["contracts"],
       });
     },
   });

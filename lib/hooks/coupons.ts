@@ -25,6 +25,7 @@ export type ProjectCoupon = {
   code: string;
   percentOff: number;
   commissionPercent: number;
+  refundWindowDays?: number | null;
   status: string;
   claimedAt: string | Date;
   template?: {
@@ -46,6 +47,8 @@ export type CouponTemplate = {
   name: string;
   description?: string | null;
   percentOff: number;
+  durationType?: "ONCE" | "REPEATING";
+  durationInMonths?: number | null;
   startAt?: string | Date | null;
   endAt?: string | Date | null;
   maxRedemptions?: number | null;

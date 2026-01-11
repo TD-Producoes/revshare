@@ -12,6 +12,8 @@ export type MarketerPurchase = {
   commissionAmount: number;
   currency: string;
   customerEmail: string | null;
+  commissionStatus: string;
+  refundEligibleAt: string | Date | null;
   status: string;
   createdAt: string | Date;
 };
@@ -21,6 +23,45 @@ export type MarketerStats = {
   totalRevenue: number;
   totalEarnings: number;
   pendingEarnings: number;
+};
+
+export type MarketerAdjustment = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  purchaseId: string | null;
+  amount: number;
+  currency: string;
+  reason: string;
+  status: string;
+  createdAt: string | Date;
+};
+
+export type MarketerAdjustmentsResponse = {
+  data: MarketerAdjustment[];
+  pendingTotal: number;
+};
+
+export type MarketerTransfer = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  stripeTransferId: string | null;
+  failureReason: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  projects: string[];
+};
+
+export type MarketerTransfersResponse = {
+  totals: {
+    paid: number;
+    pending: number;
+    failed: number;
+  };
+  currency: string | null;
+  transfers: MarketerTransfer[];
 };
 
 export type MarketerProjectStats = {
@@ -34,10 +75,74 @@ export type MarketerProjectStats = {
   };
   commissions: {
     awaitingCreator: { count: number; amount: number };
+    awaitingRefundWindow: { count: number; amount: number };
     ready: { count: number; amount: number };
     paid: { count: number; amount: number };
   };
 };
+
+export type MarketerProjectReward = {
+  reward: {
+    id: string;
+    name: string;
+    description?: string | null;
+    milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
+    milestoneValue: number;
+    rewardType: "DISCOUNT_COUPON" | "FREE_SUBSCRIPTION" | "PLAN_UPGRADE" | "ACCESS_PERK";
+    rewardLabel: string | null;
+    rewardPercentOff?: number | null;
+    rewardDurationMonths?: number | null;
+    fulfillmentType: "AUTO_COUPON" | "MANUAL";
+    earnLimit: "ONCE_PER_MARKETER" | "MULTIPLE";
+    availabilityType: "UNLIMITED" | "FIRST_N";
+    availabilityLimit?: number | null;
+    visibility: "PUBLIC" | "PRIVATE";
+    status: "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED";
+    startsAt?: string | Date | null;
+    createdAt: string | Date;
+  };
+  earned?: {
+    id: string;
+    status: "PENDING_REFUND" | "UNLOCKED" | "CLAIMED";
+    earnedAt: string | Date;
+    unlockedAt?: string | Date | null;
+    claimedAt?: string | Date | null;
+    rewardCoupon?: {
+      id: string;
+      code: string | null;
+      stripeCouponId: string | null;
+      stripePromotionCodeId: string | null;
+    } | null;
+  } | null;
+  progress: {
+    current: number;
+    total: number;
+    goal: number;
+    percent: number;
+  };
+  status: "IN_PROGRESS" | "PENDING_REFUND" | "UNLOCKED" | "CLAIMED";
+};
+
+export function useMarketerProjectRewards(
+  projectId?: string | null,
+  userId?: string | null
+) {
+  return useQuery<MarketerProjectReward[]>({
+    queryKey: ["marketer-project-rewards", projectId ?? "none", userId ?? "none"],
+    enabled: Boolean(projectId && userId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/marketer/projects/${projectId}/rewards?userId=${userId}`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch rewards.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
 
 export function useMarketerPurchases(userId?: string | null) {
   return useQuery<MarketerPurchase[]>({
@@ -71,16 +176,100 @@ export function useMarketerStats(userId?: string | null) {
   });
 }
 
+export type MarketerMetrics = {
+  summary: {
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchasesCount: number;
+    customersCount: number;
+  };
+  timeline: Array<{
+    date: string;
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchasesCount: number;
+    customersCount: number;
+  }>;
+};
+
+export function useMarketerMetrics(
+  userId?: string | null,
+  projectId?: string | null,
+  days = 30
+) {
+  return useQuery<MarketerMetrics>({
+    queryKey: ["marketer-metrics", userId ?? "none", projectId ?? "all", days],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      if (!userId) {
+        throw new Error("Missing userId");
+      }
+      const params = new URLSearchParams({ userId, days: String(days) });
+      if (projectId) {
+        params.set("projectId", projectId);
+      }
+      const response = await fetch(
+        `/api/marketer/metrics?${params.toString()}`
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch marketer metrics.");
+      }
+      return payload?.data as MarketerMetrics;
+    },
+  });
+}
+
+export function useMarketerAdjustments(userId?: string | null) {
+  return useQuery<MarketerAdjustmentsResponse>({
+    queryKey: ["marketer-adjustments", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/marketer/adjustments?userId=${userId}`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch adjustments.");
+      }
+      const payload = await response.json();
+      return {
+        data: Array.isArray(payload?.data) ? payload.data : [],
+        pendingTotal:
+          typeof payload?.pendingTotal === "number" ? payload.pendingTotal : 0,
+      };
+    },
+  });
+}
+
+export function useMarketerTransfers(userId?: string | null) {
+  return useQuery<MarketerTransfersResponse>({
+    queryKey: ["marketer-transfers", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(`/api/marketer/transfers?userId=${userId}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch transfers.");
+      }
+      const payload = await response.json();
+      return payload?.data as MarketerTransfersResponse;
+    },
+  });
+}
+
 export function useMarketerProjectStats(
   projectId?: string | null,
-  userId?: string | null,
+  userId?: string | null
 ) {
   return useQuery<MarketerProjectStats>({
     queryKey: ["marketer-project-stats", projectId ?? "none", userId ?? "none"],
     enabled: Boolean(projectId && userId),
     queryFn: async () => {
       const response = await fetch(
-        `/api/marketer/projects/${projectId}/stats?userId=${userId}`,
+        `/api/marketer/projects/${projectId}/stats?userId=${userId}`
       );
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -88,6 +277,232 @@ export function useMarketerProjectStats(
       }
       const payload = await response.json();
       return payload?.data as MarketerProjectStats;
+    },
+  });
+}
+
+export type PublicMarketerProfile = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    createdAt: string;
+    metadata: unknown;
+  };
+  stats: {
+    totalEarnings: number;
+    totalRevenue: number;
+    activeProjects: number;
+    totalSales: number;
+    conversionRate: number;
+    avgCommission: number;
+    growth: string;
+  };
+  projects: Array<{
+    id: string;
+    name: string;
+    category: string | null;
+    logoUrl: string | null;
+    revenue: number | -1; // -1 means hidden by visibility settings
+    earnings: number | -1; // -1 means hidden by visibility settings
+    sales: number | -1; // -1 means hidden by visibility settings
+    commission: number;
+    joinedDate: string;
+  }>;
+  recentCommissions: Array<{
+    id: string;
+    projectId: string;
+    project: string;
+    amount: number;
+    date: string;
+    status: string;
+    sales: number;
+  }>;
+  earningsTimeline: Array<{
+    month: string;
+    earnings: number;
+    revenue: number;
+  }>;
+  metrics: {
+    // Summary totals from all snapshots
+    summary: {
+      totalProjectRevenue: number;
+      totalAffiliateRevenue: number;
+      totalCommissionOwed: number;
+      totalPurchases: number;
+      totalCustomers: number;
+    };
+    // Daily timeline (last 30 days)
+    dailyTimeline: Array<{
+      date: string;
+      projectRevenue: number;
+      affiliateRevenue: number;
+      commissionOwed: number;
+      purchases: number;
+      customers: number;
+    }>;
+    // Per-project metrics breakdown
+    projectMetrics: Array<{
+      projectId: string;
+      projectName: string;
+      totalProjectRevenue: number | -1; // -1 means hidden by visibility settings
+      totalAffiliateRevenue: number | -1; // -1 means hidden by visibility settings
+      totalCommissionOwed: number | -1; // -1 means hidden by visibility settings
+      totalPurchases: number | -1; // -1 means hidden by visibility settings
+      totalCustomers: number | -1; // -1 means hidden by visibility settings
+    }>;
+  };
+};
+
+export function usePublicMarketerProfile(marketerId?: string | null) {
+  return useQuery<PublicMarketerProfile>({
+    queryKey: ["public-marketer-profile", marketerId ?? "none"],
+    enabled: Boolean(marketerId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/marketers/${marketerId}/public-profile`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch marketer profile.");
+      }
+      const payload = await response.json();
+      return payload?.data as PublicMarketerProfile;
+    },
+  });
+}
+
+export type LeaderboardMarketer = {
+  id: string;
+  name: string | null; // Can be null for GHOST mode
+  focus: string | null;
+  revenue: number;
+  commission: number;
+  activeProjects: number;
+  trend: string;
+  image: string | null;
+};
+
+export function useMarketersLeaderboard() {
+  return useQuery<LeaderboardMarketer[]>({
+    queryKey: ["marketers-leaderboard"],
+    queryFn: async () => {
+      const response = await fetch("/api/marketers/leaderboard");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.error ?? "Failed to fetch marketers leaderboard."
+        );
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export type MarketerTestimonial = {
+  id: string;
+  contractId: string;
+  creatorId: string;
+  creatorName: string;
+  projectId: string;
+  projectName: string;
+  rating: number;
+  text: string | null; // null in GHOST mode to protect identity
+  createdAt: string | Date;
+};
+
+export function useMarketerTestimonials(marketerId?: string | null) {
+  return useQuery<MarketerTestimonial[]>({
+    queryKey: ["marketer-testimonials", marketerId ?? "none"],
+    enabled: Boolean(marketerId),
+    queryFn: async () => {
+      const response = await fetch(`/api/marketers/${marketerId}/testimonials`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch testimonials.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export type SearchMarketer = {
+  id: string;
+  name: string;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  location?: string | null;
+  specialties?: string[];
+  focusArea?: string | null;
+  totalEarnings: number;
+  totalRevenue: number;
+  activeProjects: number;
+};
+
+export type MarketersSearchFilters = {
+  search?: string;
+  specialties?: string[];
+  earningsRanges?: string[];
+  locations?: string[];
+  focusAreas?: string[];
+};
+
+export function useMarketersSearch(filters: MarketersSearchFilters = {}) {
+  return useQuery<SearchMarketer[]>({
+    queryKey: ["marketers-search", filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+
+      if (filters.search) {
+        params.append("search", filters.search);
+      }
+      if (filters.specialties && filters.specialties.length > 0) {
+        params.append("specialties", filters.specialties.join(","));
+      }
+      if (filters.earningsRanges && filters.earningsRanges.length > 0) {
+        params.append("earningsRanges", filters.earningsRanges.join(","));
+      }
+      if (filters.locations && filters.locations.length > 0) {
+        params.append("locations", filters.locations.join(","));
+      }
+      if (filters.focusAreas && filters.focusAreas.length > 0) {
+        params.append("focusAreas", filters.focusAreas.join(","));
+      }
+
+      const response = await fetch(
+        `/api/marketers/search?${params.toString()}`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to search marketers.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export type MarketerFilterOptions = {
+  specialties: string[];
+  locations: string[];
+  focusAreas: string[];
+};
+
+export function useMarketersFilterOptions() {
+  return useQuery<MarketerFilterOptions>({
+    queryKey: ["marketers-filter-options"],
+    queryFn: async () => {
+      const response = await fetch("/api/marketers/filter-options");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch filter options.");
+      }
+      const payload = await response.json();
+      return (
+        payload?.data ?? { specialties: [], locations: [], focusAreas: [] }
+      );
     },
   });
 }

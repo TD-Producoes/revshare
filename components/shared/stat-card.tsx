@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
 interface StatCardProps {
-  title: string;
+  title: React.ReactNode;
   value: string;
-  description?: string;
+  description?: React.ReactNode;
   icon?: LucideIcon;
   trend?: {
     value: number;

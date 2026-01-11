@@ -1,12 +1,43 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   const { projectId } = await params;
+
+  // Authenticate user
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
+  // Verify project ownership
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { userId: true },
+  });
+
+  if (!project) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  if (project.userId !== authUser.id) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
+  const contracts = await prisma.contract.findMany({
+    where: { projectId },
+    select: { userId: true, refundWindowDays: true },
+  });
+  const refundWindowByMarketer = new Map(
+    contracts.map((contract) => [contract.userId, contract.refundWindowDays]),
+  );
 
   const coupons = await prisma.coupon.findMany({
     where: { projectId },
@@ -38,5 +69,10 @@ export async function GET(
     orderBy: { claimedAt: "desc" },
   });
 
-  return NextResponse.json({ data: coupons });
+  const enriched = coupons.map((coupon) => ({
+    ...coupon,
+    refundWindowDays: refundWindowByMarketer.get(coupon.marketer.id) ?? null,
+  }));
+
+  return NextResponse.json({ data: enriched });
 }

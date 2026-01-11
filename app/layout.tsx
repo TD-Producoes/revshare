@@ -3,6 +3,10 @@ import { Geist, Geist_Mono, DM_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ReactQueryProvider } from "@/components/providers/react-query-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import * as React from "react";
+import { RouteChangeTransition } from "@/components/layout/route-change-transition";
+import { SmoothScroll } from "@/components/layout/smooth-scroll";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans" });
@@ -19,7 +23,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "RevShare - Creator & Marketer Marketplace",
-  description: "Connect creators and marketers with Stripe-based revenue sharing",
+  description: "Connect founders and marketers with Stripe-based revenue sharing",
 };
 
 export default function RootLayout({
@@ -38,6 +42,8 @@ export default function RootLayout({
             <Toaster />
           </ReactQueryProvider>
         </ThemeProvider>
+        <SpeedInsights />
+        <SmoothScroll />
       </body>
     </html>
   );

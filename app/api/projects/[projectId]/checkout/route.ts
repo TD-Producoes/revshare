@@ -49,7 +49,7 @@ export async function POST(
   }
   if (!project.creatorStripeAccountId) {
     return NextResponse.json(
-      { error: "Creator Stripe account not set" },
+      { error: "Founder Stripe account not set" },
       { status: 400 }
     );
   }
@@ -97,6 +97,7 @@ export async function POST(
   const marketerCommissionPercent = Number(project.marketerCommissionPercent);
   const totalCommissionPercent =
     platformCommissionPercent + marketerCommissionPercent;
+  const applicationFeePercent = Number((totalCommissionPercent * 100).toFixed(2));
   const hasPromotion = Boolean(promotionCodeId);
   const quantity = payload.quantity ?? 1;
   const baseAmount = (price.unit_amount ?? 0) * quantity;
@@ -120,6 +121,21 @@ export async function POST(
       );
     } else if (coupon?.amount_off) {
       discountedAmount = Math.max(0, baseAmount - coupon.amount_off * quantity);
+    }
+
+    const priceProductId =
+      typeof price.product === "string" ? price.product : price.product?.id;
+    if (coupon?.applies_to?.products?.length && priceProductId) {
+      const allowed = coupon.applies_to.products.includes(priceProductId);
+      if (!allowed) {
+        return NextResponse.json(
+          {
+            error:
+              "This coupon does not apply to the selected product. Please choose a compatible product.",
+          },
+          { status: 400 }
+        );
+      }
     }
   }
 
@@ -155,7 +171,7 @@ export async function POST(
             subscription_data: {
               metadata: { projectId },
               ...(hasPromotion
-                ? { application_fee_percent: totalCommissionPercent * 100 }
+                ? { application_fee_percent: applicationFeePercent }
                 : {}),
             },
           }

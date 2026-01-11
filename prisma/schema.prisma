@@ -13,45 +13,83 @@ datasource db {
 }
 
 model User {
-  id                        String   @id
-  role                      UserRole
-  name                      String
-  email                     String   @unique
-  stripeConnectedAccountId  String?  @unique
-  stripeCustomerId          String?  @unique
-  autoChargeEnabled         Boolean  @default(false)
-  onboardingStatus          String?
-  onboardingData            Json?
-  onboardingCompletedAt     DateTime?
-  projects                  Project[]
-  coupons                   Coupon[]
-  contracts                 Contract[]
-  paymentMethods            PaymentMethod[]
-  metricsSnapshots          MetricsSnapshot[]
-  creatorTransfers          Transfer[] @relation("CreatorTransfers")
-  marketerTransfers         Transfer[] @relation("MarketerTransfers")
-  creatorPayments           CreatorPayment[]
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id                       String                    @id
+  role                     UserRole
+  name                     String
+  email                    String                    @unique
+  stripeConnectedAccountId String?                   @unique
+  stripeCustomerId         String?                   @unique
+  autoChargeEnabled        Boolean                   @default(false)
+  onboardingStatus         String?
+  onboardingData           Json?
+  onboardingCompletedAt    DateTime?
+  metadata                 Json?
+  projects                 Project[]
+  coupons                  Coupon[]
+  contracts                Contract[]
+  paymentMethods           PaymentMethod[]
+  creatorTransfers         Transfer[]                @relation("CreatorTransfers")
+  marketerTransfers        Transfer[]                @relation("MarketerTransfers")
+  creatorPayments          CreatorPayment[]
+  creatorAdjustments       CommissionAdjustment[]    @relation("CreatorAdjustments")
+  marketerAdjustments      CommissionAdjustment[]    @relation("MarketerAdjustments")
+  marketerMetricsSnapshots MarketerMetricsSnapshot[]
+  events                   Event[]                   @relation("ActorEvents")
+  notifications            Notification[]
+  notificationPreference   NotificationPreference?
+  testimonialsGiven        Testimonial[]             @relation("CreatorTestimonials")
+  testimonialsReceived     Testimonial[]             @relation("MarketerTestimonials")
+  rewardEarned             RewardEarned[]
+  rewardCoupons            RewardCoupon[]
+  feedbacks                Feedback[]
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  visibility               VisibilityMode            @default(PUBLIC)
 }
 
 model Project {
-  id                    String   @id @default(cuid())
-  userId                String
-  name                  String
-  description           String?
-  creatorStripeAccountId String?
-  onboardingStatus       String?
-  onboardingData         Json?
-  onboardingCompletedAt  DateTime?
-  platformCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
-  marketerCommissionPercent Decimal @default(0.2) @db.Decimal(5, 2)
-  couponTemplates       CouponTemplate[]
-  coupons               Coupon[]
-  purchases             Purchase[]
-  contracts             Contract[]
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                        String                    @id @default(cuid())
+  userId                    String
+  name                      String
+  description               String?
+  category                  String?                   @default("Other")
+  refundWindowDays          Int                       @default(30)
+  creatorStripeAccountId    String?
+  onboardingStatus          String?
+  onboardingData            Json?
+  onboardingCompletedAt     DateTime?
+  currency                  String?
+  platformCommissionPercent Decimal                   @default(0.2) @db.Decimal(5, 2)
+  marketerCommissionPercent Decimal                   @default(0.2) @db.Decimal(5, 2)
+  country                   String?
+  website                   String?
+  foundationDate            DateTime?
+  about                     String?                   @db.Text
+  features                  String[]                  @default([])
+  logoUrl                   String?
+  imageUrls                 String[]                  @default([])
+  couponTemplates           CouponTemplate[]
+  coupons                   Coupon[]
+  purchases                 Purchase[]
+  contracts                 Contract[]
+  events                    Event[]
+  commissionAdjustments     CommissionAdjustment[]
+  metricsSnapshots          MetricsSnapshot[]
+  marketerMetricsSnapshots  MarketerMetricsSnapshot[]
+  testimonials              Testimonial[]
+  rewards                   Reward[]
+  rewardEarned              RewardEarned[]
+  rewardCoupons             RewardCoupon[]
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  visibility                VisibilityMode            @default(PUBLIC)
+  showMrr                   Boolean                   @default(true)
+  showRevenue               Boolean                   @default(true)
+  showStats                 Boolean                   @default(true)
+  showAvgCommission         Boolean                   @default(true)
+  autoApproveApplications   Boolean                   @default(false)
+  autoApproveMatchTerms     Boolean                   @default(true)
+  autoApproveVerifiedOnly   Boolean                   @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -59,16 +97,19 @@ model Project {
 }
 
 model Contract {
-  id               String         @id @default(cuid())
-  projectId        String
-  userId           String
+  id                String         @id @default(cuid())
+  projectId         String
+  userId            String
   commissionPercent Decimal        @db.Decimal(5, 2)
-  status           ContractStatus @default(PENDING)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  message           String?        @db.Text
+  refundWindowDays  Int?
+  status            ContractStatus @default(PENDING)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testimonial Testimonial?
 
   @@unique([projectId, userId])
   @@index([projectId])
@@ -76,75 +117,158 @@ model Contract {
 }
 
 model Coupon {
-  id                     String       @id @default(cuid())
-  projectId              String
-  templateId             String
-  marketerId             String
-  code                   String       @unique
-  stripeCouponId         String
-  stripePromotionCodeId  String       @unique
-  percentOff             Int
-  commissionPercent      Decimal      @db.Decimal(5, 2)
-  status                 CouponStatus @default(ACTIVE)
-  claimedAt              DateTime     @default(now())
-  project                Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  template               CouponTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  marketer               User         @relation(fields: [marketerId], references: [id], onDelete: Cascade)
-  purchases              Purchase[]
+  id                    String         @id @default(cuid())
+  projectId             String
+  templateId            String
+  marketerId            String
+  code                  String         @unique
+  stripeCouponId        String
+  stripePromotionCodeId String         @unique
+  percentOff            Int
+  commissionPercent     Decimal        @db.Decimal(5, 2)
+  status                CouponStatus   @default(ACTIVE)
+  claimedAt             DateTime       @default(now())
+  project               Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template              CouponTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  marketer              User           @relation(fields: [marketerId], references: [id], onDelete: Cascade)
+  purchases             Purchase[]
 
+  @@unique([templateId, marketerId])
   @@index([projectId])
   @@index([templateId])
   @@index([marketerId])
   @@index([stripeCouponId])
-  @@unique([templateId, marketerId])
 }
 
 model CouponTemplate {
-  id                     String       @id @default(cuid())
-  projectId              String
-  name                   String
-  description            String?
-  percentOff             Int
-  startAt                DateTime?
-  endAt                  DateTime?
-  maxRedemptions         Int?
-  productIds             Json?
-  allowedMarketerIds     Json?
-  stripeCouponId         String       @unique
-  status                 CouponStatus @default(ACTIVE)
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
+  id                 String       @id @default(cuid())
+  projectId          String
+  name               String
+  description        String?
+  percentOff         Int
+  durationType       CouponDuration @default(ONCE)
+  durationInMonths   Int?
+  startAt            DateTime?
+  endAt              DateTime?
+  maxRedemptions     Int?
+  productIds         Json?
+  allowedMarketerIds Json?
+  stripeCouponId     String       @unique
+  status             CouponStatus @default(ACTIVE)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   coupons Coupon[]
 
   @@index([projectId])
   @@index([status])
 }
 
-model Purchase {
-  id                    String       @id @default(cuid())
-  projectId             String
-  couponId              String?
-  stripeEventId         String       @unique
-  stripeChargeId        String?
-  stripeInvoiceId       String?
-  stripePaymentIntentId String?
-  amount                Int
-  currency              String
-  customerEmail         String?
-  commissionAmount      Int
-  transferId            String?
-  transferRecordId      String?
-  creatorPaymentId      String?
-  commissionStatus      CommissionStatus @default(PENDING_CREATOR_PAYMENT)
-  status                PayoutStatus @default(PENDING)
-  createdAt             DateTime     @default(now())
+model Reward {
+  id                String              @id @default(cuid())
+  projectId         String
+  name              String
+  description       String?
+  milestoneType     RewardMilestoneType @default(NET_REVENUE)
+  milestoneValue    Int
+  rewardType        RewardType
+  rewardLabel       String?
+  rewardPercentOff  Int?
+  rewardDurationMonths Int?
+  fulfillmentType   RewardFulfillment   @default(AUTO_COUPON)
+  earnLimit         RewardEarnLimit     @default(ONCE_PER_MARKETER)
+  availabilityType  RewardAvailability  @default(UNLIMITED)
+  availabilityLimit Int?
+  visibility        RewardVisibility    @default(PUBLIC)
+  startsAt          DateTime            @default(now())
+  status            RewardStatus        @default(DRAFT)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  coupon  Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
-  transferRecord Transfer? @relation(fields: [transferRecordId], references: [id], onDelete: SetNull)
-  creatorPayment CreatorPayment? @relation(fields: [creatorPaymentId], references: [id], onDelete: SetNull)
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  earned  RewardEarned[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model RewardEarned {
+  id         String             @id @default(cuid())
+  rewardId   String
+  projectId  String
+  marketerId String
+  sequence   Int                @default(1)
+  status     RewardEarnedStatus @default(UNLOCKED)
+  earnedAt   DateTime           @default(now())
+  unlockedAt DateTime?
+  claimedAt  DateTime?
+
+  reward   Reward  @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  marketer User    @relation(fields: [marketerId], references: [id], onDelete: Cascade)
+  rewardCoupon RewardCoupon?
+
+  @@unique([rewardId, marketerId, sequence])
+  @@index([projectId])
+  @@index([marketerId])
+  @@index([projectId, marketerId])
+  @@index([status])
+}
+
+model RewardCoupon {
+  id                    String   @id @default(cuid())
+  rewardEarnedId         String  @unique
+  projectId              String
+  marketerId             String
+  stripeCouponId         String?
+  stripePromotionCodeId  String?
+  code                   String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  rewardEarned RewardEarned @relation(fields: [rewardEarnedId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  marketer     User         @relation(fields: [marketerId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([marketerId])
+  @@index([stripeCouponId])
+  @@index([stripePromotionCodeId])
+}
+
+model Purchase {
+  id                       String           @id @default(cuid())
+  projectId                String
+  couponId                 String?
+  stripeEventId            String           @unique
+  stripeChargeId           String?
+  stripeInvoiceId          String?
+  stripePaymentIntentId    String?
+  amount                   Int
+  currency                 String
+  customerEmail            String?
+  commissionAmount         Int
+  commissionAmountOriginal Int?
+  refundedAmount           Int              @default(0)
+  refundedAt               DateTime?
+  disputeId                String?
+  disputeStatus            String?
+  chargebackAt             DateTime?
+  refundWindowDays         Int?
+  refundEligibleAt         DateTime?
+  transferId               String?
+  transferRecordId         String?
+  creatorPaymentId         String?
+  commissionStatus         CommissionStatus @default(PENDING_CREATOR_PAYMENT)
+  status                   PayoutStatus     @default(PENDING)
+  createdAt                DateTime         @default(now())
+
+  project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  coupon                Coupon?                @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  transferRecord        Transfer?              @relation(fields: [transferRecordId], references: [id], onDelete: SetNull)
+  creatorPayment        CreatorPayment?        @relation(fields: [creatorPaymentId], references: [id], onDelete: SetNull)
+  commissionAdjustments CommissionAdjustment[]
 
   @@index([projectId])
   @@index([couponId])
@@ -152,19 +276,169 @@ model Purchase {
   @@index([creatorPaymentId])
 }
 
+model Event {
+  id          String    @id @default(cuid())
+  type        EventType
+  actorId     String?
+  projectId   String?
+  subjectType String?
+  subjectId   String?
+  data        Json?
+  createdAt   DateTime  @default(now())
+
+  actor         User?          @relation("ActorEvents", fields: [actorId], references: [id], onDelete: SetNull)
+  project       Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+
+  @@index([type])
+  @@index([actorId])
+  @@index([projectId])
+  @@index([subjectType, subjectId])
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String
+  eventId   String?
+  type      NotificationType
+  title     String
+  message   String?
+  data      Json?
+  status    NotificationStatus @default(UNREAD)
+  readAt    DateTime?
+  createdAt DateTime           @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+}
+
+model NotificationPreference {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  emailEnabled   Boolean  @default(false)
+  webhookEnabled Boolean  @default(false)
+  webhookUrl     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 enum CouponStatus {
   ACTIVE
   REVOKED
+}
+
+enum CouponDuration {
+  ONCE
+  REPEATING
 }
 
 enum ContractStatus {
   PENDING
   APPROVED
   REJECTED
+  PAUSED
+}
+
+enum RewardStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum RewardMilestoneType {
+  NET_REVENUE
+  COMPLETED_SALES
+  ACTIVE_CUSTOMERS
+}
+
+enum RewardType {
+  DISCOUNT_COUPON
+  FREE_SUBSCRIPTION
+  PLAN_UPGRADE
+  ACCESS_PERK
+}
+
+enum RewardFulfillment {
+  AUTO_COUPON
+  MANUAL
+}
+
+enum RewardEarnLimit {
+  ONCE_PER_MARKETER
+  MULTIPLE
+}
+
+enum RewardAvailability {
+  UNLIMITED
+  FIRST_N
+}
+
+enum RewardVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum RewardEarnedStatus {
+  PENDING_REFUND
+  UNLOCKED
+  CLAIMED
+}
+
+enum EventType {
+  USER_SIGNED_UP
+  USER_LOGGED_IN
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  REWARD_CREATED
+  REWARD_UPDATED
+  REWARD_STATUS_CHANGED
+  REWARD_EARNED
+  REWARD_CLAIMED
+  COUPON_TEMPLATE_CREATED
+  COUPON_TEMPLATE_UPDATED
+  COUPON_CLAIMED
+  PURCHASE_CREATED
+  PURCHASE_REFUNDED
+  PURCHASE_CHARGEBACK
+  PURCHASE_CHARGEBACK_RESOLVED
+  CREATOR_PAYMENT_CREATED
+  CREATOR_PAYMENT_COMPLETED
+  TRANSFER_INITIATED
+  TRANSFER_COMPLETED
+  TRANSFER_FAILED
+  CONTRACT_CREATED
+  CONTRACT_APPROVED
+  CONTRACT_REJECTED
+  CONTRACT_PAUSED
+  CONTRACT_RESUMED
+  NOTIFICATION_SENT
+}
+
+enum NotificationType {
+  SALE
+  COMMISSION_DUE
+  COMMISSION_READY
+  REFUND
+  CHARGEBACK
+  PAYOUT_SENT
+  PAYOUT_FAILED
+  CONTRACT_APPROVED
+  CONTRACT_REJECTED
+  PROJECT_UPDATE
+  SYSTEM
 }
 
 enum UserRole {
-  creator
+  founder
   marketer
 }
 
@@ -176,8 +450,23 @@ enum PayoutStatus {
 
 enum CommissionStatus {
   PENDING_CREATOR_PAYMENT
+  AWAITING_REFUND_WINDOW
   READY_FOR_PAYOUT
   PAID
+  REFUNDED
+  CHARGEBACK
+}
+
+enum AdjustmentReason {
+  REFUND
+  CHARGEBACK
+  CHARGEBACK_REVERSAL
+}
+
+enum AdjustmentStatus {
+  PENDING
+  APPLIED
+  REVERSED
 }
 
 enum PaymentStatus {
@@ -186,19 +475,25 @@ enum PaymentStatus {
   FAILED
 }
 
-model CreatorPayment {
-  id                     String        @id @default(cuid())
-  creatorId              String
-  amountTotal            Int
-  marketerTotal          Int
-  platformFeeTotal       Int
-  status                 PaymentStatus @default(PENDING)
-  stripeCheckoutSessionId String?
-  stripePaymentIntentId  String?
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
 
-  creator   User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+model CreatorPayment {
+  id                      String        @id @default(cuid())
+  creatorId               String
+  amountTotal             Int
+  marketerTotal           Int
+  platformFeeTotal        Int
+  status                  PaymentStatus @default(PENDING)
+  stripeCheckoutSessionId String?
+  stripePaymentIntentId   String?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  creator   User       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   purchases Purchase[]
 
   @@index([creatorId])
@@ -217,8 +512,8 @@ model Transfer {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  creator  User      @relation("CreatorTransfers", fields: [creatorId], references: [id], onDelete: Cascade)
-  marketer User      @relation("MarketerTransfers", fields: [marketerId], references: [id], onDelete: Cascade)
+  creator   User       @relation("CreatorTransfers", fields: [creatorId], references: [id], onDelete: Cascade)
+  marketer  User       @relation("MarketerTransfers", fields: [marketerId], references: [id], onDelete: Cascade)
   purchases Purchase[]
 
   @@index([creatorId])
@@ -226,19 +521,44 @@ model Transfer {
   @@index([stripeTransferId])
 }
 
+model CommissionAdjustment {
+  id         String           @id @default(cuid())
+  creatorId  String
+  marketerId String
+  projectId  String
+  purchaseId String?
+  amount     Int
+  currency   String
+  reason     AdjustmentReason
+  status     AdjustmentStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  creator  User      @relation("CreatorAdjustments", fields: [creatorId], references: [id], onDelete: Cascade)
+  marketer User      @relation("MarketerAdjustments", fields: [marketerId], references: [id], onDelete: Cascade)
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([creatorId])
+  @@index([marketerId])
+  @@index([projectId])
+  @@index([purchaseId])
+  @@index([status])
+}
+
 model PaymentMethod {
-  id                     String   @id @default(cuid())
-  userId                 String
-  stripePaymentMethodId  String   @unique
-  type                   String
-  brand                  String?
-  last4                  String?
-  expMonth               Int?
-  expYear                Int?
-  bankName               String?
-  isDefault              Boolean  @default(false)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  userId                String
+  stripePaymentMethodId String   @unique
+  type                  String
+  brand                 String?
+  last4                 String?
+  expMonth              Int?
+  expYear               Int?
+  bankName              String?
+  isDefault             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -246,24 +566,107 @@ model PaymentMethod {
 }
 
 model MetricsSnapshot {
-  id                 String   @id @default(cuid())
-  creatorId          String
-  date               DateTime
-  totalRevenue       Int
-  affiliateRevenue   Int
-  affiliateShareOwed Int
-  platformFee        Int
-  mrr                Int
-  purchasesCount     Int
-  affiliatePurchasesCount Int
-  directPurchasesCount    Int
-  uniqueCustomers    Int
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                         String   @id @default(dbgenerated("gen_random_uuid()"))
+  projectId                  String
+  date                       DateTime
+  totalRevenue               Int
+  affiliateRevenue           Int
+  affiliateShareOwed         Int
+  platformFee                Int
+  mrr                        Int
+  purchasesCount             Int
+  affiliatePurchasesCount    Int
+  directPurchasesCount       Int
+  uniqueCustomers            Int
+  affiliateCustomers         Int      @default(0)
+  totalRevenueDay            Int      @default(0)
+  affiliateRevenueDay        Int      @default(0)
+  affiliateShareOwedDay      Int      @default(0)
+  platformFeeDay             Int      @default(0)
+  mrrDay                     Int      @default(0)
+  purchasesCountDay          Int      @default(0)
+  affiliatePurchasesCountDay Int      @default(0)
+  directPurchasesCountDay    Int      @default(0)
+  uniqueCustomersDay         Int      @default(0)
+  affiliateCustomersDay      Int      @default(0)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
-  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([creatorId, date])
-  @@index([creatorId])
+  @@unique([projectId, date])
+  @@index([projectId])
   @@index([date])
+}
+
+model MarketerMetricsSnapshot {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()"))
+  projectId           String
+  marketerId          String
+  date                DateTime
+  projectRevenueDay   Int      @default(0)
+  affiliateRevenueDay Int      @default(0)
+  commissionOwedDay   Int      @default(0)
+  purchasesCountDay   Int      @default(0)
+  customersCountDay   Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  marketer User    @relation(fields: [marketerId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, marketerId, date])
+  @@index([projectId])
+  @@index([marketerId])
+  @@index([date])
+}
+
+model Testimonial {
+  id         String   @id @default(cuid())
+  contractId String   @unique
+  creatorId  String
+  marketerId String
+  projectId  String
+  rating     Int // 1-5 stars
+  text       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  creator  User     @relation("CreatorTestimonials", fields: [creatorId], references: [id], onDelete: Cascade)
+  marketer User     @relation("MarketerTestimonials", fields: [marketerId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([creatorId])
+  @@index([marketerId])
+  @@index([projectId])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum VisibilityMode {
+  PUBLIC
+  GHOST
+  PRIVATE
+}
+
+model Waitlist {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  source    String?  @default("landing")
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useUsers } from "@/lib/data/store";
 import {
   Card,
   CardContent,
@@ -24,19 +23,12 @@ import { Search, Percent, Timer, Check, Clock } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useProjects } from "@/lib/hooks/projects";
+import { isAnonymousName } from "@/lib/utils/anonymous";
 import {
   useContractsForMarketer,
   useCreateContract,
 } from "@/lib/hooks/contracts";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { ApplyToPromoteDialog } from "@/components/marketer/apply-to-promote-dialog";
 
 export function BrowseProjects() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
@@ -44,7 +36,6 @@ export function BrowseProjects() {
   const { data: projects = [], isLoading: isProjectsLoading } = useProjects();
   const { data: contracts = [], isLoading: isContractsLoading } =
     useContractsForMarketer(currentUser?.id);
-  const users = useUsers();
   const createContract = useCreateContract();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,6 +43,8 @@ export function BrowseProjects() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [commissionInput, setCommissionInput] = useState<string>("");
+  const [applicationMessage, setApplicationMessage] = useState<string>("");
+  const [refundWindowInput, setRefundWindowInput] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
   const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(
     () => new Set(),
@@ -73,8 +66,14 @@ export function BrowseProjects() {
     );
   }
 
-  // Get unique categories
-  const categories = ["Uncategorized"];
+  const categories = Array.from(
+    new Set(
+      projects
+        .map((project) => project.category?.trim())
+        .filter((category): category is string => Boolean(category)),
+    ),
+  );
+  const categoryOptions = categories.length ? categories : ["Other"];
 
   const selectedProject =
     projects.find((project) => project.id === selectedProjectId) ?? null;
@@ -91,14 +90,11 @@ export function BrowseProjects() {
     const matchesSearch =
       project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (project.description ?? "").toLowerCase().includes(searchTerm.toLowerCase());
+    const categoryLabel = project.category || "Other";
     const matchesCategory =
-      categoryFilter === "all" || categoryFilter === "Uncategorized";
+      categoryFilter === "all" || categoryFilter === categoryLabel;
     return matchesSearch && matchesCategory;
   });
-
-  const getCreator = (userId: string) => {
-    return users.find((u) => u.id === userId);
-  };
 
   const getContractStatus = (projectId: string) => {
     const existingContract = contracts.find(
@@ -121,6 +117,10 @@ export function BrowseProjects() {
     );
     setSelectedProjectId(projectId);
     setCommissionInput(defaultCommission !== null ? String(defaultCommission) : "");
+    setRefundWindowInput(
+      project.refundWindowDays != null ? String(project.refundWindowDays) : "30",
+    );
+    setApplicationMessage("");
     setFormError(null);
     setIsDialogOpen(true);
   };
@@ -134,15 +134,28 @@ export function BrowseProjects() {
       setFormError("Enter a valid commission percent.");
       return;
     }
+    const refundWindowDays = refundWindowInput
+      ? Number(refundWindowInput)
+      : null;
+    if (refundWindowDays !== null) {
+      if (!Number.isFinite(refundWindowDays) || refundWindowDays < 0) {
+        setFormError("Enter a valid refund window in days.");
+        return;
+      }
+    }
 
     try {
       await createContract.mutateAsync({
         projectId: selectedProject.id,
         userId: currentUser.id,
         commissionPercent,
+        message: applicationMessage.trim() || undefined,
+        refundWindowDays: refundWindowDays ?? undefined,
       });
       setAppliedProjectIds((prev) => new Set(prev).add(selectedProject.id));
       setCommissionInput("");
+      setRefundWindowInput("");
+      setApplicationMessage("");
       setIsDialogOpen(false);
     } catch (error) {
       const message =
@@ -177,7 +190,7 @@ export function BrowseProjects() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((cat) => (
+            {categoryOptions.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
               </SelectItem>
@@ -194,7 +207,8 @@ export function BrowseProjects() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredProjects.map((project) => {
-            const creator = getCreator(project.userId);
+            const creatorName = project.user?.name || "Unknown";
+            const categoryLabel = project.category || "Other";
             const offerStatus = getContractStatus(project.id);
             const revSharePercent =
               getRevSharePercent(project.marketerCommissionPercent);
@@ -203,13 +217,21 @@ export function BrowseProjects() {
               <Card key={project.id} className="flex flex-col">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <Badge variant="secondary">Uncategorized</Badge>
+                    <Badge variant="secondary">{categoryLabel}</Badge>
                     <Badge variant="outline" className="gap-1">
                       <Percent className="h-3 w-3" />
                       {revSharePercent !== null ? `${revSharePercent}%` : "-"} rev share
                     </Badge>
                   </div>
-                  <CardTitle className="mt-2">{project.name}</CardTitle>
+                  <CardTitle
+                    className={`mt-2 ${
+                      isAnonymousName(project.name)
+                        ? "blur-xs opacity-60"
+                        : ""
+                    }`}
+                  >
+                    {project.name}
+                  </CardTitle>
                   <CardDescription className="line-clamp-2">
                     {project.description || "No description yet."}
                   </CardDescription>
@@ -217,9 +239,9 @@ export function BrowseProjects() {
                 <CardContent className="flex-1">
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Creator</span>
+                      <span className="text-muted-foreground">Founder</span>
                       <span className="font-medium">
-                        {creator?.name || "Unknown"}
+                        {creatorName}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -285,56 +307,21 @@ export function BrowseProjects() {
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle>Apply to Promote</DialogTitle>
-            <DialogDescription>
-              Request to promote{" "}
-              <span className="font-medium">
-                {selectedProject?.name ?? "this project"}
-              </span>
-              .
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="commission">Commission (%)</Label>
-              <Input
-                id="commission"
-                type="number"
-                min={0}
-                step="0.5"
-                value={commissionInput}
-                onChange={(event) => setCommissionInput(event.target.value)}
-                placeholder="20"
-              />
-              <p className="text-xs text-muted-foreground">
-                You can negotiate a custom commission for this project.
-              </p>
-            </div>
-            {formError ? (
-              <p className="text-sm text-destructive">{formError}</p>
-            ) : null}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSubmitContract}
-              disabled={createContract.isPending || !selectedProject}
-            >
-              {createContract.isPending ? "Submitting..." : "Submit Request"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ApplyToPromoteDialog
+        isOpen={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        projectName={selectedProject?.name}
+        commissionInput={commissionInput}
+        onCommissionChange={setCommissionInput}
+        refundWindowInput={refundWindowInput}
+        onRefundWindowChange={setRefundWindowInput}
+        applicationMessage={applicationMessage}
+        onApplicationMessageChange={setApplicationMessage}
+        onSubmit={handleSubmitContract}
+        isSubmitting={createContract.isPending}
+        submitDisabled={!selectedProject}
+        formError={formError}
+      />
     </div>
   );
 }

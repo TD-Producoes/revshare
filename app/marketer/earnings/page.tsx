@@ -12,19 +12,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Clock, CheckCircle, TrendingUp } from "lucide-react";
+import { DollarSign, Clock, CheckCircle, TrendingUp, Timer, Info } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useContractsForMarketer } from "@/lib/hooks/contracts";
-import { useMarketerPurchases, useMarketerStats } from "@/lib/hooks/marketer";
+import { useMarketerAdjustments, useMarketerPurchases } from "@/lib/hooks/marketer";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function EarningsPage() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useMarketerPurchases(currentUser?.id);
-  const { data: stats, isLoading: isStatsLoading } =
-    useMarketerStats(currentUser?.id);
+  const {
+    data: adjustmentsPayload,
+    isLoading: isAdjustmentsLoading,
+  } = useMarketerAdjustments(currentUser?.id);
+  const adjustments = adjustmentsPayload?.data ?? [];
+  const pendingAdjustmentsTotal = adjustmentsPayload?.pendingTotal ?? 0;
   const { data: contracts = [], isLoading: isContractsLoading } =
     useContractsForMarketer(currentUser?.id);
 
@@ -32,8 +41,8 @@ export default function EarningsPage() {
     isAuthLoading ||
     isUserLoading ||
     isPurchasesLoading ||
-    isStatsLoading ||
-    isContractsLoading
+    isContractsLoading ||
+    isAdjustmentsLoading
   ) {
     return (
       <div className="flex h-40 items-center justify-center text-muted-foreground">
@@ -50,10 +59,57 @@ export default function EarningsPage() {
     );
   }
 
-  const totalEarnings = stats?.totalEarnings ?? 0;
-  const pendingEarnings = stats?.pendingEarnings ?? 0;
-  const receivedEarnings = Math.max(totalEarnings - pendingEarnings, 0);
-  const totalRevenue = stats?.totalRevenue ?? 0;
+  const now = new Date();
+  const getEffectiveCommissionStatus = (purchase: {
+    commissionStatus: string;
+    refundEligibleAt?: string | Date | null;
+  }) => {
+    if (purchase.commissionStatus !== "awaiting_refund_window") {
+      return purchase.commissionStatus;
+    }
+    if (!purchase.refundEligibleAt) {
+      return purchase.commissionStatus;
+    }
+    return new Date(purchase.refundEligibleAt) <= now
+      ? "pending_creator_payment"
+      : "awaiting_refund_window";
+  };
+
+  const totals = purchases.reduce(
+    (acc, purchase) => {
+      const effectiveStatus = getEffectiveCommissionStatus(purchase);
+      if (effectiveStatus === "refunded" || effectiveStatus === "chargeback") {
+        return acc;
+      }
+      acc.totalRevenue += purchase.amount;
+      acc.totalEarnings += purchase.commissionAmount;
+      switch (effectiveStatus) {
+        case "paid":
+          acc.paid += purchase.commissionAmount;
+          break;
+        case "ready_for_payout":
+          acc.ready += purchase.commissionAmount;
+          break;
+        case "awaiting_refund_window":
+          acc.awaitingRefund += purchase.commissionAmount;
+          break;
+        case "pending_creator_payment":
+          acc.awaitingCreator += purchase.commissionAmount;
+          break;
+        default:
+          break;
+      }
+      return acc;
+    },
+    {
+      totalRevenue: 0,
+      totalEarnings: 0,
+      paid: 0,
+      ready: 0,
+      awaitingRefund: 0,
+      awaitingCreator: 0,
+    },
+  );
 
   const contractByProject = new Map(
     contracts.map((contract) => [contract.projectId, contract]),
@@ -61,6 +117,10 @@ export default function EarningsPage() {
 
   const projectEarnings = purchases.reduce(
     (acc, purchase) => {
+      const effectiveStatus = getEffectiveCommissionStatus(purchase);
+      if (effectiveStatus === "refunded" || effectiveStatus === "chargeback") {
+        return acc;
+      }
       const existing = acc.get(purchase.projectId) ?? {
         projectId: purchase.projectId,
         projectName: purchase.projectName,
@@ -68,17 +128,23 @@ export default function EarningsPage() {
         totalRevenue: 0,
         totalEarnings: 0,
         paidEarnings: 0,
-        pendingEarnings: 0,
+        readyEarnings: 0,
+        awaitingRefundEarnings: 0,
+        awaitingCreatorEarnings: 0,
         commissionPercent: null as number | null,
       };
 
       existing.purchaseCount += 1;
       existing.totalRevenue += purchase.amount;
       existing.totalEarnings += purchase.commissionAmount;
-      if (purchase.status === "paid") {
+      if (effectiveStatus === "paid") {
         existing.paidEarnings += purchase.commissionAmount;
-      } else if (purchase.status === "pending") {
-        existing.pendingEarnings += purchase.commissionAmount;
+      } else if (effectiveStatus === "ready_for_payout") {
+        existing.readyEarnings += purchase.commissionAmount;
+      } else if (effectiveStatus === "awaiting_refund_window") {
+        existing.awaitingRefundEarnings += purchase.commissionAmount;
+      } else if (effectiveStatus === "pending_creator_payment") {
+        existing.awaitingCreatorEarnings += purchase.commissionAmount;
       }
 
       const contract = contractByProject.get(purchase.projectId);
@@ -102,7 +168,9 @@ export default function EarningsPage() {
         totalRevenue: number;
         totalEarnings: number;
         paidEarnings: number;
-        pendingEarnings: number;
+        readyEarnings: number;
+        awaitingRefundEarnings: number;
+        awaitingCreatorEarnings: number;
         commissionPercent: number | null;
       }
     >(),
@@ -110,6 +178,38 @@ export default function EarningsPage() {
 
   const projectEarningsList = Array.from(projectEarnings.values()).sort(
     (a, b) => b.totalEarnings - a.totalEarnings,
+  );
+  const totalAdjustments = adjustments.reduce(
+    (sum, adjustment) => sum + adjustment.amount,
+    0,
+  );
+  const netEarnings = totals.totalEarnings + totalAdjustments;
+  const netReady = Math.max(0, totals.ready + pendingAdjustmentsTotal);
+
+  const InfoLabel = ({
+    label,
+    help,
+  }: {
+    label: string;
+    help: string;
+  }) => (
+    <span className="inline-flex items-center gap-2">
+      <span>{label}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground"
+            aria-label={`${label} info`}
+          >
+            <Info className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          {help}
+        </TooltipContent>
+      </Tooltip>
+    </span>
   );
 
   return (
@@ -122,28 +222,77 @@ export default function EarningsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Earnings"
-          value={formatCurrency(totalEarnings)}
+          value={formatCurrency(totals.totalEarnings)}
           description="All time"
           icon={DollarSign}
         />
         <StatCard
+          title={
+            <InfoLabel
+              label="Adjustments"
+              help="Outstanding refunds or chargebacks that reduce your next payout."
+            />
+          }
+          value={formatCurrency(pendingAdjustmentsTotal)}
+          description="Outstanding balance"
+          icon={Clock}
+        />
+        <StatCard
+          title={
+            <InfoLabel
+              label="Net Earnings"
+              help="Total earnings after adjustments."
+            />
+          }
+          value={formatCurrency(netEarnings)}
+          description="After adjustments"
+          icon={DollarSign}
+        />
+        <StatCard
           title="Received"
-          value={formatCurrency(receivedEarnings)}
-          description="Paid out"
+          value={formatCurrency(totals.paid)}
+          description="Paid out to you"
           icon={CheckCircle}
         />
         <StatCard
-          title="Pending"
-          value={formatCurrency(pendingEarnings)}
-          description="Awaiting payout"
+          title={
+            <InfoLabel
+              label="Ready to receive"
+              help="Available for payout after adjustments are applied."
+            />
+          }
+          value={formatCurrency(netReady)}
+          description="Founder paid"
+          icon={CheckCircle}
+        />
+        <StatCard
+          title={
+            <InfoLabel
+              label="Refund window"
+              help="Commissions held until the refund window ends."
+            />
+          }
+          value={formatCurrency(totals.awaitingRefund)}
+          description="Waiting period"
+          icon={Timer}
+        />
+        <StatCard
+          title={
+            <InfoLabel
+              label="Awaiting founder"
+              help="Commissions pending founder payment."
+            />
+          }
+          value={formatCurrency(totals.awaitingCreator)}
+          description="Founder payment pending"
           icon={Clock}
         />
         <StatCard
           title="Revenue"
-          value={formatCurrency(totalRevenue)}
+          value={formatCurrency(totals.totalRevenue)}
           description="Coupon-attributed"
           icon={TrendingUp}
         />
@@ -169,7 +318,9 @@ export default function EarningsPage() {
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Total Earned</TableHead>
                   <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Pending</TableHead>
+                  <TableHead className="text-right">Ready</TableHead>
+                  <TableHead className="text-right">Refund Window</TableHead>
+                  <TableHead className="text-right">Awaiting Founder</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -203,8 +354,14 @@ export default function EarningsPage() {
                       <TableCell className="text-right text-green-600">
                         {formatCurrency(item.paidEarnings)}
                       </TableCell>
+                      <TableCell className="text-right text-sky-400">
+                        {formatCurrency(item.readyEarnings)}
+                      </TableCell>
+                      <TableCell className="text-right text-amber-500">
+                        {formatCurrency(item.awaitingRefundEarnings)}
+                      </TableCell>
                       <TableCell className="text-right text-yellow-600">
-                        {formatCurrency(item.pendingEarnings)}
+                        {formatCurrency(item.awaitingCreatorEarnings)}
                       </TableCell>
                     </TableRow>
                   );
@@ -230,6 +387,56 @@ export default function EarningsPage() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Commission Adjustments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {adjustments.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No adjustments recorded yet.
+            </p>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adjustments.map((adjustment) => (
+                    <TableRow key={adjustment.id}>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(adjustment.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {adjustment.projectName}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {adjustment.reason.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600">
+                        {formatCurrency(adjustment.amount, adjustment.currency)}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">
+                          {adjustment.status.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

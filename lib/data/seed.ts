@@ -27,7 +27,7 @@ const randomRecentDate = (daysAgo: number) => {
 export const users: User[] = [
   {
     id: "creator-1",
-    role: "creator",
+    role: "founder",
     name: "Sarah Chen",
     email: "sarah@saasbuilder.io",
     avatarUrl: "",
@@ -35,7 +35,7 @@ export const users: User[] = [
   },
   {
     id: "creator-2",
-    role: "creator",
+    role: "founder",
     name: "Marcus Johnson",
     email: "marcus@devtools.co",
     avatarUrl: "",

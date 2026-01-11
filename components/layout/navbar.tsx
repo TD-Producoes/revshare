@@ -14,33 +14,73 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Menu, Sparkles, Github, LayoutDashboard } from "lucide-react";
+  ChartPie,
+  Workflow,
+  Network,
+  BarChart3,
+  ShieldCheck,
+  Trophy,
+  Store,
+  Users,
+  TrendingUp
+} from "lucide-react";
+import { MobileNav } from "./mobile-nav";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
+import { isWaitlistMode } from "@/lib/utils";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
 
-export function Navbar() {
+export function Navbar({
+  isTransparent = false,
+  forceTransparent = false,
+  isDashboardHidden = false,
+  theme = 'default'
+}: {
+  isTransparent?: boolean;
+  forceTransparent?: boolean;
+  isDashboardHidden?: boolean;
+  theme?: 'default' | 'founders' | 'how-it-works' | 'trust' | 'rewards' | 'integrations' | 'marketplace';
+}) {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
+  const [isScrolled, setIsScrolled] = React.useState(false);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isTransparent) return;
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isTransparent]);
+
   const isAuthed = Boolean(currentUser);
   const isLoadingUser = isAuthLoading || isUserLoading;
+  const waitlistMode = isWaitlistMode();
   const dashboardHref =
-    currentUser?.role === "marketer" ? "/marketer" : "/creator";
-  const dashboardLabel = isAuthed ? "Dashboard" : "Signup";
+    currentUser?.role === "marketer" ? "/marketer" : "/founder";
+  const dashboardLabel = isAuthed ? "Dashboard" : waitlistMode ? "Claim Early Access" : "Signup";
+
+  const isTransparentActive = (isTransparent && !isScrolled) || forceTransparent;
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 lg:px-6">
+    <header className={cn(
+      "fixed top-0 z-50 w-full transition-all duration-500",
+      isTransparentActive
+        ? "border-b-transparent bg-transparent mt-10"
+        : "border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 mt-0"
+    )}>
+      <div className={cn(
+        "mx-auto flex h-14 items-center justify-between px-4 lg:px-6 transition-all duration-500",
+        isTransparentActive ? "max-w-6xl" : "max-w-7xl"
+      )}>
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="h-4 w-4" />
-            </div>
+          <Link href="/" className={cn(
+            "flex items-center gap-2 font-bold text-xl transition-colors",
+            isTransparentActive ? "text-white" : "text-foreground"
+          )}>
+            <ChartPie strokeWidth={3} className="h-4 w-4" />
             <span>RevShare</span>
           </Link>
 
@@ -49,67 +89,130 @@ export function Navbar() {
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger>Product</NavigationMenuTrigger>
+                  <NavigationMenuTrigger className={cn(
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10 data-[state=open]:!bg-white/10 data-[state=open]:text-white"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80 data-[state=open]:!bg-amber-50/80 data-[state=open]:text-foreground"
+                  )}>
+                    Solutions
+                  </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-                      <li className="row-span-3">
-                        <NavigationMenuLink asChild>
-                          <a
-                            className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-                            href="/"
-                          >
-                            <Sparkles className="h-6 w-6 text-primary" />
-                            <div className="mb-2 mt-4 text-lg font-medium">
-                              RevShare Market
-                            </div>
-                            <p className="text-sm leading-tight text-muted-foreground">
-                              The #1 marketplace for creators and marketers to
-                              collaborate.
-                            </p>
-                          </a>
-                        </NavigationMenuLink>
-                      </li>
-                      <ListItem href="/creators" title="For Creators">
-                        Find marketers to promote your products.
+                    <ul className="grid w-[400px] gap-2 p-4 md:w-[500px] md:grid-cols-1 lg:w-[450px]">
+                      <ListItem
+                        href="/solutions/for-founders"
+                        title="For Founders"
+                        icon={<Users className="text-amber-600 h-5 w-5" />}
+                      >
+                        Launch a commission-only sales force and scale your revenue without the CAC risk.
                       </ListItem>
-                      <ListItem href="/marketers" title="For Marketers">
-                        Discover high-converting products to sell.
-                      </ListItem>
-                      <ListItem href="/enterprise" title="Enterprise">
-                        Custom contracts and volume pricing.
+                      <ListItem
+                        href="/solutions/for-marketers"
+                        title="For Marketers"
+                        icon={<TrendingUp className="text-amber-600 h-5 w-5" />}
+                      >
+                        Partner with high-growth SaaS founders and build a sustainable recurring income stream.
                       </ListItem>
                     </ul>
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>
+                  <NavigationMenuTrigger className={cn(
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10 data-[state=open]:!bg-white/10 data-[state=open]:text-white"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80 data-[state=open]:!bg-amber-50/80 data-[state=open]:text-foreground"
+                  )}>
+                    Product
+                  </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
-                      {components.map((component) => (
-                        <ListItem
-                          key={component.title}
-                          title={component.title}
-                          href={component.href}
-                        >
-                          {component.description}
-                        </ListItem>
-                      ))}
+                    <ul className="grid gap-2 p-6 md:w-[600px] lg:w-[900px] lg:grid-cols-[1fr_1fr]">
+
+                      <ListItem
+                        href="/product/how-it-works"
+                        title="How RevShare Works"
+                        icon={<Workflow className="h-5 w-5 text-amber-600" />}
+                      >
+                        A transparent lifecycle: tracking → refunds → payouts → rewards.
+                      </ListItem>
+                      <ListItem
+                        href="/product/revshare-vs-affiliate-networks"
+                        title="RevShare vs Affiliate Networks"
+                        icon={<Network className="text-amber-600 h-5 w-5" />}
+                      >
+                        Why traditional legacy affiliate networks are failing modern SaaS.
+                      </ListItem>
+
+                      <ListItem
+                        href="/product/trust"
+                        title="Trust & Security"
+                        icon={<ShieldCheck className="text-amber-600 h-5 w-5" />}
+                      >
+                        Refund windows, Stripe-native settlements, and immutable logs.
+                      </ListItem>
+                      <ListItem
+                        href="/product/rewards"
+                        title="Rewards & Milestones"
+                        icon={<Trophy className="text-amber-600 h-5 w-5" />}
+                      >
+                        Automated incentives that go far beyond flat commissions.
+                      </ListItem>
+                      <ListItem
+                        href="/product/marketplace"
+                        title="Public Marketplace"
+                        icon={<Store className="text-amber-600 h-5 w-5" />}
+                      >
+                        The open directory for discovering projects and verified marketers.
+                      </ListItem>
                     </ul>
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/pricing" legacyBehavior passHref>
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                  <NavigationMenuLink asChild className={cn(
+                    navigationMenuTriggerStyle(),
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
+                  )}>
+                    <Link href="/projects" className="flex items-center gap-1.5">
+                      Projects
+                      <span className={cn(
+                        "text-[9px] font-bold uppercase",
+                        isTransparentActive ? "text-white/40" : "text-muted-foreground/50"
+                      )}>(Preview)</span>
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild className={cn(
+                    navigationMenuTriggerStyle(),
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
+                  )}>
+                    <Link href="/marketers" className="flex items-center gap-1.5">
+                      Marketers
+                      <span className={cn(
+                        "text-[9px] font-bold uppercase",
+                        isTransparentActive ? "text-white/40" : "text-muted-foreground/50"
+                      )}>(Preview)</span>
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink asChild className={cn(
+                    navigationMenuTriggerStyle(),
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
+                  )}>
+                    <Link href="/pricing">
                       Pricing
-                    </NavigationMenuLink>
-                  </Link>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <Link href="/docs" legacyBehavior passHref>
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                      Docs
-                    </NavigationMenuLink>
-                  </Link>
+                    </Link>
+                  </NavigationMenuLink>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
@@ -117,107 +220,143 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            {!isAuthed && (
-              <Button variant="ghost" size="sm" asChild className="hidden md:flex">
-                <Link href="/login">Sign In</Link>
-              </Button>
-            )}
-            <Button size="sm" className="hidden md:flex" asChild>
-              <Link href={isAuthed ? dashboardHref : "/signup"}>
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                {dashboardLabel}
-              </Link>
-            </Button>
-          </div>
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="lg:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-              </SheetHeader>
-              <div className="grid gap-4 py-6">
-                <Link href="/product" className="text-sm font-medium">
-                  Product
-                </Link>
-                <Link href="/solutions" className="text-sm font-medium">
-                  Solutions
-                </Link>
-                <Link href="/pricing" className="text-sm font-medium">
-                  Pricing
-                </Link>
-                <Link href="/docs" className="text-sm font-medium">
-                  Docs
-                </Link>
-                <div className="my-2 h-px bg-border" />
-                {!isAuthed && !isLoadingUser ? (
-                  <Link href="/login" className="text-sm font-medium">
-                    Sign In
-                  </Link>
-                ) : null}
-                <Link
-                  href={isAuthed ? dashboardHref : "/signup"}
-                  className="text-sm font-medium text-primary"
+          {!isDashboardHidden && (
+            <div className="flex items-center gap-2">
+              {!isAuthed && !waitlistMode && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className={cn(
+                    "hidden md:flex",
+                    isTransparentActive && "text-white hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <Link href="/login">Sign In</Link>
+                </Button>
+              )}
+              {waitlistMode && !isAuthed ? (
+                <Button
+                  size="sm"
+                  className={cn(
+                    "hidden md:flex transition-all duration-300",
+                    isTransparentActive
+                      ? theme === 'founders'
+                        ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710] font-bold rounded-full border-none shadow-none px-4 h-8"
+                        : theme === 'how-it-works'
+                          ? "bg-[#818CF8] hover:bg-[#717CF8] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                          : theme === 'trust'
+                            ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                            : theme === 'rewards'
+                              ? "bg-[#F59E0B] hover:bg-[#D97706] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                              : theme === 'integrations'
+                                ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                : theme === 'marketplace'
+                                  ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                  : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                      : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-lg px-3 shadow-amber-500/10"
+                  )}
+                  onClick={() => setIsWaitlistModalOpen(true)}
                 >
                   {dashboardLabel}
-                </Link>
-              </div>
-            </SheetContent>
-          </Sheet>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className={cn(
+                    "hidden md:flex transition-all duration-300",
+                    isTransparentActive
+                      ? theme === 'founders'
+                        ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710] font-bold rounded-full border-none shadow-none px-4 h-8"
+                        : theme === 'how-it-works'
+                          ? "bg-[#818CF8] hover:bg-[#717CF8] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                          : theme === 'trust'
+                            ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                            : theme === 'rewards'
+                              ? "bg-[#F59E0B] hover:bg-[#D97706] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                              : theme === 'integrations'
+                                ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                : theme === 'marketplace'
+                                  ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                  : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                      : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-lg px-3 shadow-amber-500/10"
+                  )}
+                  asChild
+                >
+                  <Link href={isAuthed ? dashboardHref : "/signup"}>
+                    {dashboardLabel}
+                  </Link>
+                </Button>
+              )}
+            </div>
+          )}
+
+          <MobileNav
+            isAuthed={isAuthed}
+            theme={theme || 'default'}
+            dashboardHref={dashboardHref}
+            dashboardLabel={dashboardLabel}
+            isTransparent={isTransparentActive}
+            triggerClassName={cn(
+              "lg:hidden",
+              isTransparentActive && "text-white border-white/20 bg-white/10"
+            )}
+          />
         </div>
       </div>
+      {waitlistMode && (
+        <WaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          source="navbar"
+        />
+      )}
     </header>
   );
 }
 
 const components: { title: string; href: string; description: string }[] = [
   {
-    title: "Analytics",
-    href: "/solutions/analytics",
-    description: "Deep insights into your revenue streams and affiliate performance.",
+    title: "Projects",
+    href: "/projects",
+    description: "Browse all available projects and find partnerships.",
   },
   {
-    title: "Automations",
-    href: "/solutions/automations",
-    description: "Trigger payouts and emails based on custom events.",
+    title: "Marketers",
+    href: "/marketers",
+    description: "Discover talented marketers to promote your products.",
   },
   {
-    title: "Stripe Connect",
-    href: "/solutions/stripe",
-    description: "Seamless global payouts handled automatically.",
-  },
-  {
-    title: "Audit Logs",
-    href: "/solutions/audit",
-    description: "Track every commission and click with enterprise-grade logging.",
+    title: "For Marketers",
+    href: "/solutions/for-marketers",
+    description: "Discover how you can earn with high-quality revenue-share programs.",
   },
 ];
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<"a"> & { icon?: React.ReactNode }
+>(({ className, title, children, icon, ...props }, ref) => {
   return (
     <li>
       <NavigationMenuLink asChild>
         <a
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+            "flex items-start gap-4 select-none rounded-[1.25rem] p-5 leading-none no-underline outline-none transition-all hover:bg-slate-50 group",
             className
           )}
           {...props}
         >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-            {children}
-          </p>
+          {icon}
+          <div className="flex flex-col gap-1.5 pt-0.5">
+            <div className="text-xs font-bold leading-none tracking-tight text-slate-900 group-hover:text-amber-600 transition-colors antialiased">
+              {title}
+            </div>
+            <p className="text-xs leading-relaxed text-slate-500 font-medium group-hover:text-slate-600 transition-colors">
+              {children}
+            </p>
+          </div>
         </a>
       </NavigationMenuLink>
     </li>

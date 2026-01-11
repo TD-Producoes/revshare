@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,6 +9,12 @@ export async function GET(request: Request) {
 
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  }
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, userId);
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
   const marketer = await prisma.user.findUnique({
@@ -20,7 +27,10 @@ export async function GET(request: Request) {
 
   const [totals, pendingTotals] = await Promise.all([
     prisma.purchase.aggregate({
-      where: { coupon: { marketerId: userId } },
+      where: {
+        coupon: { marketerId: userId },
+        commissionStatus: { notIn: ["REFUNDED", "CHARGEBACK"] },
+      },
       _sum: {
         amount: true,
         commissionAmount: true,
@@ -28,7 +38,11 @@ export async function GET(request: Request) {
       _count: true,
     }),
     prisma.purchase.aggregate({
-      where: { coupon: { marketerId: userId }, status: "PENDING" },
+      where: {
+        coupon: { marketerId: userId },
+        status: "PENDING",
+        commissionStatus: { notIn: ["REFUNDED", "CHARGEBACK"] },
+      },
       _sum: { commissionAmount: true },
     }),
   ]);

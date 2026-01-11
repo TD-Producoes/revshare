@@ -2,46 +2,59 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { notificationMessages } from "@/lib/notifications/messages";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const createContractInput = z.object({
   projectId: z.string().min(1),
-  userId: z.string().min(1),
   commissionPercent: z.number().min(0).max(100),
+  message: z.string().max(2000).optional(),
+  refundWindowDays: z.number().int().min(0).max(3650).optional(),
 });
 
 function normalizePercent(value: number) {
   return value > 1 ? value / 100 : value;
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const creatorId = searchParams.get("creatorId");
-  const userId = searchParams.get("userId");
+function matchesPercent(a: number, b: number) {
+  return Math.abs(a - b) < 0.0001;
+}
 
-  if (!creatorId && !userId) {
-    return NextResponse.json(
-      { error: "creatorId or userId is required" },
-      { status: 400 }
-    );
+export async function GET(request: Request) {
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
   }
 
-  if (userId) {
-    const marketer = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true },
-    });
-    if (!marketer || marketer.role !== "marketer") {
-      return NextResponse.json(
-        { error: "Marketer not found" },
-        { status: 404 }
-      );
-    }
+  const { searchParams } = new URL(request.url);
+  const role = searchParams.get("role");
 
+  // Get authenticated user details
+  const user = await prisma.user.findUnique({
+    where: { id: authUser.id },
+    select: { id: true, role: true },
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // If user is marketer, return their contracts
+  if (user.role === "marketer") {
     const contracts = await prisma.contract.findMany({
-      where: { userId, user: { role: "marketer" } },
+      where: { userId: user.id, user: { role: "marketer" } },
       orderBy: { createdAt: "desc" },
       include: {
-        project: { select: { id: true, name: true } },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            marketerCommissionPercent: true,
+            refundWindowDays: true,
+          },
+        },
         user: { select: { id: true, name: true, email: true, role: true } },
       },
     });
@@ -55,6 +68,10 @@ export async function GET(request: Request) {
       userEmail: contract.user.email,
       userRole: contract.user.role,
       commissionPercent: Number(contract.commissionPercent),
+      message: contract.message,
+      projectCommissionPercent: Number(contract.project.marketerCommissionPercent),
+      refundWindowDays: contract.refundWindowDays,
+      projectRefundWindowDays: contract.project.refundWindowDays,
       status: contract.status.toLowerCase(),
       createdAt: contract.createdAt,
     }));
@@ -62,28 +79,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ data });
   }
 
-  if (!creatorId) {
-    return NextResponse.json(
-      { error: "creatorId is required" },
-      { status: 400 }
-    );
+  // If user is founder, return contracts for their projects
+  if (user.role !== "founder") {
+    return NextResponse.json({ error: "Invalid user role" }, { status: 403 });
   }
 
-  const creator = await prisma.user.findUnique({
-    where: { id: creatorId },
-    select: { id: true, role: true },
-  });
-
-  if (!creator || creator.role !== "creator") {
-    return NextResponse.json({ error: "Creator not found" }, { status: 404 });
-  }
-
-  const creatorProjects = await prisma.project.findMany({
-    where: { userId: creatorId },
+  const projects = await prisma.project.findMany({
+    where: { userId: user.id },
     select: { id: true },
   });
 
-  const projectIds = creatorProjects.map((project) => project.id);
+  const projectIds = projects.map((project) => project.id);
   if (projectIds.length === 0) {
     return NextResponse.json({ data: [] });
   }
@@ -92,7 +98,14 @@ export async function GET(request: Request) {
     where: { projectId: { in: projectIds }, user: { role: "marketer" } },
     orderBy: { createdAt: "desc" },
     include: {
-      project: { select: { id: true, name: true } },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          marketerCommissionPercent: true,
+          refundWindowDays: true,
+        },
+      },
       user: { select: { id: true, name: true, email: true, role: true } },
     },
   });
@@ -106,6 +119,10 @@ export async function GET(request: Request) {
     userEmail: contract.user.email,
     userRole: contract.user.role,
     commissionPercent: Number(contract.commissionPercent),
+    message: contract.message,
+    projectCommissionPercent: Number(contract.project.marketerCommissionPercent),
+    refundWindowDays: contract.refundWindowDays,
+    projectRefundWindowDays: contract.project.refundWindowDays,
     status: contract.status.toLowerCase(),
     createdAt: contract.createdAt,
   }));
@@ -114,6 +131,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
   const parsed = createContractInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -125,12 +149,27 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   const [marketer, project] = await Promise.all([
     prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: { id: true, role: true, name: true, email: true },
+      where: { id: authUser.id },
+      select: {
+        id: true,
+        role: true,
+        name: true,
+        email: true,
+        stripeConnectedAccountId: true,
+      },
     }),
     prisma.project.findUnique({
       where: { id: payload.projectId },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        userId: true,
+        refundWindowDays: true,
+        marketerCommissionPercent: true,
+        autoApproveApplications: true,
+        autoApproveMatchTerms: true,
+        autoApproveVerifiedOnly: true,
+      },
     }),
   ]);
 
@@ -146,7 +185,7 @@ export async function POST(request: Request) {
     where: {
       projectId_userId: {
         projectId: payload.projectId,
-        userId: payload.userId,
+        userId: authUser.id,
       },
     },
     select: { id: true },
@@ -161,12 +200,68 @@ export async function POST(request: Request) {
 
   const commissionPercent = normalizePercent(payload.commissionPercent);
 
-  const contract = await prisma.contract.create({
-    data: {
-      projectId: project.id,
-      userId: marketer.id,
-      commissionPercent: commissionPercent.toString(),
-    },
+  const requiresMatchingTerms = project.autoApproveMatchTerms;
+  const requiresVerifiedMarketer = project.autoApproveVerifiedOnly;
+  const hasMatchingCommission = matchesPercent(
+    commissionPercent,
+    Number(project.marketerCommissionPercent)
+  );
+  const requestedRefundWindow =
+    payload.refundWindowDays ?? project.refundWindowDays;
+  const hasMatchingRefundWindow =
+    requestedRefundWindow === project.refundWindowDays;
+  const hasVerifiedMarketer = Boolean(marketer.stripeConnectedAccountId);
+  const shouldAutoApprove = project.autoApproveApplications
+    ? (!requiresMatchingTerms ||
+        (hasMatchingCommission && hasMatchingRefundWindow)) &&
+      (!requiresVerifiedMarketer || hasVerifiedMarketer)
+    : false;
+
+  const contract = await prisma.$transaction(async (tx) => {
+    const createdContract = await tx.contract.create({
+      data: {
+        projectId: project.id,
+        userId: marketer.id,
+        commissionPercent: commissionPercent.toString(),
+        message: payload.message?.trim() || null,
+        refundWindowDays:
+          payload.refundWindowDays !== undefined ? payload.refundWindowDays : null,
+        status: shouldAutoApprove ? "APPROVED" : "PENDING",
+      },
+    });
+
+    await tx.event.create({
+      data: {
+        type: "CONTRACT_CREATED",
+        actorId: marketer.id,
+        projectId: project.id,
+        subjectType: "Contract",
+        subjectId: createdContract.id,
+        data: {
+          projectId: project.id,
+          contractStatus: shouldAutoApprove ? "APPROVED" : "PENDING",
+          marketerId: marketer.id,
+        },
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId: project.userId,
+        type: "SYSTEM",
+        ...notificationMessages.contractApplied(
+          marketer.name ?? "A marketer",
+          project.name,
+        ),
+        data: {
+          projectId: project.id,
+          marketerId: marketer.id,
+          contractId: createdContract.id,
+        },
+      },
+    });
+
+    return createdContract;
   });
 
   return NextResponse.json(
@@ -180,6 +275,10 @@ export async function POST(request: Request) {
         userEmail: marketer.email,
         userRole: marketer.role,
         commissionPercent: Number(contract.commissionPercent),
+        message: contract.message,
+        projectCommissionPercent: Number(project.marketerCommissionPercent),
+        refundWindowDays: contract.refundWindowDays,
+        projectRefundWindowDays: project.refundWindowDays,
         status: contract.status.toLowerCase(),
         createdAt: contract.createdAt,
       },

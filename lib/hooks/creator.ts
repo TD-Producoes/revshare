@@ -6,9 +6,13 @@ export type CreatorPayoutTotals = {
   totalCommissions: number;
   paidCommissions: number;
   pendingCommissions: number;
+  pendingCreatorCommissions: number;
+  awaitingRefundCommissions: number;
+  readyCommissions: number;
   failedCommissions: number;
   platformFee: number;
   platformCommissionPercent?: number | null;
+  adjustmentsTotal?: number;
 };
 
 export type CreatorPayout = {
@@ -19,8 +23,12 @@ export type CreatorPayout = {
   totalEarnings: number;
   paidEarnings: number;
   pendingEarnings: number;
+  awaitingCreatorEarnings: number;
+  awaitingRefundEarnings: number;
   failedEarnings: number;
   readyEarnings: number;
+  adjustmentsTotal?: number;
+  netReadyEarnings?: number;
   failureReason?: string | null;
 };
 
@@ -52,6 +60,10 @@ export type CreatorDashboardProject = {
 export type CreatorDashboard = {
   totals: CreatorDashboardTotals;
   chart: Array<{ date: string; revenue: number; affiliateRevenue: number }>;
+  trends?: {
+    totalRevenue?: number | null;
+    mrr?: number | null;
+  };
   projects: CreatorDashboardProject[];
 };
 
@@ -66,6 +78,7 @@ export type CreatorPaymentLine = {
   marketerCommission: number;
   platformFee: number;
   merchantNet: number;
+  currency: string;
   createdAt: string | Date;
 };
 
@@ -77,6 +90,7 @@ export type CreatorPaymentPreview = {
     marketerName: string;
     marketerTotal: number;
     platformTotal: number;
+    currency: string | null;
   }>;
   totals: {
     marketerTotal: number;
@@ -84,6 +98,7 @@ export type CreatorPaymentPreview = {
     grandTotal: number;
     processingFee: number;
     totalWithFee: number;
+    currency: string | null;
   };
 };
 
@@ -98,6 +113,50 @@ export type CreatorPaymentHistory = {
   stripeCheckoutSessionId: string | null;
 };
 
+export type CreatorMarketerMetrics = {
+  marketer: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  projects: Array<{
+    id: string;
+    name: string;
+    status?: string;
+  }>;
+  summary: {
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchasesCount: number;
+    customersCount: number;
+  };
+  timeline: Array<{
+    date: string;
+    projectRevenue: number;
+    affiliateRevenue: number;
+    commissionOwed: number;
+    purchasesCount: number;
+    customersCount: number;
+  }>;
+};
+
+export type CreatorAdjustment = {
+  id: string;
+  marketerId: string;
+  marketerName: string;
+  marketerEmail: string | null;
+  projectId: string;
+  projectName: string;
+  purchaseId: string | null;
+  amount: number;
+  currency: string;
+  reason: string;
+  status: string;
+  createdAt: string | Date;
+};
+
 export type CreatorPurchase = {
   id: string;
   projectId: string;
@@ -109,6 +168,7 @@ export type CreatorPurchase = {
   commissionStatus: string;
   status: string;
   createdAt: string | Date;
+  refundEligibleAt: string | Date | null;
   couponCode: string | null;
   marketer: {
     id: string;
@@ -122,7 +182,7 @@ export function useCreatorPayouts(userId?: string | null) {
     queryKey: ["creator-payouts", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const response = await fetch(`/api/creator/payouts?userId=${userId}`);
+      const response = await fetch(`/api/founder/payouts?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch payouts.");
@@ -141,7 +201,7 @@ export function useCreatorPaymentPreview(userId?: string | null, enabled = true)
     queryKey: ["creator-payment-preview", userId ?? "none"],
     enabled: Boolean(userId) && enabled,
     queryFn: async () => {
-      const response = await fetch(`/api/creator/payouts/preview?userId=${userId}`);
+      const response = await fetch(`/api/founder/payouts/preview?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to load payout preview.");
@@ -155,7 +215,7 @@ export function useCreatorPaymentPreview(userId?: string | null, enabled = true)
 export function useCreatorPaymentCheckout() {
   return useMutation({
     mutationFn: async (payload: { userId: string }) => {
-      const response = await fetch("/api/creator/payouts/checkout", {
+      const response = await fetch("/api/founder/payouts/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -171,8 +231,8 @@ export function useCreatorPaymentCheckout() {
 
 export function useCreatorPaymentCharge() {
   return useMutation({
-    mutationFn: async (payload: { userId: string }) => {
-      const response = await fetch("/api/creator/payouts/charge", {
+    mutationFn: async (payload: { userId: string; paymentMethodId?: string }) => {
+      const response = await fetch("/api/founder/payouts/charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -186,12 +246,28 @@ export function useCreatorPaymentCharge() {
   });
 }
 
+export function useCreatorAdjustments(userId?: string | null) {
+  return useQuery<CreatorAdjustment[]>({
+    queryKey: ["creator-adjustments", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(`/api/founder/adjustments?userId=${userId}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch adjustments.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
 export function useCreatorPayments(userId?: string | null) {
   return useQuery<CreatorPaymentHistory[]>({
     queryKey: ["creator-payments", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const response = await fetch(`/api/creator/payouts/payments?userId=${userId}`);
+      const response = await fetch(`/api/founder/payouts/payments?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch payments.");
@@ -208,7 +284,7 @@ export function useCreatorPurchaseDetails(userId?: string | null) {
     enabled: Boolean(userId),
     queryFn: async () => {
       const response = await fetch(
-        `/api/creator/payouts/purchases?userId=${userId}`,
+        `/api/founder/payouts/purchases?userId=${userId}`,
       );
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -242,7 +318,7 @@ export function useCreatorDashboard(userId?: string | null) {
     queryKey: ["creator-dashboard", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const response = await fetch(`/api/creator/dashboard?userId=${userId}`);
+      const response = await fetch(`/api/founder/dashboard?userId=${userId}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch dashboard.");
@@ -253,10 +329,37 @@ export function useCreatorDashboard(userId?: string | null) {
   });
 }
 
+export type CreatorMarketerSummary = {
+  id: string;
+  name: string;
+  email: string;
+  projectCount: number;
+  affiliateRevenue: number;
+  commissionOwed: number;
+  purchasesCount: number;
+  customersCount: number;
+};
+
+export function useCreatorMarketers(creatorId?: string | null) {
+  return useQuery<CreatorMarketerSummary[]>({
+    queryKey: ["creator-marketers", creatorId ?? "none"],
+    enabled: Boolean(creatorId),
+    queryFn: async () => {
+      if (!creatorId) return [];
+      const response = await fetch(`/api/founder/marketers?creatorId=${creatorId}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch marketers.");
+      }
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
 export function usePayCreatorPayouts() {
   return useMutation({
     mutationFn: async (payload: { userId: string }) => {
-      const response = await fetch("/api/creator/payouts/pay", {
+      const response = await fetch("/api/founder/payouts/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -266,6 +369,39 @@ export function usePayCreatorPayouts() {
         throw new Error(data?.error ?? "Failed to send payouts.");
       }
       return data?.data ?? null;
+    },
+  });
+}
+
+export function useCreatorMarketerMetrics(
+  marketerId?: string | null,
+  projectId?: string | null,
+  days = 30,
+) {
+  return useQuery<CreatorMarketerMetrics>({
+    queryKey: [
+      "creator-marketer-metrics",
+      marketerId ?? "none",
+      projectId ?? "all",
+      days,
+    ],
+    enabled: Boolean(marketerId),
+    queryFn: async () => {
+      if (!marketerId) {
+        throw new Error("Missing marketerId");
+      }
+      const params = new URLSearchParams({ days: String(days) });
+      if (projectId) {
+        params.set("projectId", projectId);
+      }
+      const response = await fetch(
+        `/api/founder/marketers/${marketerId}/metrics?${params.toString()}`,
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch marketer metrics.");
+      }
+      return payload?.data as CreatorMarketerMetrics;
     },
   });
 }

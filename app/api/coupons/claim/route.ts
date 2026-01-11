@@ -4,11 +4,12 @@ import { z } from "zod";
 import { generatePromoCode } from "@/lib/codes";
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { notificationMessages } from "@/lib/notifications/messages";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const claimInput = z.object({
   projectId: z.string().min(1),
   templateId: z.string().min(1),
-  marketerId: z.string().min(1),
   code: z.string().min(3).optional(),
 });
 
@@ -18,6 +19,13 @@ function derivePrefix(name: string) {
 }
 
 export async function POST(request: Request) {
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
   const parsed = claimInput.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -34,12 +42,13 @@ export async function POST(request: Request) {
       select: {
         id: true,
         name: true,
+        userId: true,
         creatorStripeAccountId: true,
       },
     }),
     prisma.user.findUnique({
-      where: { id: payload.marketerId },
-      select: { id: true, role: true },
+      where: { id: authUser.id },
+      select: { id: true, role: true, name: true },
     }),
     prisma.couponTemplate.findUnique({
       where: { id: payload.templateId },
@@ -65,7 +74,7 @@ export async function POST(request: Request) {
   }
   if (!project.creatorStripeAccountId) {
     return NextResponse.json(
-      { error: "Creator Stripe account not set" },
+      { error: "Founder Stripe account not set" },
       { status: 400 },
     );
   }
@@ -134,13 +143,20 @@ export async function POST(request: Request) {
         userId: marketer.id,
       },
     },
-    select: { commissionPercent: true },
+    select: { commissionPercent: true, status: true },
   });
 
   if (!contract) {
     return NextResponse.json(
       { error: "Contract not found for marketer" },
       { status: 404 },
+    );
+  }
+
+  if (contract.status !== "APPROVED") {
+    return NextResponse.json(
+      { error: "Contract must be approved to claim coupons" },
+      { status: 403 },
     );
   }
 
@@ -165,25 +181,61 @@ export async function POST(request: Request) {
     { stripeAccount },
   );
 
-  const coupon = await prisma.coupon.create({
-    data: {
-      projectId: project.id,
-      templateId: template.id,
-      marketerId: marketer.id,
-      code,
-      stripeCouponId: template.stripeCouponId,
-      stripePromotionCodeId: promotionCode.id,
-      percentOff: template.percentOff,
-      commissionPercent: contract.commissionPercent.toString(),
-    },
-    select: {
-      id: true,
-      code: true,
-      percentOff: true,
-      commissionPercent: true,
-      status: true,
-      claimedAt: true,
-    },
+  const coupon = await prisma.$transaction(async (tx) => {
+    const createdCoupon = await tx.coupon.create({
+      data: {
+        projectId: project.id,
+        templateId: template.id,
+        marketerId: marketer.id,
+        code,
+        stripeCouponId: template.stripeCouponId,
+        stripePromotionCodeId: promotionCode.id,
+        percentOff: template.percentOff,
+        commissionPercent: contract.commissionPercent.toString(),
+      },
+      select: {
+        id: true,
+        code: true,
+        percentOff: true,
+        commissionPercent: true,
+        status: true,
+        claimedAt: true,
+      },
+    });
+
+    await tx.event.create({
+      data: {
+        type: "COUPON_CLAIMED",
+        actorId: marketer.id,
+        projectId: project.id,
+        subjectType: "Coupon",
+        subjectId: createdCoupon.id,
+        data: {
+          projectId: project.id,
+          templateId: template.id,
+          marketerId: marketer.id,
+        },
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId: project.userId,
+        type: "SYSTEM",
+        ...notificationMessages.couponClaimed(
+          marketer.name ?? "A marketer",
+          template.name,
+          project.name,
+        ),
+        data: {
+          projectId: project.id,
+          couponId: createdCoupon.id,
+          marketerId: marketer.id,
+        },
+      },
+    });
+
+    return createdCoupon;
   });
 
   return NextResponse.json({ data: coupon }, { status: 201 });

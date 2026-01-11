@@ -24,10 +24,10 @@ export function CreatorDashboard() {
     );
   }
 
-  if (!currentUser || currentUser.role !== "creator") {
+  if (!currentUser || currentUser.role !== "founder") {
     return (
       <div className="text-muted-foreground">
-        This section is only available to creators.
+        This section is only available to founders.
       </div>
     );
   }
@@ -40,6 +40,7 @@ export function CreatorDashboard() {
     platformFee: 0,
   };
   const creatorRevenueData = data?.chart ?? [];
+  const trends = data?.trends ?? {};
 
   const projectsWithMetrics =
     data?.projects?.map((project) => {
@@ -78,14 +79,22 @@ export function CreatorDashboard() {
           value={formatCurrency(totals.totalRevenue)}
           description="All time"
           icon={DollarSign}
-          trend={{ value: 12.5, label: "from last month" }}
+          trend={
+            typeof trends.totalRevenue === "number"
+              ? { value: trends.totalRevenue, label: "from last month" }
+              : undefined
+          }
         />
         <StatCard
           title="Monthly Recurring Revenue"
           value={formatCurrency(totals.mrr)}
           description="Current MRR"
           icon={TrendingUp}
-          trend={{ value: 8.2, label: "from last month" }}
+          trend={
+            typeof trends.mrr === "number"
+              ? { value: trends.mrr, label: "from last month" }
+              : undefined
+          }
         />
         <StatCard
           title="Affiliate Revenue"
@@ -108,6 +117,7 @@ export function CreatorDashboard() {
         data={creatorRevenueData}
         title="Revenue (Last 30 Days)"
         showAffiliate={true}
+        currency="USD"
       />
 
       {/* Projects Table */}

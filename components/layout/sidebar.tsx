@@ -16,13 +16,19 @@ import {
 import {
   LayoutDashboard,
   FolderKanban,
+  Users,
   FileText,
   Search,
-  Settings,
   CreditCard,
+  Wallet,
+  Bell,
+  History,
+  TrendingUp,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
+import { useNotifications } from "@/lib/hooks/notifications";
+import { useContractsForCreator } from "@/lib/hooks/contracts";
 
 interface NavItem {
   title: string;
@@ -30,34 +36,96 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const creatorNavItems: NavItem[] = [
-  { title: "Dashboard", href: "/creator", icon: LayoutDashboard },
-  { title: "Projects", href: "/creator/projects", icon: FolderKanban },
-  { title: "Offers", href: "/creator/offers", icon: FileText },
-  { title: "Payouts", href: "/creator/payouts", icon: CreditCard },
+type NavSection = {
+  label?: string;
+  items: NavItem[];
+};
+
+const creatorNavSections: NavSection[] = [
+  {
+    items: [{ title: "Dashboard", href: "/founder", icon: LayoutDashboard }],
+  },
+  {
+    label: "Discover",
+    items: [
+      { title: "Marketers", href: "/founder/discover-marketers", icon: Search },
+    ],
+  },
+  {
+    label: "Manage",
+    items: [
+      { title: "Projects", href: "/founder/projects", icon: FolderKanban },
+      { title: "Affiliates", href: "/founder/affiliates", icon: Users },
+      { title: "Applications", href: "/founder/applications", icon: FileText },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { title: "Payouts", href: "/founder/payouts", icon: CreditCard },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { title: "Notifications", href: "/founder/notifications", icon: Bell },
+      { title: "Audit Log", href: "/founder/events", icon: History },
+    ],
+  },
 ];
 
-const marketerNavItems: NavItem[] = [
-  { title: "Dashboard", href: "/marketer", icon: LayoutDashboard },
-  { title: "My Offers", href: "/marketer/offers", icon: FileText },
-  { title: "Browse", href: "/marketer/browse", icon: Search },
-  { title: "Earnings", href: "/marketer/earnings", icon: CreditCard },
+const marketerNavSections: NavSection[] = [
+  {
+    items: [{ title: "Dashboard", href: "/marketer", icon: LayoutDashboard }],
+  },
+  {
+    label: "Discover",
+    items: [
+      { title: "Projects", href: "/marketer/projects", icon: Search },
+    ],
+  },
+  {
+    label: "Manage",
+    items: [
+      { title: "Applications", href: "/marketer/applications", icon: FileText },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [{ title: "Metrics", href: "/marketer/metrics", icon: TrendingUp }],
+  },
+  {
+    label: "Finance",
+    items: [
+      { title: "Earnings", href: "/marketer/earnings", icon: Wallet },
+      { title: "Payouts", href: "/marketer/payouts", icon: CreditCard },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { title: "Notifications", href: "/marketer/notifications", icon: Bell },
+      { title: "Audit Log", href: "/marketer/events", icon: History },
+    ],
+  },
 ];
 
 function NavLink({
   item,
   isActive,
   isCollapsed,
+  signalCount,
 }: {
   item: NavItem;
   isActive: boolean;
   isCollapsed: boolean;
+  signalCount?: number;
 }) {
   const linkContent = (
     <Link
       href={item.href}
       className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+        "relative flex items-center gap-3 rounded-md px-3 py-2 text-xs transition-colors",
         isCollapsed && "justify-center px-2",
         isActive
           ? "bg-secondary text-secondary-foreground font-medium"
@@ -66,6 +134,18 @@ function NavLink({
     >
       <item.icon className={cn("h-4 w-4 shrink-0", isActive && "text-foreground")} />
       {!isCollapsed && <span>{item.title}</span>}
+      {signalCount && signalCount > 0 ? (
+        <span
+          className={cn(
+            "flex items-center justify-center rounded-full bg-red-500 text-white font-bold",
+            isCollapsed
+              ? "absolute right-2 top-2 h-2 w-2"
+              : "ml-auto h-4 min-w-[1rem] px-1 text-[10px]"
+          )}
+        >
+          {!isCollapsed && (signalCount > 99 ? "99+" : signalCount)}
+        </span>
+      ) : null}
     </Link>
   );
 
@@ -91,18 +171,18 @@ export function Sidebar() {
 
   if (!user) return null;
 
-  const navItems =
-    user.role === "creator" ? creatorNavItems : marketerNavItems;
-
-  const settingsItem: NavItem = {
-    title: "Settings",
-    href: `/${user.role}/settings`,
-    icon: Settings,
-  };
+  const isCreator = user.role === "founder";
 
   const isActiveLink = (href: string) =>
     pathname === href ||
-    (href !== "/creator" && href !== "/marketer" && pathname.startsWith(href));
+    (href !== "/founder" && href !== "/marketer" && pathname.startsWith(href));
+
+  // Fetch signals
+  const { data: notifications } = useNotifications(authUserId);
+  const { data: contracts } = useContractsForCreator(authUserId);
+
+  const unreadNotificationsCount = notifications?.unreadCount ?? 0;
+  const pendingApplicationsCount = contracts?.filter(c => c.status === "pending").length ?? 0;
 
   return (
     <TooltipProvider>
@@ -112,24 +192,38 @@ export function Sidebar() {
           isCollapsed ? "w-12" : "w-48"
         )}
       >
-        <nav className="flex flex-1 flex-col gap-1 p-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.href}
-              item={item}
-              isActive={isActiveLink(item.href)}
-              isCollapsed={isCollapsed}
-            />
-          ))}
+        <nav className="flex flex-1 flex-col gap-2 p-2">
+          {(isCreator ? creatorNavSections : marketerNavSections).map(
+            (section, sectionIndex) => (
+              <div key={section.label ?? sectionIndex} className="space-y-1">
+                {section.label && !isCollapsed ? (
+                  <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                    {section.label}
+                  </p>
+                ) : null}
+                {section.items.map((item) => {
+                  let signalCount = 0;
+                  if (item.title === "Notifications") {
+                    signalCount = unreadNotificationsCount;
+                  } else if (item.title === "Applications" && isCreator) {
+                    signalCount = pendingApplicationsCount;
+                  }
+                  return (
+                    <NavLink
+                      key={item.href}
+                      item={item}
+                      isActive={isActiveLink(item.href)}
+                      isCollapsed={isCollapsed}
+                      signalCount={signalCount}
+                    />
+                  );
+                })}
+              </div>
+            ),
+          )}
         </nav>
 
         <div className="border-t border-border p-2">
-          <NavLink
-            item={settingsItem}
-            isActive={pathname.includes("/settings")}
-            isCollapsed={isCollapsed}
-          />
-
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <Button
@@ -146,7 +240,7 @@ export function Sidebar() {
                 ) : (
                   <>
                     <PanelLeftClose className="h-4 w-4" />
-                    <span className="ml-3 text-sm">Collapse</span>
+                    <span className="ml-3 text-xs">Collapse</span>
                   </>
                 )}
               </Button>

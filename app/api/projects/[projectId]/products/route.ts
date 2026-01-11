@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
@@ -9,9 +10,18 @@ export async function GET(
 ) {
   const { projectId } = await params;
 
+  // Authenticate user
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
+      userId: true,
       creatorStripeAccountId: true,
     },
   });
@@ -19,9 +29,14 @@ export async function GET(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
+
+  if (project.userId !== authUser.id) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
   if (!project.creatorStripeAccountId) {
     return NextResponse.json(
-      { error: "Creator Stripe account not set" },
+      { error: "Founder Stripe account not set" },
       { status: 400 },
     );
   }

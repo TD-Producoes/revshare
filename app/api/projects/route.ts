@@ -3,14 +3,30 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
+import {
+  authErrorResponse,
+  getAuthUserOptional,
+  requireAuthUser,
+  requireOwner,
+} from "@/lib/auth";
+import { redactProjectData } from "@/lib/services/visibility";
 
 const projectInput = z.object({
   userId: z.string().min(1),
   name: z.string().min(1),
   description: z.string().min(1).optional(),
+  category: z.string().min(1).optional(),
   creatorStripeAccountId: z.string().min(1).optional(),
   platformCommissionPercent: z.number().min(0).max(100).optional(),
   marketerCommissionPercent: z.number().min(0).max(100).optional(),
+  country: z.string().length(2).optional(),
+  website: z.string().url().optional().or(z.literal("")),
+  foundationDate: z.string().datetime().optional().or(z.literal("")),
+  about: z.string().max(5000).optional(),
+  features: z.array(z.string().max(100)).max(10).optional(),
+  logoUrl: z.string().url().optional(),
+  imageUrls: z.array(z.string().url()).max(6).optional(),
+  refundWindowDays: z.number().int().min(0).max(3650).optional(),
 });
 
 function normalizePercent(value: number) {
@@ -18,21 +34,58 @@ function normalizePercent(value: number) {
 }
 
 export async function GET() {
+  const authUser = await getAuthUserOptional();
+
   const projects = await prisma.project.findMany({
+    where: {
+      OR: [
+        { visibility: { in: ["PUBLIC", "GHOST"] } },
+        ...(authUser ? [{ userId: authUser.id }] : []),
+      ],
+    },
     select: {
       id: true,
       name: true,
       description: true,
+      category: true,
+      refundWindowDays: true,
       userId: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       creatorStripeAccountId: true,
+      currency: true,
       platformCommissionPercent: true,
       marketerCommissionPercent: true,
+      country: true,
+      website: true,
+      foundationDate: true,
+      about: true,
+      features: true,
+      logoUrl: true,
+      imageUrls: true,
       createdAt: true,
+      visibility: true,
+      showMrr: true,
+      showRevenue: true,
+      showStats: true,
+      autoApproveApplications: true,
+      autoApproveMatchTerms: true,
+      autoApproveVerifiedOnly: true,
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ data: projects });
+  const redactedProjects = projects
+    .map((project) =>
+      redactProjectData(project, authUser?.id === project.userId)
+    )
+    .filter(Boolean);
+
+  return NextResponse.json({ data: redactedProjects });
 }
 
 export async function POST(request: Request) {
@@ -40,17 +93,23 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
   const payload = parsed.data;
+  try {
+    const authUser = await requireAuthUser();
+    requireOwner(authUser, payload.userId);
+  } catch (error) {
+    return authErrorResponse(error);
+  }
   const creator = await prisma.user.findUnique({
     where: { id: payload.userId },
     select: { id: true, role: true },
   });
-  if (!creator || creator.role !== "creator") {
-    return NextResponse.json({ error: "Creator not found" }, { status: 404 });
+  if (!creator || creator.role !== "founder") {
+    return NextResponse.json({ error: "Founder not found" }, { status: 404 });
   }
 
   let creatorStripeAccountId: string | null = null;
@@ -58,13 +117,13 @@ export async function POST(request: Request) {
     const stripe = platformStripe();
     try {
       const account = await stripe.accounts.retrieve(
-        payload.creatorStripeAccountId,
+        payload.creatorStripeAccountId
       );
       creatorStripeAccountId = account.id;
     } catch {
       return NextResponse.json(
         { error: "Connected account not found" },
-        { status: 404 },
+        { status: 404 }
       );
     }
   }
@@ -76,7 +135,7 @@ export async function POST(request: Request) {
   if (platformCommissionPercent + marketerCommissionPercent > 1) {
     return NextResponse.json(
       { error: "Combined commission percent cannot exceed 100%" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -85,20 +144,47 @@ export async function POST(request: Request) {
       user: { connect: { id: payload.userId } },
       name: payload.name,
       description: payload.description,
-      ...(creatorStripeAccountId
-        ? { creatorStripeAccountId }
+      ...(payload.category ? { category: payload.category } : {}),
+      ...(payload.refundWindowDays !== undefined
+        ? { refundWindowDays: payload.refundWindowDays }
         : {}),
+      ...(creatorStripeAccountId ? { creatorStripeAccountId } : {}),
       platformCommissionPercent: platformCommissionPercent.toString(),
       marketerCommissionPercent: marketerCommissionPercent.toString(),
+      ...(payload.country ? { country: payload.country } : {}),
+      ...(payload.website ? { website: payload.website } : {}),
+      ...(payload.foundationDate
+        ? { foundationDate: new Date(payload.foundationDate) }
+        : {}),
+      ...(payload.about ? { about: payload.about } : {}),
+      ...(payload.features ? { features: payload.features } : {}),
+      ...(payload.logoUrl ? { logoUrl: payload.logoUrl } : {}),
+      ...(payload.imageUrls ? { imageUrls: payload.imageUrls } : {}),
     },
     select: {
       id: true,
       name: true,
       description: true,
+      category: true,
+      refundWindowDays: true,
       userId: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       creatorStripeAccountId: true,
+      currency: true,
       platformCommissionPercent: true,
       marketerCommissionPercent: true,
+      country: true,
+      website: true,
+      foundationDate: true,
+      about: true,
+      features: true,
+      logoUrl: true,
+      imageUrls: true,
       createdAt: true,
     },
   });

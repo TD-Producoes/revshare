@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -13,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, X, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Clock, CheckCircle, XCircle, MoreVertical, Star, Pause, Play } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import {
   Contract,
@@ -21,11 +23,159 @@ import {
   useContractsForCreator,
   useUpdateContractStatus,
 } from "@/lib/hooks/contracts";
+import { useMarketerStats } from "@/lib/hooks/marketer";
+import { formatCurrency, formatNumber } from "@/lib/data/metrics";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { TestimonialDialog } from "./testimonial-dialog";
+
+type ContractsTableProps = {
+  contractsList: Contract[];
+  showActions?: boolean;
+  onReview: (contractId: string) => void;
+  onOpenTestimonial: (contractId: string) => void;
+  onPause: (contractId: string) => void;
+  onResume: (contractId: string) => void;
+  getStatusBadge: (status: ContractStatus) => React.ReactNode;
+};
+
+function ContractsTable({
+  contractsList,
+  showActions = false,
+  onReview,
+  onOpenTestimonial,
+  onPause,
+  onResume,
+  getStatusBadge,
+}: ContractsTableProps) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Marketer</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Project</TableHead>
+          <TableHead className="text-right">Commission</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Applied</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {contractsList.length === 0 ? (
+          <TableRow>
+            <TableCell
+              colSpan={7}
+              className="text-center py-8 text-muted-foreground"
+            >
+              No contracts found
+            </TableCell>
+          </TableRow>
+        ) : (
+          contractsList.map((contract) => {
+            const isApproved = contract.status === "approved";
+            const isPaused = contract.status === "paused";
+            return (
+              <TableRow key={contract.id}>
+                <TableCell className="font-medium">
+                  <Link
+                    href={`/founder/affiliates/${contract.userId}`}
+                    className="hover:underline"
+                  >
+                    {contract.userName}
+                  </Link>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {contract.userEmail}
+                </TableCell>
+                <TableCell>{contract.projectName}</TableCell>
+                <TableCell className="text-right">
+                  {contract.commissionPercent * 100}%
+                </TableCell>
+                <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {new Date(contract.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {showActions && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => onReview(contract.id)}
+                      >
+                        Review
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onOpenTestimonial(contract.id)}
+                          disabled={!isApproved}
+                        >
+                          <Star className="mr-2 h-4 w-4" />
+                          Write testimonial
+                        </DropdownMenuItem>
+                        {isApproved && (
+                          <DropdownMenuItem onClick={() => onPause(contract.id)}>
+                            <Pause className="mr-2 h-4 w-4" />
+                            Pause application
+                          </DropdownMenuItem>
+                        )}
+                        {isPaused && (
+                          <DropdownMenuItem onClick={() => onResume(contract.id)}>
+                            <Play className="mr-2 h-4 w-4" />
+                            Resume application
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })
+        )}
+      </TableBody>
+    </Table>
+  );
+}
 
 export function OffersManagement() {
   const { data: creatorId } = useAuthUserId();
   const { data: contracts = [] } = useContractsForCreator(creatorId);
   const updateStatus = useUpdateContractStatus();
+  const [reviewContractId, setReviewContractId] = useState<string | null>(null);
+  const [testimonialContractId, setTestimonialContractId] = useState<string | null>(null);
+  const selectedContract =
+    contracts.find((contract) => contract.id === reviewContractId) ?? null;
+  const testimonialContract =
+    contracts.find((contract) => contract.id === testimonialContractId) ?? null;
+  const { data: marketerStats, isLoading: isStatsLoading } = useMarketerStats(
+    selectedContract?.userId,
+  );
 
   const pendingContracts = useMemo(
     () => contracts.filter((contract) => contract.status === "pending"),
@@ -39,6 +189,10 @@ export function OffersManagement() {
     () => contracts.filter((contract) => contract.status === "rejected"),
     [contracts],
   );
+  const pausedContracts = useMemo(
+    () => contracts.filter((contract) => contract.status === "paused"),
+    [contracts],
+  );
 
   const handleApprove = (contractId: string) => {
     if (!creatorId) return;
@@ -47,6 +201,7 @@ export function OffersManagement() {
       creatorId,
       status: "approved",
     });
+    setReviewContractId(null);
   };
 
   const handleReject = (contractId: string) => {
@@ -55,6 +210,25 @@ export function OffersManagement() {
       contractId,
       creatorId,
       status: "rejected",
+    });
+    setReviewContractId(null);
+  };
+
+  const handlePause = (contractId: string) => {
+    if (!creatorId) return;
+    updateStatus.mutate({
+      contractId,
+      creatorId,
+      status: "paused",
+    });
+  };
+
+  const handleResume = (contractId: string) => {
+    if (!creatorId) return;
+    updateStatus.mutate({
+      contractId,
+      creatorId,
+      status: "approved",
     });
   };
 
@@ -81,90 +255,24 @@ export function OffersManagement() {
             Rejected
           </Badge>
         );
+      case "paused":
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <Pause className="h-3 w-3" />
+            Paused
+          </Badge>
+        );
     }
   };
 
-  const ContractsTable = ({
-    contractsList,
-    showActions = false,
-  }: {
-    contractsList: Contract[];
-    showActions?: boolean;
-  }) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Marketer</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Project</TableHead>
-          <TableHead className="text-right">Commission</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Applied</TableHead>
-          {showActions && <TableHead className="text-right">Actions</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {contractsList.length === 0 ? (
-          <TableRow>
-            <TableCell
-              colSpan={showActions ? 7 : 6}
-              className="text-center py-8 text-muted-foreground"
-            >
-              No contracts found
-            </TableCell>
-          </TableRow>
-        ) : (
-          contractsList.map((contract) => (
-            <TableRow key={contract.id}>
-              <TableCell className="font-medium">
-                {contract.userName}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {contract.userEmail}
-              </TableCell>
-              <TableCell>{contract.projectName}</TableCell>
-              <TableCell className="text-right">
-                {contract.commissionPercent}%
-              </TableCell>
-              <TableCell>{getStatusBadge(contract.status)}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {new Date(contract.createdAt).toLocaleDateString()}
-              </TableCell>
-              {showActions && (
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 gap-1"
-                      onClick={() => handleApprove(contract.id)}
-                    >
-                      <Check className="h-3 w-3" />
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 gap-1 text-destructive hover:text-destructive"
-                      onClick={() => handleReject(contract.id)}
-                    >
-                      <X className="h-3 w-3" />
-                      Reject
-                    </Button>
-                  </div>
-                </TableCell>
-              )}
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  );
+  const handleOpenTestimonial = (contractId: string) => {
+    setTestimonialContractId(contractId);
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Contract Management</h1>
+        <h1 className="text-2xl font-bold">Applications</h1>
         <p className="text-muted-foreground">
           Review and manage affiliate applications for your projects.
         </p>
@@ -173,7 +281,7 @@ export function OffersManagement() {
       {/* Pending offers alert */}
       {pendingContracts.length > 0 && (
         <Card className="border-yellow-500/50 bg-yellow-500/5">
-          <CardContent className="py-4">
+          <CardContent>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-yellow-600" />
               <span className="font-medium">
@@ -181,6 +289,12 @@ export function OffersManagement() {
                 {pendingContracts.length !== 1 ? "s" : ""} require your review
               </span>
             </div>
+            <Link
+              href="/founder/affiliates"
+              className="mt-2 inline-flex text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Once approved, marketers will appear in Affiliates →
+            </Link>
           </CardContent>
         </Card>
       )}
@@ -201,6 +315,9 @@ export function OffersManagement() {
           <TabsTrigger value="rejected">
             Rejected ({rejectedContracts.length})
           </TabsTrigger>
+          <TabsTrigger value="paused">
+            Paused ({pausedContracts.length})
+          </TabsTrigger>
           <TabsTrigger value="all">All ({contracts.length})</TabsTrigger>
         </TabsList>
 
@@ -210,7 +327,15 @@ export function OffersManagement() {
               <CardTitle className="text-base">Pending Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={pendingContracts} showActions={true} />
+              <ContractsTable
+                contractsList={pendingContracts}
+                showActions={true}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -221,7 +346,15 @@ export function OffersManagement() {
               <CardTitle className="text-base">Approved Affiliates</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={approvedContracts} />
+              <ContractsTable
+                contractsList={approvedContracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -232,7 +365,34 @@ export function OffersManagement() {
               <CardTitle className="text-base">Rejected Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={rejectedContracts} />
+              <ContractsTable
+                contractsList={rejectedContracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
+                getStatusBadge={getStatusBadge}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="paused">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Paused Applications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ContractsTable
+                contractsList={pausedContracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -243,11 +403,191 @@ export function OffersManagement() {
               <CardTitle className="text-base">All Applications</CardTitle>
             </CardHeader>
             <CardContent>
-              <ContractsTable contractsList={contracts} />
+              <ContractsTable
+                contractsList={contracts}
+                showActions={false}
+                onReview={setReviewContractId}
+                onOpenTestimonial={handleOpenTestimonial}
+                onPause={handlePause}
+                onResume={handleResume}
+                getStatusBadge={getStatusBadge}
+              />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={Boolean(selectedContract)}
+        onOpenChange={(open) => {
+          if (!open) setReviewContractId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[620px]">
+          <DialogHeader>
+            <DialogTitle>Review application</DialogTitle>
+            <DialogDescription>
+              {selectedContract
+                ? `${selectedContract.userName} · ${selectedContract.projectName}`
+                : "Review this application."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedContract && (
+            <div className="space-y-6">
+              <div className="rounded-lg border p-4">
+                <div className="text-sm text-muted-foreground">Requested commission</div>
+                <div className="mt-2 text-3xl font-semibold">
+                  {formatNumber(selectedContract.commissionPercent * 100)}%
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Project default:{" "}
+                  {formatNumber(selectedContract.projectCommissionPercent * 100)}%
+                </div>
+              </div>
+
+              {Math.abs(
+                selectedContract.commissionPercent -
+                  selectedContract.projectCommissionPercent,
+              ) > 0.0001 && (
+                <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100">
+                  <AlertTitle className="text-amber-900 dark:text-amber-100">
+                    Commission differs from default
+                  </AlertTitle>
+                  <AlertDescription>
+                    This application requests{" "}
+                    {formatNumber(selectedContract.commissionPercent * 100)}% instead
+                    of the default{" "}
+                    {formatNumber(selectedContract.projectCommissionPercent * 100)}%.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="rounded-lg border p-4">
+                <div className="text-sm text-muted-foreground">Refund window</div>
+                <div className="mt-2 text-2xl font-semibold">
+                  {selectedContract.refundWindowDays ??
+                    selectedContract.projectRefundWindowDays ??
+                    0}{" "}
+                  days
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Project default:{" "}
+                  {selectedContract.projectRefundWindowDays ?? 0} days
+                </div>
+              </div>
+
+              {selectedContract.refundWindowDays != null &&
+                selectedContract.projectRefundWindowDays != null &&
+                selectedContract.refundWindowDays !==
+                  selectedContract.projectRefundWindowDays && (
+                  <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100">
+                    <AlertTitle className="text-amber-900 dark:text-amber-100">
+                      Refund window differs from default
+                    </AlertTitle>
+                    <AlertDescription>
+                      This application requests{" "}
+                      {selectedContract.refundWindowDays} days instead of the
+                      default {selectedContract.projectRefundWindowDays} days.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+              <div className="rounded-lg border p-4">
+                <div className="text-sm font-medium">Marketer stats</div>
+                {isStatsLoading ? (
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    Loading stats...
+                  </div>
+                ) : marketerStats ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Total sales
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatNumber(marketerStats.totalPurchases)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Total revenue
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(marketerStats.totalRevenue)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Total earnings
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(marketerStats.totalEarnings)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Pending earnings
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {formatCurrency(marketerStats.pendingEarnings)}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    No stats available yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <div className="text-sm font-medium">Message</div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {selectedContract.message?.trim()
+                    ? selectedContract.message
+                    : "No message provided."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {selectedContract && (
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setReviewContractId(null)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleReject(selectedContract.id)}
+              >
+                Reject
+              </Button>
+              <Button type="button" onClick={() => handleApprove(selectedContract.id)}>
+                Approve
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Testimonial Dialog */}
+      <TestimonialDialog
+        contract={testimonialContract}
+        open={Boolean(testimonialContract)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTestimonialContractId(null);
+          }
+        }}
+        creatorId={creatorId}
+      />
     </div>
   );
 }

@@ -289,10 +289,10 @@ export function getRevenueTimeline(
 }
 
 // Format currency for display
-export function formatCurrency(cents: number): string {
+export function formatCurrency(cents: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: currency.toUpperCase(),
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(cents / 100);

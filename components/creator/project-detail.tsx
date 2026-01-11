@@ -1,35 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useProjects, useEvents } from "@/lib/data/store";
-import {
-  getProjectMetrics,
-  getRevenueTimeline,
-  formatCurrency,
-  formatNumber,
-} from "@/lib/data/metrics";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProjectActivityTab } from "@/components/creator/project-tabs/activity-tab";
+import { ProjectCouponsTab } from "@/components/creator/project-tabs/coupons-tab";
+import { ProjectMarketersTab } from "@/components/creator/project-tabs/marketers-tab";
+import { ProjectMetricsTab } from "@/components/creator/project-tabs/metrics-tab";
+import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-tab";
+import { ProjectRewardsTab } from "@/components/creator/project-tabs/rewards-tab";
+import { ProjectSettingsTab } from "@/components/creator/project-tabs/settings-tab";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { RevenueChart } from "@/components/shared/revenue-chart";
-import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Users, TrendingUp, CalendarDays } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import { Project } from "@/lib/data/types";
-import { useProject, useProjectPurchases, useProjectStats } from "@/lib/hooks/projects";
-import { useProjectCoupons, useProjectCouponTemplates } from "@/lib/hooks/coupons";
-import { useAuthUserId } from "@/lib/hooks/auth";
-import { useUser } from "@/lib/hooks/users";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -40,24 +27,41 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, MoreHorizontal } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getRevenueTimeline } from "@/lib/data/metrics";
+import { useEvents, useProjects } from "@/lib/data/store";
+import { Project } from "@/lib/data/types";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { useProjectCoupons, useProjectCouponTemplates } from "@/lib/hooks/coupons";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  useProject,
+  useProjectMetrics,
+  useProjectPurchases,
+} from "@/lib/hooks/projects";
+import { useUser } from "@/lib/hooks/users";
+import { cn } from "@/lib/utils";
+import { VisibilityMode } from "@prisma/client";
+import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -67,6 +71,7 @@ function buildAffiliateRows(
   projectCoupons: Array<{
     code: string;
     marketer: { id: string; name: string };
+    refundWindowDays?: number | null;
   }>,
   projectPurchases: Array<{
     amount: number;
@@ -76,7 +81,7 @@ function buildAffiliateRows(
 ) {
   const couponMap = new Map<
     string,
-    { marketerId: string; marketerName: string; codes: string[] }
+    { marketerId: string; marketerName: string; codes: string[]; refundWindowDays?: number | null }
   >();
 
   projectCoupons.forEach((coupon) => {
@@ -84,7 +89,8 @@ function buildAffiliateRows(
     const existing = couponMap.get(marketerId) ?? {
       marketerId,
       marketerName: coupon.marketer.name,
-      codes: [],
+      codes: [] as string[],
+      refundWindowDays: coupon.refundWindowDays,
     };
     existing.codes.push(coupon.code);
     couponMap.set(marketerId, existing);
@@ -127,6 +133,7 @@ function buildAffiliateRows(
       purchases: purchaseInfo?.purchases ?? 0,
       revenue: purchaseInfo?.revenue ?? 0,
       commission: purchaseInfo?.commission ?? 0,
+      refundWindowDays: couponInfo?.refundWindowDays ?? null,
     };
   });
 }
@@ -152,10 +159,14 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   >([]);
   const [productsOpen, setProductsOpen] = useState(false);
   const [marketersOpen, setMarketersOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [shouldOpenReward, setShouldOpenReward] = useState(false);
   const [templateForm, setTemplateForm] = useState({
     name: "",
     description: "",
     percentOff: "10",
+    durationType: "ONCE",
+    durationInMonths: "",
     startAt: "",
     endAt: "",
     maxRedemptions: "",
@@ -164,11 +175,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   });
 
   const { data: apiProject, isLoading } = useProject(projectId);
-  const {
-    data: projectStats,
-    isLoading: isStatsLoading,
-    error: projectStatsError,
-  } = useProjectStats(projectId);
+  const { data: projectMetrics } = useProjectMetrics(projectId, 30);
   const {
     data: projectPurchases = [],
     isLoading: isPurchasesLoading,
@@ -185,6 +192,50 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     error: templatesError,
   } = useProjectCouponTemplates(projectId, true);
   const isStripeConnected = Boolean(apiProject?.creatorStripeAccountId);
+  const projectCurrency =
+    typeof apiProject?.currency === "string" ? apiProject.currency : "USD";
+  const activeTabLabel = {
+    overview: "Overview",
+    metrics: "Metrics",
+    coupons: "Coupons",
+    marketers: "Marketers",
+    rewards: "Rewards",
+    activity: "Activity",
+    settings: "Settings",
+  }[activeTab] ?? "Overview";
+  const searchParams = useSearchParams();
+  const handledCreateRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (!tab) return;
+    const allowedTabs = new Set([
+      "overview",
+      "metrics",
+      "coupons",
+      "marketers",
+      "rewards",
+      "activity",
+      "settings",
+    ]);
+    if (allowedTabs.has(tab)) {
+      setActiveTab(tab);
+    }
+    const createParam = searchParams.get("create");
+    if (createParam && allowedTabs.has(tab)) {
+      const createKey = `${projectId}:${createParam}`;
+      if (handledCreateRef.current !== createKey) {
+        handledCreateRef.current = createKey;
+        if (createParam === "coupon") {
+          setEditingTemplateId(null);
+          setIsTemplateOpen(true);
+        }
+        if (createParam === "reward") {
+          setShouldOpenReward(true);
+        }
+      }
+    }
+  }, [searchParams, projectId]);
 
   useEffect(() => {
     if (!isTemplateOpen) {
@@ -282,7 +333,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 ? Math.round(Number(apiProject.marketerCommissionPercent))
                 : Math.round(Number(apiProject.marketerCommissionPercent) * 100)
               : 0,
-          cookieWindowDays: 0,
+          cookieWindowDays:
+            typeof apiProject.refundWindowDays === "number"
+              ? apiProject.refundWindowDays
+              : 0,
           createdAt: apiProject.createdAt
             ? new Date(apiProject.createdAt)
             : new Date(),
@@ -302,19 +356,28 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       <div className="text-center py-12">
         <p className="text-muted-foreground">Project not found</p>
         <Button variant="link" asChild>
-          <Link href="/creator/projects">Back to Projects</Link>
+          <Link href="/founder/projects">Back to Projects</Link>
         </Button>
       </div>
     );
   }
 
-  const metrics = getProjectMetrics(events, resolvedProject);
-  const revenueData = getRevenueTimeline(
-    events,
-    resolvedProject.id,
-    undefined,
-    30
-  );
+  const metrics = projectMetrics?.summary ?? {
+    totalRevenue: 0,
+    affiliateRevenue: 0,
+    mrr: 0,
+    activeSubscribers: 0,
+    affiliateMrr: 0,
+    affiliateSubscribers: 0,
+    customers: 0,
+    affiliateCustomers: 0,
+  };
+  const revenueData =
+    projectMetrics?.timeline?.map((entry) => ({
+      date: entry.date,
+      revenue: entry.totalRevenue / 100,
+      affiliateRevenue: entry.affiliateRevenue / 100,
+    })) ?? getRevenueTimeline(events, resolvedProject.id, undefined, 30);
 
   const affiliateRows = buildAffiliateRows(projectCoupons, projectPurchases);
 
@@ -363,6 +426,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       name: "",
       description: "",
       percentOff: "10",
+      durationType: "ONCE",
+      durationInMonths: "",
       startAt: "",
       endAt: "",
       maxRedemptions: "",
@@ -379,6 +444,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       name: template.name,
       description: template.description ?? "",
       percentOff: String(template.percentOff),
+      durationType: template.durationType ?? "ONCE",
+      durationInMonths: template.durationInMonths
+        ? String(template.durationInMonths)
+        : "",
       startAt: formatDateInput(template.startAt),
       endAt: formatDateInput(template.endAt),
       maxRedemptions: template.maxRedemptions
@@ -400,6 +469,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         ? new Date(templateForm.startAt)
         : null;
       const endAt = templateForm.endAt ? new Date(templateForm.endAt) : null;
+      const durationType =
+        templateForm.durationType === "REPEATING" ? "REPEATING" : "ONCE";
+      const durationInMonths = templateForm.durationInMonths
+        ? Number(templateForm.durationInMonths)
+        : undefined;
       if (startAt && Number.isNaN(startAt.getTime())) {
         setTemplateError("Start date is invalid.");
         return;
@@ -416,6 +490,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         setTemplateError("End date must be in the future.");
         return;
       }
+      if (
+        durationType === "REPEATING" &&
+        (!durationInMonths || Number.isNaN(durationInMonths) || durationInMonths < 1)
+      ) {
+        setTemplateError("Enter how many billing cycles the coupon should repeat.");
+        return;
+      }
       const isEditing = Boolean(editingTemplateId);
       const response = await fetch(
         `/api/projects/${projectId}/coupon-templates`,
@@ -428,11 +509,14 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             name: templateForm.name,
             description: templateForm.description || undefined,
             percentOff: Number(templateForm.percentOff),
+            durationType,
+            durationInMonths:
+              durationType === "REPEATING" ? durationInMonths : undefined,
             startAt: templateForm.startAt || undefined,
             endAt: templateForm.endAt || undefined,
             maxRedemptions: templateForm.maxRedemptions
               ? Number(templateForm.maxRedemptions)
-              : undefined,
+            : undefined,
             productIds:
               templateForm.productIds.length > 0
                 ? templateForm.productIds
@@ -467,18 +551,35 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/founder/projects">Projects</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  href={`/founder/projects/${projectId}`}
+                  onClick={() => setActiveTab("overview")}
+                >
+                  {resolvedProject.name}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{activeTabLabel}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/creator/projects">
+              <Link href="/founder/projects">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
             <h1 className="text-2xl font-bold">{resolvedProject.name}</h1>
             <Badge variant="secondary">{resolvedProject.category}</Badge>
           </div>
-          <p className="text-muted-foreground max-w-2xl">
-            {resolvedProject.description}
-          </p>
         </div>
         <div className="flex flex-col items-end gap-2 self-end">
           {isStripeConnected ? (
@@ -498,297 +599,131 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       </div>
 
       {/* Project Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Revenue Share Terms</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Pricing Model</p>
-              <p className="font-medium capitalize">
-                {resolvedProject.pricingModel}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Price</p>
-              <p className="font-medium">
-                {formatCurrency(resolvedProject.price)}
-                {resolvedProject.pricingModel === "subscription" && "/mo"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Revenue Share</p>
-              <p className="font-medium">{resolvedProject.revSharePercent}%</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Cookie Window</p>
-              <p className="font-medium">
-                {resolvedProject.cookieWindowDays} days
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
+        <div className="border-b">
+          <TabsList variant="line" className="h-auto bg-transparent p-0">
+            <TabsTrigger className="px-3 py-2 text-sm" value="overview">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="metrics">
+              Metrics
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="coupons">
+              Coupons
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="marketers">
+              Marketers
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="rewards">
+              Rewards
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="activity">
+              Activity
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="settings">
+              Settings
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Revenue"
-          value={formatCurrency(metrics.totalRevenue)}
-          icon={DollarSign}
-        />
-        <StatCard
-          title="Monthly Recurring Revenue"
-          value={formatCurrency(metrics.mrr)}
-          icon={TrendingUp}
-        />
-        <StatCard
-          title="Active Subscribers"
-          value={formatNumber(metrics.activeSubscribers)}
-          icon={Users}
-        />
-        <StatCard
-          title="Affiliate Revenue"
-          value={formatCurrency(metrics.affiliateRevenue)}
-          description={`${Math.round(
-            (metrics.affiliateRevenue / (metrics.totalRevenue || 1)) * 100
-          )}% of total revenue`}
-          icon={CalendarDays}
-        />
-      </div>
+        <TabsContent value="overview">
+          <ProjectOverviewTab
+            project={{
+              pricingModel: resolvedProject.pricingModel,
+              price: resolvedProject.price,
+              revSharePercent: resolvedProject.revSharePercent,
+              cookieWindowDays: resolvedProject.cookieWindowDays,
+            }}
+            metrics={metrics}
+            currency={projectCurrency}
+            revenueData={revenueData}
+          />
+        </TabsContent>
 
-      {/* Stripe + Platform Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Live Stripe & Platform Stats</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isStatsLoading ? (
-            <p className="text-muted-foreground">Loading live stats...</p>
-          ) : projectStats ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Stripe Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(projectStats.stripe.totalRevenue)}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>Charges: {formatNumber(projectStats.stripe.charges)}</p>
-                  <p>
-                    New Customers: {formatNumber(projectStats.stripe.newCustomers)}
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Platform Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(projectStats.platform.totalTrackedRevenue)}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    Commission: {formatCurrency(projectStats.platform.totalCommission)}
-                  </p>
-                  <p>Purchases: {formatNumber(projectStats.platform.purchases)}</p>
-                </div>
-              </div>
-              <div className="rounded-md border p-4">
-                <p className="text-sm text-muted-foreground">Coupon Revenue</p>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(projectStats.coupons.revenue)}
-                </p>
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    Commission: {formatCurrency(projectStats.coupons.commission)}
-                  </p>
-                  <p>Purchases: {formatNumber(projectStats.coupons.purchases)}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">
-              {projectStatsError instanceof Error
-                ? projectStatsError.message
-                : "Connect Stripe to view live stats."}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="metrics">
+          <ProjectMetricsTab
+            metrics={metrics}
+            timeline={projectMetrics?.timeline ?? []}
+            currency={projectCurrency}
+            affiliateRows={affiliateRows}
+          />
+        </TabsContent>
 
-      {/* Revenue Chart */}
-      <RevenueChart
-        data={revenueData}
-        title="Revenue (Last 30 Days)"
-        showAffiliate={true}
-      />
+        <TabsContent value="coupons">
+          <ProjectCouponsTab
+            couponTemplates={couponTemplates}
+            isTemplatesLoading={isTemplatesLoading}
+            templatesError={templatesError as Error | null}
+            canEdit={currentUser?.role === "founder"}
+            onCreateTemplate={openCreateTemplate}
+            onEditTemplate={openEditTemplate}
+          />
+        </TabsContent>
 
-      {/* Coupon Templates */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle className="text-base">Coupon Templates</CardTitle>
-          {currentUser?.role === "creator" ? (
-            <Button size="sm" onClick={openCreateTemplate}>
-              Create template
-            </Button>
+        <TabsContent value="marketers">
+          <ProjectMarketersTab
+            affiliateRows={affiliateRows}
+            isLoading={isPurchasesLoading || isCouponsLoading}
+            error={(purchasesError as Error | null) ?? (couponsError as Error | null)}
+          />
+        </TabsContent>
+
+        <TabsContent value="rewards">
+          <ProjectRewardsTab
+            projectId={projectId}
+            creatorId={currentUser?.id}
+            autoOpenCreate={shouldOpenReward}
+            onAutoOpenHandled={() => setShouldOpenReward(false)}
+          />
+        </TabsContent>
+
+        <TabsContent value="activity">
+          <ProjectActivityTab projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          {currentUser ? (
+            <ProjectSettingsTab
+              projectId={projectId}
+              creatorId={currentUser.id}
+              name={resolvedProject.name}
+              description={resolvedProject.description}
+              category={apiProject?.category ?? resolvedProject.category}
+              currency={projectCurrency}
+              marketerCommissionPercent={
+                typeof apiProject?.marketerCommissionPercent === "number" ||
+                typeof apiProject?.marketerCommissionPercent === "string"
+                  ? Number(apiProject.marketerCommissionPercent)
+                  : null
+              }
+              country={apiProject?.country}
+              website={apiProject?.website}
+              foundationDate={apiProject?.foundationDate}
+              about={apiProject?.about}
+              features={apiProject?.features}
+              logoUrl={apiProject?.logoUrl}
+              imageUrls={apiProject?.imageUrls}
+              refundWindowDays={
+                typeof apiProject?.refundWindowDays === "number"
+                  ? apiProject.refundWindowDays
+                  : null
+              }
+              visibility={apiProject?.visibility as VisibilityMode}
+              showMrr={apiProject?.showMrr}
+              showRevenue={apiProject?.showRevenue}
+              showStats={apiProject?.showStats}
+              showAvgCommission={apiProject?.showAvgCommission}
+              autoApproveApplications={apiProject?.autoApproveApplications}
+              autoApproveMatchTerms={apiProject?.autoApproveMatchTerms}
+              autoApproveVerifiedOnly={apiProject?.autoApproveVerifiedOnly}
+            />
           ) : null}
-        </CardHeader>
-        <CardContent>
-          {isTemplatesLoading ? (
-            <p className="text-muted-foreground">Loading templates...</p>
-          ) : couponTemplates.length === 0 ? (
-            <p className="text-muted-foreground">
-              No coupon templates yet. Create one to issue marketer promo codes.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Discount</TableHead>
-                  <TableHead>Window</TableHead>
-                  <TableHead className="text-right">Max Redemptions</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[56px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {couponTemplates.map((template) => {
-                  const start = template.startAt
-                    ? new Date(template.startAt).toLocaleDateString()
-                    : "Anytime";
-                  const end = template.endAt
-                    ? new Date(template.endAt).toLocaleDateString()
-                    : "No end";
-                  return (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-medium">
-                        {template.name}
-                        {template.description ? (
-                          <p className="text-xs text-muted-foreground">
-                            {template.description}
-                          </p>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {template.percentOff}%
-                      </TableCell>
-                      <TableCell>
-                        {start} → {end}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {template.maxRedemptions ?? "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="capitalize">
-                          {template.status.toLowerCase()}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Template actions</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => openEditTemplate(template)}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-          {templatesError ? (
-            <p className="text-sm text-destructive mt-3">
-              {templatesError instanceof Error
-                ? templatesError.message
-                : "Unable to load templates."}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {/* Marketers Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Affiliate Marketers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isPurchasesLoading || isCouponsLoading ? (
-            <p className="text-muted-foreground text-center py-8">
-              Loading affiliate marketers...
-            </p>
-          ) : affiliateRows.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No marketers are promoting this project yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Marketer</TableHead>
-                  <TableHead>Referral Code</TableHead>
-                  <TableHead className="text-right">Clicks</TableHead>
-                  <TableHead className="text-right">Signups</TableHead>
-                  <TableHead className="text-right">Paid Customers</TableHead>
-                  <TableHead className="text-right">Conversion</TableHead>
-                  <TableHead className="text-right">MRR Attributed</TableHead>
-                  <TableHead className="text-right">Commission Owed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {affiliateRows.map((row) => (
-                  <TableRow key={row.marketerId}>
-                    <TableCell className="font-medium">
-                      {row.marketerName}
-                    </TableCell>
-                    <TableCell>
-                      <code className="bg-muted px-2 py-1 rounded text-xs">
-                        {row.referralCode}
-                      </code>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      -
-                    </TableCell>
-                    <TableCell className="text-right">
-                      -
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(row.purchases)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      -
-                    </TableCell>
-                    <TableCell className="text-right">
-                      -
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(getCommissionOwed(row.commission))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          {purchasesError || couponsError ? (
-            <p className="text-sm text-destructive mt-4">
-              {purchasesError instanceof Error
-                ? purchasesError.message
-                : couponsError instanceof Error
-                  ? couponsError.message
-                  : "Unable to load affiliate marketers."}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog
         open={isTemplateOpen}
@@ -866,6 +801,47 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                     }))
                   }
                   placeholder="Optional"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Coupon duration</Label>
+                <Select
+                  value={templateForm.durationType}
+                  onValueChange={(value) =>
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      durationType: value,
+                      durationInMonths: value === "REPEATING" ? prev.durationInMonths : "",
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ONCE">First payment only</SelectItem>
+                    <SelectItem value="REPEATING">Repeat for multiple cycles</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="templateDurationMonths">Billing cycles</Label>
+                <Input
+                  id="templateDurationMonths"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={templateForm.durationInMonths}
+                  onChange={(event) =>
+                    setTemplateForm((prev) => ({
+                      ...prev,
+                      durationInMonths: event.target.value,
+                    }))
+                  }
+                  placeholder="e.g. 3"
+                  disabled={templateForm.durationType !== "REPEATING"}
                 />
               </div>
             </div>

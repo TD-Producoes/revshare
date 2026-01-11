@@ -307,11 +307,17 @@ export function MyOffersTable({
                   claimCoupon.isPending &&
                   claimCoupon.variables?.projectId === contract.projectId;
 
+                // Route to offer detail page if approved, otherwise to project directory
+                const projectHref =
+                  contract.status === "approved"
+                    ? `/marketer/applications/${contract.projectId}`
+                    : `/marketer/projects/${contract.projectId}`;
+
                 return (
                   <TableRow key={contract.id}>
                     <TableCell className="font-medium">
                       <Link
-                        href={`/marketer/projects/${contract.projectId}`}
+                        href={projectHref}
                         className="hover:underline"
                       >
                         {contract.projectName}
@@ -418,7 +424,7 @@ export function MyOffersTable({
             <DialogHeader>
               <DialogTitle>Select coupon template</DialogTitle>
               <DialogDescription>
-                Choose a creator-managed template to generate your promo code.
+                Choose a founder-managed template to generate your promo code.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
@@ -636,7 +642,7 @@ export function MyOffersTable({
           <TableHeader>
             <TableRow>
               <TableHead>Project</TableHead>
-              <TableHead>Creator</TableHead>
+              <TableHead>Founder</TableHead>
               <TableHead className="text-right">Rev Share</TableHead>
               <TableHead>Referral Link</TableHead>
               <TableHead>Coupon</TableHead>
@@ -653,6 +659,16 @@ export function MyOffersTable({
 
               if (!project) return null;
 
+              // Find corresponding contract for this offer
+              const contract = contracts.find(
+                (c) => c.projectId === offer.projectId
+              );
+              // Route to offer detail page if contract is approved, otherwise to project directory
+              const projectHref =
+                contract?.status === "approved"
+                  ? `/marketer/applications/${project.id}`
+                  : `/marketer/projects/${project.id}`;
+
               const metrics = getMarketerProjectMetrics(
                 events,
                 project,
@@ -664,7 +680,7 @@ export function MyOffersTable({
                   <TableCell>
                     <div>
                       <Link
-                        href={`/marketer/projects/${project.id}`}
+                        href={projectHref}
                         className="font-medium hover:underline"
                       >
                         {project.name}
