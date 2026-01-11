@@ -6,13 +6,97 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useState } from "react";
+import { toast } from "sonner";
 
-export function Footer({ className }: { className?: string }) {
+type FooterTheme =
+  | "default"
+  | "founders"
+  | "marketers"
+  | "pricing"
+  | "how-it-works"
+  | "integrations"
+  | "marketplace"
+  | "affiliate-marketing"
+  | "affiliate-networks"
+  | "rewards"
+  | "trust";
+
+const themeColors: Record<FooterTheme, { bg: string; accent: string; textColor: string }> = {
+  default: { bg: "bg-[#3D2B1F]", accent: "#FFB347", textColor: "#3D2B1F" },
+  founders: { bg: "bg-[#0B1710]", accent: "#BFF2A0", textColor: "#0B1710" },
+  marketers: { bg: "bg-[#3D2B1F]", accent: "#FFB347", textColor: "#3D2B1F" },
+  pricing: { bg: "bg-[#1f3d2d]", accent: "#BFF2A0", textColor: "#1f3d2d" },
+  "how-it-works": { bg: "bg-[#0F172A]", accent: "#818CF8", textColor: "#0F172A" },
+  integrations: { bg: "bg-[#042F2E]", accent: "#2DD4BF", textColor: "#042F2E" },
+  marketplace: { bg: "bg-[#1E1B4B]", accent: "#A78BFA", textColor: "#1E1B4B" },
+  "affiliate-marketing": { bg: "bg-[#3D2B1F]", accent: "#FFB347", textColor: "#3D2B1F" },
+  "affiliate-networks": { bg: "bg-[#0B1710]", accent: "#BFF2A0", textColor: "#0B1710" },
+  rewards: { bg: "bg-[#431407]", accent: "#FB923C", textColor: "#431407" },
+  trust: { bg: "bg-[#0F172A]", accent: "#60A5FA", textColor: "#0F172A" },
+};
+
+export function Footer({
+  className,
+  theme = "default"
+}: {
+  className?: string;
+  theme?: FooterTheme;
+}) {
+  const colors = themeColors[theme];
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email.trim()) {
+      toast.error("Please enter your email");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          source: "newsletter",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          toast.error("You're already subscribed!");
+        } else if (response.status === 400) {
+          toast.error(data.error || "Please check your email");
+        } else {
+          toast.error(data.error || "Something went wrong. Please try again.");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success("Subscribed! Thank you for joining our newsletter.");
+      setEmail("");
+    } catch (error) {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <footer className={cn("relative z-10 py-16", className)}>
       <div className="mx-auto max-w-7xl px-6">
         {/* Main Footer Content */}
-        <div className="bg-[#3D2B1F] rounded-[2.5rem] p-8 md:p-12 text-white">
+        <div className={cn(colors.bg, "rounded-[2.5rem] p-8 md:p-12 text-white")}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
             {/* Product Links */}
             <div>
@@ -116,15 +200,24 @@ export function Footer({ className }: { className?: string }) {
                 <p className="text-sm text-white/50 mb-4">
                   Stay updated with product updates & news from the RevShare team
                 </p>
-                <form className="flex gap-2">
+                <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
                   <Input
                     type="email"
                     placeholder="Enter your email..."
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/40"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    required
                   />
                   <Button
                     type="submit"
-                    className="bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-semibold rounded-xl px-6"
+                    className="font-semibold rounded-xl px-6"
+                    style={{
+                      backgroundColor: colors.accent,
+                      color: colors.textColor
+                    }}
+                    disabled={isLoading}
                   >
                     Subscribe
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -175,7 +268,10 @@ export function Footer({ className }: { className?: string }) {
             </div>
             <div className="flex items-center gap-2 text-sm text-white/60">
               <span>Made with</span>
-              <Heart className="h-4 w-4 text-[#FFB347] fill-[#FFB347]" />
+              <Heart
+                className="h-4 w-4"
+                style={{ color: colors.accent, fill: colors.accent }}
+              />
               <span>in Lisbon</span>
             </div>
           </div>

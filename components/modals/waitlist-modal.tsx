@@ -23,8 +23,8 @@ export function WaitlistModal({ isOpen, onOpenChange, source = "landing" }: Wait
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.email.trim()) {
-      toast.error("Please fill in all fields");
+    if (!formData.email.trim()) {
+      toast.error("Please enter your email");
       return;
     }
 
@@ -58,7 +58,7 @@ export function WaitlistModal({ isOpen, onOpenChange, source = "landing" }: Wait
       }
 
       setStep("success");
-      toast.success("Welcome to the inner circle!");
+      toast.success("You're on the waitlist!");
     } catch (error) {
       toast.error("Network error. Please try again.");
     } finally {
@@ -97,21 +97,18 @@ export function WaitlistModal({ isOpen, onOpenChange, source = "landing" }: Wait
               className="p-8"
             >
               <DialogHeader className="mb-6 space-y-3">
-                <div className="flex items-center gap-2.5 mb-2">
-                  <span className="text-[11px] font-bold text-amber-600 uppercase tracking-widest">Early Access</span>
-                </div>
-                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">Secure your spot.</DialogTitle>
+                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">Join the waitlist.</DialogTitle>
                 <DialogDescription className="text-base text-muted-foreground leading-relaxed">
-                  Early adopters unlock exclusive perks: lower fees, priority support, and lifetime founder benefits.
+                  Get 5% fees only. Only while we are starting.
                 </DialogDescription>
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wide text-foreground/60">Full Name</Label>
+                  <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wide text-foreground/60">Name (Optional)</Label>
                   <Input
                     id="name"
-                    placeholder="Enter your name"
+                    placeholder="Your name"
                     className="h-12 bg-white border border-border/40 rounded-xl focus:border-amber-500 focus:ring-0 transition-colors font-medium placeholder:text-muted-foreground/50"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -119,15 +116,16 @@ export function WaitlistModal({ isOpen, onOpenChange, source = "landing" }: Wait
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-foreground/60">Work Email</Label>
+                  <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-foreground/60">Email</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="name@company.com"
+                    placeholder="you@example.com"
                     className="h-12 bg-white border border-border/40 rounded-xl focus:border-amber-500 focus:ring-0 transition-colors font-medium placeholder:text-muted-foreground/50"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     disabled={isLoading}
+                    required
                   />
                 </div>
 
@@ -159,7 +157,7 @@ export function WaitlistModal({ isOpen, onOpenChange, source = "landing" }: Wait
               </div>
               <h3 className="text-2xl font-bold text-foreground mb-2">You're on the list!</h3>
               <p className="text-muted-foreground mb-8 max-w-[280px] leading-relaxed">
-                Keep an eye on your inbox. We'll reach out when it's your turn.
+                Check your inbox. We'll email you when we launch.
               </p>
               <Button
                 onClick={reset}

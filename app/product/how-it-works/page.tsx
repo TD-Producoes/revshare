@@ -312,7 +312,7 @@ export default function HowItWorks() {
         </div>
       </section>
 
-      <Footer className="bg-white" />
+      <Footer className="bg-white" theme="how-it-works" />
     </main>
   );
 }

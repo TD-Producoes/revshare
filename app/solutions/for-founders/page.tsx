@@ -139,7 +139,7 @@ export default function ForFounders() {
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
                 <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/70 tracking-wide uppercase">
-                  Founder Portal v1.0
+                  For Founders
                 </Badge>
               </motion.div>
 
@@ -156,7 +156,7 @@ export default function ForFounders() {
                   }
                 }}
               >
-                {"Your product. Our".split(" ").map((word, i) => (
+                {"You built it.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-[0.2em] last:mr-0"
@@ -170,7 +170,7 @@ export default function ForFounders() {
                   </motion.span>
                 ))}
                 <br className="hidden md:block" />
-                {"distribution army.".split(" ").map((word, i) => (
+                {"We'll help sell it.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-[0.2em] last:mr-0 text-[#BFF2A0]"
@@ -191,7 +191,7 @@ export default function ForFounders() {
                 transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="max-w-xl text-base md:text-lg text-white/70 leading-relaxed mx-auto text-center"
               >
-                Stop worrying about marketing costs. List your SaaS, set your commission rules, and let our verified army of marketers scale your revenue while you focus on building.
+                List your product. Set commissions. Let marketers sell it for you. Pay only when they bring revenue.
               </motion.p>
 
               <motion.div
@@ -202,14 +202,14 @@ export default function ForFounders() {
               >
                 <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold border-none transition-all flex items-center" asChild>
                   <Link href="/signup?role=founder">
-                    Launch Program
+                    List Your Product
                     <div className="ml-2 h-7 w-7 rounded-full bg-[#0B1710]/10 flex items-center justify-center">
                       <ArrowUpRight className="h-4 w-4 text-[#0B1710]" />
                     </div>
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
-                  <Link href="/login">View Sandbox</Link>
+                  <Link href="/login">See Demo</Link>
                 </Button>
               </motion.div>
 
@@ -229,7 +229,7 @@ export default function ForFounders() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-[#BFF2A0]/60" />
-                  <span>Instant Stripe connect</span>
+                  <span>Connect Stripe in 5 min</span>
                 </div>
               </motion.div>
             </div>
@@ -258,8 +258,8 @@ export default function ForFounders() {
 
         <FeatureSection
           badge="Marketplace"
-          title="Inbound growth. No outreach required."
-          description="Your project is featured in our discovery directory. Marketers search by category, commission rate, and performance—applying directly to you without a single cold email."
+          title="Marketers apply to you."
+          description="Post your product. Marketers find you, apply, and start selling. No cold emails. No hunting for affiliates."
           items={["Verified partner pool", "Direct-to-founder applications", "Public or private listings"]}
           visual={(progress) => <RecruitmentVisual progress={progress} />}
         />
@@ -267,16 +267,16 @@ export default function ForFounders() {
         <FeatureSection
           reversed
           badge="Automation"
-          title="Refund-aware accounting that protects you."
-          description="Define your commission rules and refund windows. Our engine handles the rest, keeping funds in escrow until the refund period passes, ensuring you only pay for real revenue."
+          title="Don't pay for refunds."
+          description="Set refund windows. We hold commissions until it's safe. Only pay for revenue that sticks."
           items={["Dynamic commission tiers", "Milestone bonuses", "Refund & reversal protection"]}
           visual={(progress) => <NegotiationVisual progress={progress} />}
         />
 
         <FeatureSection
           badge="Intelligence"
-          title="Granular performance data at your fingertips."
-          description="See exactly which partners are moving the needle. Track customer LTV, churn, and cohort performance across your entire distribution army from a single dashboard."
+          title="See who's actually selling."
+          description="Track every partner. See LTV, churn, which ones convert. One dashboard."
           items={["Partner scorecards", "LTV & Churn tracking", "Immutable audit trail"]}
           visual={(progress) => <AnalyticsVisual progress={progress} />}
         />
@@ -286,21 +286,18 @@ export default function ForFounders() {
         <section className="relative z-10 py-24 text-center">
           <div className="mx-auto max-w-2xl px-6">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
-              Ready to automate your <br />
-              <span className="text-[#128045] italic">growth engine?</span>
+              Ready to get more  <br />
+              <span className="text-[#128045]">customers?</span>
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all border-none shadow-none" asChild>
-                <Link href="/signup?role=founder">Start Scaling for Free</Link>
+                <Link href="/signup?role=founder">List Your Product Free</Link>
               </Button>
             </div>
-            <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
-              Trusted by 450+ SaaS Founders
-            </p>
           </div>
         </section>
 
-        <Footer />
+        <Footer theme="founders" />
       </div>
     </main>
   );

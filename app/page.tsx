@@ -634,7 +634,7 @@ export default function Home() {
                     className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold border-none transition-all"
                     onClick={() => setIsWaitlistOpen(true)}
                   >
-                    Claim Early Access
+                    Join the Waitlist
                     <ArrowUpRight className="ml-1.5 h-4 w-4" />
                   </Button>
                   {/* <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>

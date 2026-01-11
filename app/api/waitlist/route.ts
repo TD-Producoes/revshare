@@ -7,9 +7,9 @@ export async function POST(request: NextRequest) {
     const { name, email, source } = body;
 
     // Validate input
-    if (!name || !email) {
+    if (!email) {
       return NextResponse.json(
-        { error: "Name and email are required" },
+        { error: "Email is required" },
         { status: 400 }
       );
     }
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Create waitlist entry
     const waitlistEntry = await prisma.waitlist.create({
       data: {
-        name: name.trim(),
+        name: name ? name.trim() : null,
         email: email.toLowerCase().trim(),
         source: source || "landing",
       },

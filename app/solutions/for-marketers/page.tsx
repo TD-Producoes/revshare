@@ -277,13 +277,12 @@ function ExpandingCardSection() {
           </Badge>
 
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
-            Turn distribution <br />
-            into <span className="text-[#FFB347]">recurring revenue.</span>
+            You bring the traffic. <br />
+            <span className="text-[#FFB347]">They bring the product.</span>
           </h2>
 
           <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto leading-relaxed">
-            Build a sustainable income stream by promoting products you actually use.
-            No gatekeepers. No middlemen. Just direct partnerships with founders.
+            Split the money. Done. No gatekeepers. No middlemen. Just direct partnerships with founders.
           </p>
 
           <div className="pt-4">
@@ -399,10 +398,10 @@ function MarketersBentoGrid() {
       <div className="mx-auto max-w-5xl px-6">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black mb-4 text-balance">
-            Everything you need to <span className="text-[#FFB347]">scale your performance</span>
+            Stop juggling 12 tabs. <span className="text-[#FFB347]">Here's what you need:</span>
           </h2>
           <p className="text-black/40 text-lg max-w-xl mx-auto">
-            A complete toolkit for discovering programs, tracking earnings, and managing your revenue portfolio.
+            Find deals. Track sales. Get paid. That's it.
           </p>
         </div>
 
@@ -535,7 +534,7 @@ function AlwaysFreeSection() {
           </div>
 
           <p className="text-lg text-black/60 max-w-2xl mx-auto leading-relaxed mb-8">
-            RevShare is built on a commission-only model. Marketers never pay fees, subscriptions, or platform charges.
+            You make money when you make sales. That's it. We don't charge you monthly fees like every other platform.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -701,7 +700,7 @@ export default function ForMarketers() {
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
                 <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/50 tracking-wide uppercase">
-                  Marketer Alpha
+                  For Marketers
                 </Badge>
               </motion.div>
 
@@ -718,7 +717,7 @@ export default function ForMarketers() {
                   }
                 }}
               >
-                {"Market what you love. Get paid what you're".split(" ").map((word, i) => (
+                {"You've got an audience.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-[0.2em] last:mr-0"
@@ -731,11 +730,12 @@ export default function ForMarketers() {
                     {word}
                   </motion.span>
                 ))}
+                <br className="hidden md:block" />
                 <span className="text-[#FFB347]">
-                  {"worth.".split(" ").map((word, i) => (
+                  {"We've got products that pay.".split(" ").map((word, i) => (
                     <motion.span
                       key={i}
-                      className="inline-block ml-[0.2em]"
+                      className="inline-block mr-[0.2em] last:mr-0"
                       variants={{
                         hidden: { opacity: 0, y: 20 },
                         visible: { opacity: 1, y: 0 }
@@ -754,7 +754,7 @@ export default function ForMarketers() {
                 transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="max-w-xl text-base md:text-lg text-white/50 leading-relaxed mx-auto"
               >
-                Stop hunting for affiliate links. Browse verified programs, track your performance with full transparency, and earn recurring commissions as your sales grow.
+                Real SaaS deals. Real revenue data. Real commissions. No affiliate networks taking a cut.
               </motion.p>
 
               <motion.div
@@ -821,8 +821,8 @@ export default function ForMarketers() {
         {/* Features Area */}
         <FeatureSection
           badge="Discovery"
-          title="Direct access to top SaaS offers."
-          description="Filter deals by commission rate, historical revenue, and payout frequency. No more hunting for affiliate managers on LinkedIn."
+          title="See what products actually make money before you promote them."
+          description="Check real revenue numbers before you waste time applying. No more hunting for affiliate managers on LinkedIn."
           items={["Verified programs", "Direct connections", "High-ticket offers"]}
           visual={(progress) => <DiscoveryVisual progress={progress} />}
         />
@@ -830,16 +830,16 @@ export default function ForMarketers() {
         <FeatureSection
           reversed
           badge="Management"
-          title="All your links in one command center."
-          description="Consolidate multiple programs into a single dashboard. Manage approvals, creative assets, and tracking links without switching tabs."
+          title="Manage every program without losing your mind."
+          description="One dashboard for all your affiliate links. No more spreadsheets. No more forgotten login credentials."
           items={["Unified dashboard", "Instant assets", "One-click apply"]}
           visual={(progress) => <ManagementVisual progress={progress} />}
         />
 
         <FeatureSection
           badge="Transparency"
-          title="Audit every cent in real-time."
-          description="Full granular visibility into every conversion. We sync directly with the source so you see exactly what the founder sees."
+          title="See exactly what the founder sees. No hidden sales."
+          description="We sync directly with the source so you see exactly what the founder sees. No more guessing if you got credited."
           items={["Conversion logs", "Revenue sync", "Immutable tracking"]}
           visual={(progress) => <TransparencyVisual progress={progress} />}
         />
@@ -847,16 +847,16 @@ export default function ForMarketers() {
         <FeatureSection
           reversed
           badge="Reliability"
-          title="Stripe-powered payouts. No clawbacks."
-          description="Get paid through Stripe Connect with predictable schedules. Once a payout is processed, it's yours—no surprise deductions or clawbacks after payment."
+          title="Stripe payouts. No 'oops we overpaid you' emails."
+          description="Paid via Stripe. Once it hits your account, it's yours. No surprise deductions 6 months later."
           items={["Stripe Connect payouts", "Predictable schedules", "No post-payment clawbacks"]}
           visual={(progress) => <ReliabilityVisual progress={progress} />}
         />
 
         <FeatureSection
           badge="Rewards"
-          title="Unlock rewards by hitting revenue milestones."
-          description="Earn bonus rewards as you scale. Hit revenue targets and automatically unlock performance bonuses, exclusive perks, and milestone-based incentives."
+          title="Hit $10k? Get a bonus. It's automatic."
+          description="Founders set milestone bonuses. You hit the target. Money unlocks. No applications."
           items={["Milestone-based rewards", "Auto-unlock bonuses", "Progress tracking"]}
           visual={(progress) => <RewardsVisual progress={progress} />}
         />
@@ -869,16 +869,16 @@ export default function ForMarketers() {
         <section className="relative z-10 py-24 text-center bg-gray-50/50">
           <div className="mx-auto max-w-2xl px-6">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
-              Start building your performance <br />
-              <span className="text-primary">portfolio today.</span>
+              Got an audience? <br />
+              <span className="text-primary">Start making money from it.</span>
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Button size="lg" className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all border-none shadow-none" asChild>
-                <Link href="/signup?role=marketer">Explore Projects Now</Link>
+                <Link href="/signup?role=marketer">Browse Programs</Link>
               </Button>
             </div>
             <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
-              Join the network of high-performance marketers
+              Join other marketers tired of getting screwed by networks
             </p>
           </div>
         </section>
