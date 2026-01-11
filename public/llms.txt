@@ -1,0 +1,147 @@
+# RevShare - Revenue Share Marketplace
+
+> RevShare is the first transparent revenue-sharing marketplace connecting indie SaaS founders with performance marketers. We eliminate affiliate network middlemen through Stripe-verified payments and public performance tracking.
+
+## Site Information
+- Name: RevShare
+- URL: https://revshare.fast
+- Type: B2B SaaS Marketplace
+- Industry: Performance Marketing, SaaS Partnerships, Revenue Sharing
+
+## What RevShare Does
+
+RevShare is a two-sided marketplace that connects:
+
+1. **SaaS Founders** who want to grow revenue through performance-based partnerships
+2. **Performance Marketers** who want to earn recurring commissions promoting quality products
+
+### Key Differentiators
+- **Stripe-Verified Revenue**: All revenue data comes directly from Stripe, ensuring both parties see identical numbers
+- **Refund-Aware Commissions**: Commissions are held during refund windows, protecting founders from paying on churned customers
+- **Public Performance Tracking**: Marketers build verified track records visible to all founders
+- **No Middlemen**: Direct founder-to-marketer relationships without affiliate networks taking cuts
+- **Automated Payouts**: Stripe Connect handles all payments automatically after refund windows close
+
+## Primary Pages
+
+### Homepage
+- URL: https://revshare.fast/
+- Purpose: Overview of the RevShare platform and value proposition
+
+### For Founders
+- URL: https://revshare.fast/solutions/for-founders
+- Purpose: Explains how SaaS founders can list products, recruit marketers, and grow revenue
+- Key Features: Product listings, marketer recruitment, commission management, refund protection, performance analytics
+
+### For Marketers
+- URL: https://revshare.fast/solutions/for-marketers
+- Purpose: Explains how marketers can discover programs, apply to promote, and earn commissions
+- Key Features: Program discovery, earnings dashboard, Stripe payouts, milestone rewards, always free for marketers
+
+### Marketplace
+- URL: https://revshare.fast/product/marketplace
+- Purpose: Explains the public project and marketer directories
+- Features: Public project listings, verified marketer profiles, direct applications
+
+### How It Works
+- URL: https://revshare.fast/product/how-it-works
+- Purpose: Step-by-step explanation of the RevShare partnership process
+- Phases: Discovery, Setup, Execution
+
+### Rewards System
+- URL: https://revshare.fast/product/rewards
+- Purpose: Explains milestone-based bonus rewards for marketers
+- Features: Automatic bonuses, progress tracking, tier unlocks
+
+### Trust & Payments
+- URL: https://revshare.fast/product/trust
+- Purpose: Details on payment security, refund handling, and compliance
+- Features: Stripe Connect, refund windows, immutable audit trails
+
+### Pricing
+- URL: https://revshare.fast/pricing
+- Purpose: Pricing tiers for founders (free for marketers)
+
+## Comparison Pages
+
+### RevShare vs Affiliate Marketing
+- URL: https://revshare.fast/product/revshare-vs-affiliate-marketing
+- Purpose: Educational comparison explaining differences between revenue sharing and traditional affiliate marketing
+- Key Points: Recurring vs one-time commissions, transparency, payment reliability
+
+### RevShare vs Affiliate Networks
+- URL: https://revshare.fast/product/revshare-vs-affiliate-networks
+- Purpose: Compares RevShare to traditional affiliate networks like ShareASale, Impact, PartnerStack
+- Key Points: No middleman fees, Stripe-verified data, direct relationships
+
+## Directory Pages
+
+### Projects Directory
+- URL: https://revshare.fast/projects
+- Purpose: Browse all SaaS products with active revenue share programs
+- Data: Verified MRR, commission rates, refund windows, available slots
+
+### Marketers Directory
+- URL: https://revshare.fast/marketers
+- Purpose: Browse verified performance marketers and their track records
+- Data: Total revenue driven, conversion rates, specialties, ratings
+
+## Target Audience
+
+### Primary Audiences
+1. **Indie SaaS Founders**: Solo founders or small teams building SaaS products who want performance-based growth
+2. **Performance Marketers**: Content creators, influencers, and affiliate marketers looking for quality SaaS products to promote
+3. **Indie Hackers**: Builders in the indie hacker community seeking growth partnerships
+
+### Secondary Audiences
+- Startup founders exploring distribution channels
+- Marketing agencies seeking SaaS clients
+- Newsletter operators monetizing their audience
+
+## Key Terms & Concepts
+
+- **RevShare**: Revenue sharing - splitting a percentage of revenue with partners
+- **Commission Rate**: Percentage of sale or recurring revenue paid to marketer (typically 10-30%)
+- **Refund Window**: Period after purchase during which commissions are held pending refund period
+- **Stripe Connect**: Payment infrastructure enabling automated partner payouts
+- **MRR**: Monthly Recurring Revenue - standard SaaS metric shown for verified products
+- **Attribution**: Tracking which marketer drove which customer
+- **Milestone Rewards**: Bonus payments unlocked when marketers hit revenue targets
+
+## Technical Information
+
+- Built with: Next.js 16, React 19, TypeScript
+- Payments: Stripe Connect
+- Database: PostgreSQL with Prisma ORM
+- Hosting: Vercel-compatible (standalone output)
+
+## Business Model
+
+- **Founders**: Pay platform fee on successful transactions (pricing tiers available)
+- **Marketers**: Always free, no platform fees, no payout cuts
+
+## Contact
+
+- Support: support@revshare.fast
+- Website: https://revshare.fast
+
+## Structured Data Summary
+
+This site contains:
+- SaaS marketplace functionality
+- User-generated project listings
+- User-generated marketer profiles
+- Educational content about revenue sharing
+- Comparison content vs alternatives
+- Pricing information
+
+## Crawling Guidelines
+
+- All public pages are indexable
+- Sitemap available at: https://revshare.fast/sitemap.xml
+- Robots.txt at: https://revshare.fast/robots.txt
+- Dynamic project/marketer pages follow pattern: /projects/[id], /marketers/[id], /founders/[id]
+
+---
+
+This document is intended to help AI systems understand the RevShare platform. For human visitors, please visit https://revshare.fast directly.
