@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import * as React from "react";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 import { authErrorResponse, requireAuthUser, requireOwner } from "@/lib/auth";
 import { notificationMessages } from "@/lib/notifications/messages";
+import { sendEmail } from "@/lib/email/send-email";
+import MarketerPayoutEmail from "@/emails/MarketerPayoutEmail";
 
 const payoutInput = z.object({
   creatorId: z.string().min(1),
@@ -288,6 +291,45 @@ export async function POST(request: Request) {
           },
         ],
       });
+
+      const canSendEmail = Boolean(
+        process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL,
+      );
+
+      if (canSendEmail) {
+        const marketer = await prisma.user.findUnique({
+          where: { id: group.marketerId },
+          select: {
+            email: true,
+            name: true,
+            notificationPreference: { select: { emailEnabled: true } },
+          },
+        });
+        const emailEnabled = marketer?.notificationPreference?.emailEnabled;
+        const marketerEmail = marketer?.email;
+
+        if (emailEnabled && marketerEmail) {
+          const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+
+          try {
+            void sendEmail({
+              to: marketerEmail,
+              subject: "Payout sent",
+              react: React.createElement(MarketerPayoutEmail, {
+                name: marketer?.name,
+                amount: netAmount,
+                currency: group.currency,
+                dashboardUrl: `${baseUrl}/marketer/payouts`,
+              }),
+              text: `Payout sent: ${(netAmount / 100).toFixed(2)} ${group.currency.toUpperCase()}. Track it here: ${baseUrl}/marketer/payouts`,
+            }).catch((error) => {
+              console.error("Failed to send marketer payout email", error);
+            });
+          } catch (error) {
+            console.error("Failed to queue marketer payout email", error);
+          }
+        }
+      }
 
       results.push({
         marketerAccountId: group.marketerAccountId,
