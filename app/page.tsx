@@ -19,7 +19,7 @@ import {
   ArrowUpRight,
   CheckCircle2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isWaitlistMode } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useRef, useState } from "react";
@@ -1261,9 +1261,19 @@ export default function Home() {
                 <span className="text-amber-500 italic">revenue sharing?</span>
               </h2>
               <div className="flex flex-wrap items-center justify-center gap-4">
-                <Button size="lg" className="h-12 rounded-full px-8 text-base shadow-amber-500/20 transition-all font-bold bg-amber-400 text-white" asChild>
-                  <Link href="/signup">Get Started Now</Link>
-                </Button>
+                {isWaitlistMode() ? (
+                  <Button
+                    size="lg"
+                    className="h-12 rounded-full px-8 text-base shadow-amber-500/20 transition-all font-bold bg-amber-400 text-white"
+                    onClick={() => setIsWaitlistOpen(true)}
+                  >
+                    Claim Early Access
+                  </Button>
+                ) : (
+                  <Button size="lg" className="h-12 rounded-full px-8 text-base shadow-amber-500/20 transition-all font-bold bg-amber-400 text-white" asChild>
+                    <Link href="/signup">Get Started Now</Link>
+                  </Button>
+                )}
               </div>
               <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
                 Join the growing network of 1,200+ partners

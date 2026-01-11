@@ -9,10 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
+import { isWaitlistMode } from "@/lib/utils";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
 
 export default function TrustPaymentsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isTransparent, setIsTransparent] = React.useState(true);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = React.useState(false);
+  const waitlistMode = isWaitlistMode();
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -133,14 +137,27 @@ export default function TrustPaymentsPage() {
                 transition={{ duration: 0.8, delay: 1, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="flex flex-wrap items-center justify-center gap-4 pt-2"
               >
-                <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(14,165,233,0.2)]" asChild>
-                  <Link href="/signup">
-                    Set up trust
+                {waitlistMode ? (
+                  <Button
+                    size="lg"
+                    className="h-12 rounded-full px-8 text-base bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(14,165,233,0.2)]"
+                    onClick={() => setIsWaitlistModalOpen(true)}
+                  >
+                    Claim Early Access
                     <div className="ml-2 h-7 w-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20">
                       <ArrowUpRight className="h-4 w-4 text-white" />
                     </div>
-                  </Link>
-                </Button>
+                  </Button>
+                ) : (
+                  <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(14,165,233,0.2)]" asChild>
+                    <Link href="/signup">
+                      Get Started
+                      <div className="ml-2 h-7 w-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20">
+                        <ArrowUpRight className="h-4 w-4 text-white" />
+                      </div>
+                    </Link>
+                  </Button>
+                )}
               </motion.div>
             </div>
           </div>
@@ -260,14 +277,31 @@ export default function TrustPaymentsPage() {
             Built on <span className="text-[#0EA5E9] italic">verifiable</span> payouts.
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold transition-all border-none shadow-none" asChild>
-              <Link href="/signup">Create your account</Link>
-            </Button>
+            {waitlistMode ? (
+              <Button
+                size="lg"
+                className="h-12 rounded-full px-8 text-base bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold transition-all border-none shadow-none"
+                onClick={() => setIsWaitlistModalOpen(true)}
+              >
+                Claim Early Access
+              </Button>
+            ) : (
+              <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold transition-all border-none shadow-none" asChild>
+                <Link href="/signup">Get Started Now</Link>
+              </Button>
+            )}
           </div>
         </div>
       </section>
 
-      <Footer className="bg-white" theme="trust" />
+      <Footer className="bg-white" />
+      {waitlistMode && (
+        <WaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          source="product-trust"
+        />
+      )}
     </main>
   );
 }

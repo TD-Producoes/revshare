@@ -11,10 +11,14 @@ import { Footer } from "@/components/layout/footer";
 import { FeatureSection } from "@/components/sections/feature-section";
 import { ComparisonTable } from "@/components/sections/comparison-table";
 import { PainPointsSection } from "@/components/sections/pain-points-section";
+import { isWaitlistMode } from "@/lib/utils";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
 
 export default function RevShareVsAffiliateMarketing() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isTransparent, setIsTransparent] = React.useState(true);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = React.useState(false);
+  const waitlistMode = isWaitlistMode();
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -142,14 +146,27 @@ export default function RevShareVsAffiliateMarketing() {
                 transition={{ duration: 0.8, delay: 1, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="flex flex-wrap items-center justify-center gap-4 pt-2"
               >
-                <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(255,179,71,0.2)]" asChild>
-                  <Link href="/signup">
-                    Start revshare
+                {waitlistMode ? (
+                  <Button
+                    size="lg"
+                    className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(255,179,71,0.2)]"
+                    onClick={() => setIsWaitlistModalOpen(true)}
+                  >
+                    Claim Early Access
                     <div className="ml-2 h-7 w-7 rounded-full bg-[#3D2B1F]/10 flex items-center justify-center group-hover:bg-[#3D2B1F]/20">
                       <ArrowUpRight className="h-4 w-4 text-[#3D2B1F]" />
                     </div>
-                  </Link>
-                </Button>
+                  </Button>
+                ) : (
+                  <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(255,179,71,0.2)]" asChild>
+                    <Link href="/signup">
+                      Start Earning
+                      <div className="ml-2 h-7 w-7 rounded-full bg-[#3D2B1F]/10 flex items-center justify-center group-hover:bg-[#3D2B1F]/20">
+                        <ArrowUpRight className="h-4 w-4 text-[#3D2B1F]" />
+                      </div>
+                    </Link>
+                  </Button>
+                )}
               </motion.div>
             </div>
           </div>
@@ -228,9 +245,19 @@ export default function RevShareVsAffiliateMarketing() {
             Start <span className="text-[#FFB347] italic">sharing recurring revenue.</span>
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold transition-all border-none shadow-none" asChild>
-              <Link href="/signup">Launch your program</Link>
-            </Button>
+            {waitlistMode ? (
+              <Button
+                size="lg"
+                className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold transition-all border-none shadow-none"
+                onClick={() => setIsWaitlistModalOpen(true)}
+              >
+                Claim Early Access
+              </Button>
+            ) : (
+              <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold transition-all border-none shadow-none" asChild>
+                <Link href="/signup">Launch your program</Link>
+              </Button>
+            )}
           </div>
           <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
             A better model for SaaS
@@ -238,7 +265,14 @@ export default function RevShareVsAffiliateMarketing() {
         </div>
       </section>
 
-      <Footer className="bg-white" theme="affiliate-marketing" />
+      <Footer className="bg-white" />
+      {waitlistMode && (
+        <WaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          source="product-revshare-vs-marketing"
+        />
+      )}
     </main>
   );
 }

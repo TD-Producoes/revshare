@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, isWaitlistMode } from "@/lib/utils";
 import { X, Menu, ChartPie } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
 
 interface MobileNavProps {
   isAuthed: boolean;
@@ -50,6 +51,8 @@ const itemVariants = {
 
 export function MobileNav({ isAuthed, theme, dashboardHref, dashboardLabel, triggerClassName, isTransparent }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const waitlistMode = isWaitlistMode();
 
   useEffect(() => {
     if (isOpen) {
@@ -210,40 +213,70 @@ export function MobileNav({ isAuthed, theme, dashboardHref, dashboardLabel, trig
               <div className="flex items-center gap-4">
                 {!isAuthed ? (
                   <>
-                    <Button
-                      variant="secondary"
-                      size="lg"
-                      className="flex-1 h-14 rounded-full text-base font-semibold bg-secondary/50 hover:bg-secondary/70 border-none"
-                      asChild
-                    >
-                      <Link href="/login" onClick={() => setIsOpen(false)}>
-                        Log In
-                      </Link>
-                    </Button>
-                    <Button
-                      size="lg"
-                      className={cn(
-                        "flex-1 h-14 rounded-full text-base font-semibold shadow-none border-none",
-                        theme === "founders"
-                          ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710]"
-                          : theme === "how-it-works"
-                            ? "bg-[#818CF8] hover:bg-[#717CF8] text-white"
-                            : theme === "trust"
-                              ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
-                              : theme === "rewards"
-                                ? "bg-[#F59E0B] hover:bg-[#D97706] text-white"
-                                : theme === "integrations"
-                                  ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white"
-                                  : theme === "marketplace"
-                                    ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
-                                    : "bg-amber-500 hover:bg-amber-600 text-white"
-                      )}
-                      asChild
-                    >
-                      <Link href="/signup" onClick={() => setIsOpen(false)}>
-                        Get Started
-                      </Link>
-                    </Button>
+                    {!waitlistMode && (
+                      <Button
+                        variant="secondary"
+                        size="lg"
+                        className="flex-1 h-14 rounded-full text-base font-semibold bg-secondary/50 hover:bg-secondary/70 border-none"
+                        asChild
+                      >
+                        <Link href="/login" onClick={() => setIsOpen(false)}>
+                          Log In
+                        </Link>
+                      </Button>
+                    )}
+                    {waitlistMode ? (
+                      <Button
+                        size="lg"
+                        className={cn(
+                          "w-full h-14 rounded-full text-base font-semibold shadow-none border-none",
+                          theme === "founders"
+                            ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710]"
+                            : theme === "how-it-works"
+                              ? "bg-[#818CF8] hover:bg-[#717CF8] text-white"
+                              : theme === "trust"
+                                ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+                                : theme === "rewards"
+                                  ? "bg-[#F59E0B] hover:bg-[#D97706] text-white"
+                                  : theme === "integrations"
+                                    ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white"
+                                    : theme === "marketplace"
+                                      ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+                                      : "bg-amber-500 hover:bg-amber-600 text-white"
+                        )}
+                        onClick={() => {
+                          setIsOpen(false);
+                          setIsWaitlistModalOpen(true);
+                        }}
+                      >
+                        Claim Early Access
+                      </Button>
+                    ) : (
+                      <Button
+                        size="lg"
+                        className={cn(
+                          "flex-1 h-14 rounded-full text-base font-semibold shadow-none border-none",
+                          theme === "founders"
+                            ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710]"
+                            : theme === "how-it-works"
+                              ? "bg-[#818CF8] hover:bg-[#717CF8] text-white"
+                              : theme === "trust"
+                                ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+                                : theme === "rewards"
+                                  ? "bg-[#F59E0B] hover:bg-[#D97706] text-white"
+                                  : theme === "integrations"
+                                    ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white"
+                                    : theme === "marketplace"
+                                      ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+                                      : "bg-amber-500 hover:bg-amber-600 text-white"
+                        )}
+                        asChild
+                      >
+                        <Link href="/signup" onClick={() => setIsOpen(false)}>
+                          Get Started
+                        </Link>
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <Button
@@ -266,6 +299,13 @@ export function MobileNav({ isAuthed, theme, dashboardHref, dashboardLabel, trig
           </motion.div>
         )}
       </AnimatePresence>
+      {waitlistMode && (
+        <WaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          source="mobile-nav"
+        />
+      )}
     </div>
   );
 }
