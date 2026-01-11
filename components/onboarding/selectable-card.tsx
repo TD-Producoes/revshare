@@ -37,7 +37,7 @@ export function SelectableCard({
         "cursor-pointer transition-all duration-300 border-none rounded-2xl shadow-none ring-0",
         color,
         selected
-          ? "bg-primary text-primary-foreground"
+          ? "bg-primary/30"
           : "hover:bg-primary/10",
         className
       )}
