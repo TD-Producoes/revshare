@@ -238,7 +238,7 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      <Footer className="bg-white" />
+      <Footer className="bg-white" theme="marketplace" />
       {waitlistMode && (
         <WaitlistModal
           isOpen={isWaitlistModalOpen}

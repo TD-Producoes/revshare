@@ -614,7 +614,7 @@ export default function PricingPage() {
       </section>
       </div>
 
-      <Footer />
+      <Footer theme="pricing" />
       {waitlistMode && (
         <WaitlistModal
           isOpen={isWaitlistModalOpen}

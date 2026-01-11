@@ -297,7 +297,7 @@ export default function TrustPaymentsPage() {
         </div>
       </section>
 
-      <Footer className="bg-white" />
+      <Footer className="bg-white" theme="trust" />
       {waitlistMode && (
         <WaitlistModal
           isOpen={isWaitlistModalOpen}
