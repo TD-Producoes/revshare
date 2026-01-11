@@ -11,6 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "email:dev": "npx react-email dev --dir emails --port 3001",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -21,6 +22,8 @@
     "@radix-ui/react-popover": "^1.1.2",
     "@radix-ui/react-radio-group": "^1.3.8",
     "@radix-ui/react-switch": "^1.1.2",
+    "@react-email/components": "^1.0.4",
+    "@react-email/render": "^2.0.2",
     "@stripe/stripe-js": "^4.0.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.89.0",
@@ -41,6 +44,7 @@
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "recharts": "^2.15.4",
+    "resend": "^6.7.0",
     "shadcn": "^3.6.1",
     "sonner": "^2.0.7",
     "stripe": "^20.1.0",
@@ -50,6 +54,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@react-email/preview-server": "^5.2.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.16.0",
@@ -58,6 +63,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
+    "react-email": "^5.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

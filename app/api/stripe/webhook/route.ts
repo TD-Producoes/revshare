@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import * as React from "react";
 
 import { prisma } from "@/lib/prisma";
 import { platformStripe } from "@/lib/stripe";
 import { notificationMessages } from "@/lib/notifications/messages";
+import { sendEmail } from "@/lib/email/send-email";
+import ReferralSaleEmail from "@/emails/ReferralSaleEmail";
 
 export const runtime = "nodejs";
 
@@ -842,7 +845,11 @@ export async function POST(request: Request) {
   const coupon = details.promotionCodeId
     ? await prisma.coupon.findUnique({
         where: { stripePromotionCodeId: details.promotionCodeId },
-        include: { marketer: true },
+        select: {
+          id: true,
+          marketerId: true,
+          commissionPercent: true,
+        },
       })
     : null;
 
@@ -941,6 +948,45 @@ export async function POST(request: Request) {
         },
       },
     });
+
+    const canSendEmail = Boolean(
+      process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL,
+    );
+    const marketer = await prisma.user.findUnique({
+      where: { id: coupon.marketerId },
+      select: {
+        email: true,
+        name: true,
+        notificationPreference: { select: { emailEnabled: true } },
+      },
+    });
+    const emailEnabled = marketer?.notificationPreference?.emailEnabled;
+    const marketerEmail = marketer?.email;
+
+    if (canSendEmail && emailEnabled && marketerEmail) {
+      const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+
+      try {
+        void sendEmail({
+          to: marketerEmail,
+          subject: "New referral sale",
+          react: React.createElement(ReferralSaleEmail, {
+            name: marketer?.name,
+            projectName: projectMatch.name ?? "your project",
+            commissionAmount,
+            currency: details.currency,
+            dashboardUrl: `${baseUrl}/marketer/earnings`,
+          }),
+          text: `New referral sale on ${
+            projectMatch.name ?? "your project"
+          }. Commission ${Math.round(commissionAmount) / 100} ${details.currency.toUpperCase()}.`,
+        }).catch((error) => {
+          console.error("Failed to send referral sale email", error);
+        });
+      } catch (error) {
+        console.error("Failed to queue referral sale email", error);
+      }
+    }
   }
 
   if (projectMatch.userId) {
