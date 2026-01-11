@@ -45,7 +45,7 @@ export default function CreatorAffiliatesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Affiliate</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead className="text-right">Projects</TableHead>
                   <TableHead className="text-right">Affiliate Revenue</TableHead>
                   <TableHead className="text-right">Commission Owed</TableHead>

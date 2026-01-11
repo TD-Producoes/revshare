@@ -53,7 +53,7 @@ export async function GET(
   const hasAccess = await prisma.contract.findFirst({
     where: {
       userId: marketerId,
-      status: "APPROVED",
+      status: { in: ["APPROVED", "PAUSED"] },
       projectId: { in: projectIds },
     },
     select: { id: true },
@@ -73,8 +73,11 @@ export async function GET(
       select: { id: true, name: true, email: true, role: true },
     }),
     prisma.contract.findMany({
-      where: { userId: marketerId, status: "APPROVED" },
-      select: { project: { select: { id: true, name: true } } },
+      where: { userId: marketerId, status: { in: ["APPROVED", "PAUSED"] } },
+      select: {
+        status: true,
+        project: { select: { id: true, name: true } },
+      },
     }),
   ]);
 
@@ -124,7 +127,10 @@ export async function GET(
   return NextResponse.json({
     data: {
       marketer,
-      projects: projects.map((entry) => entry.project),
+      projects: projects.map((entry) => ({
+        ...entry.project,
+        status: entry.status,
+      })),
       summary,
       timeline: timeline.map((entry) => ({
         date: entry.date.toISOString(),

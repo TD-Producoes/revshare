@@ -123,6 +123,7 @@ export type CreatorMarketerMetrics = {
   projects: Array<{
     id: string;
     name: string;
+    status?: string;
   }>;
   summary: {
     projectRevenue: number;

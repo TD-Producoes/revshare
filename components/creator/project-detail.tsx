@@ -52,7 +52,8 @@ import { cn } from "@/lib/utils";
 import { VisibilityMode } from "@prisma/client";
 import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -159,6 +160,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [productsOpen, setProductsOpen] = useState(false);
   const [marketersOpen, setMarketersOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [shouldOpenReward, setShouldOpenReward] = useState(false);
   const [templateForm, setTemplateForm] = useState({
     name: "",
     description: "",
@@ -201,6 +203,39 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     activity: "Activity",
     settings: "Settings",
   }[activeTab] ?? "Overview";
+  const searchParams = useSearchParams();
+  const handledCreateRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (!tab) return;
+    const allowedTabs = new Set([
+      "overview",
+      "metrics",
+      "coupons",
+      "marketers",
+      "rewards",
+      "activity",
+      "settings",
+    ]);
+    if (allowedTabs.has(tab)) {
+      setActiveTab(tab);
+    }
+    const createParam = searchParams.get("create");
+    if (createParam && allowedTabs.has(tab)) {
+      const createKey = `${projectId}:${createParam}`;
+      if (handledCreateRef.current !== createKey) {
+        handledCreateRef.current = createKey;
+        if (createParam === "coupon") {
+          setEditingTemplateId(null);
+          setIsTemplateOpen(true);
+        }
+        if (createParam === "reward") {
+          setShouldOpenReward(true);
+        }
+      }
+    }
+  }, [searchParams, projectId]);
 
   useEffect(() => {
     if (!isTemplateOpen) {
@@ -638,7 +673,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </TabsContent>
 
         <TabsContent value="rewards">
-          <ProjectRewardsTab projectId={projectId} creatorId={currentUser?.id} />
+          <ProjectRewardsTab
+            projectId={projectId}
+            creatorId={currentUser?.id}
+            autoOpenCreate={shouldOpenReward}
+            onAutoOpenHandled={() => setShouldOpenReward(false)}
+          />
         </TabsContent>
 
         <TabsContent value="activity">

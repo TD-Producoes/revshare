@@ -41,7 +41,10 @@ export async function GET(request: Request) {
 
   const [contracts, metrics, projectCounts] = await Promise.all([
     prisma.contract.findMany({
-      where: { projectId: { in: projectIds }, status: "APPROVED" },
+      where: {
+        projectId: { in: projectIds },
+        status: { in: ["APPROVED", "PAUSED"] },
+      },
       select: { userId: true },
     }),
     prisma.marketerMetricsSnapshot.groupBy({
@@ -56,7 +59,10 @@ export async function GET(request: Request) {
     }),
     prisma.contract.groupBy({
       by: ["userId"],
-      where: { projectId: { in: projectIds }, status: "APPROVED" },
+      where: {
+        projectId: { in: projectIds },
+        status: { in: ["APPROVED", "PAUSED"] },
+      },
       _count: { _all: true },
     }),
   ]);
