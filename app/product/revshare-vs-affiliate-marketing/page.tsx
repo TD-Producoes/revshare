@@ -79,7 +79,7 @@ export default function RevShareVsAffiliateMarketing() {
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
                 <Badge variant="outline" className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/70 tracking-wide uppercase">
-                  Conceptual Guide
+                  A Quick Comparison
                 </Badge>
               </motion.div>
 
@@ -96,7 +96,7 @@ export default function RevShareVsAffiliateMarketing() {
                 }}
                 className="text-[44px] md:text-[62px] tracking-tighter leading-[1.05] text-white text-balance text-center"
               >
-                {"The evolution of the".split(" ").map((word, i) => (
+                {"RevShare vs.".split(" ").map((word, i) => (
                   <motion.span
                     key={i}
                     className="inline-block mr-[0.2em] last:mr-0"
@@ -111,7 +111,7 @@ export default function RevShareVsAffiliateMarketing() {
                 ))}
                 <br className="hidden md:block" />
                 <span className="text-[#FFB347]">
-                  {"affiliate.".split(" ").map((word, i) => (
+                  {"affiliate bounties.".split(" ").map((word, i) => (
                     <motion.span
                       key={i}
                       className="inline-block mr-[0.2em] last:mr-0"
@@ -133,7 +133,7 @@ export default function RevShareVsAffiliateMarketing() {
                 transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="max-w-xl text-base md:text-lg text-white/70 leading-relaxed mx-auto text-center"
               >
-                Affiliate marketing was built for one-time transactions. Revenue sharing is built for recurring value, aligned incentives, and true SaaS growth.
+                One-time bounties stop at signup. RevShare shares recurring revenue, so incentives stay aligned as your SaaS grows.
               </motion.p>
 
               <motion.div
@@ -144,7 +144,7 @@ export default function RevShareVsAffiliateMarketing() {
               >
                 <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold border-none transition-all flex items-center group shadow-[0_0_20px_rgba(255,179,71,0.2)]" asChild>
                   <Link href="/signup">
-                    Start Earning
+                    Start revshare
                     <div className="ml-2 h-7 w-7 rounded-full bg-[#3D2B1F]/10 flex items-center justify-center group-hover:bg-[#3D2B1F]/20">
                       <ArrowUpRight className="h-4 w-4 text-[#3D2B1F]" />
                     </div>
@@ -159,9 +159,9 @@ export default function RevShareVsAffiliateMarketing() {
         <div className="py-24 space-y-24">
           <FeatureSection
             badge="Alignment"
-            title="Recurring vs One-time."
-            description="Traditional affiliate marketing often pays a bounty and forgets the customer. Revenue sharing aligns the marketer with the product's long-term success through recurring commissions on the net revenue."
-            items={["Aligned incentives", "Long-term partnership", "Compounding returns"]}
+            title="Recurring beats one-time."
+            description="Affiliate bounties end after signup. RevShare keeps partners paid on net revenue as long as the customer stays."
+            items={["Aligned incentives", "Ongoing payouts", "Compounding upside"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-[#FFB347]/5 rounded-full flex items-center justify-center p-12 overflow-hidden border border-[#FFB347]/10">
                 <div className="relative w-full h-full flex flex-col items-center justify-center gap-4">
@@ -187,9 +187,9 @@ export default function RevShareVsAffiliateMarketing() {
           <FeatureSection
             reversed
             badge="Integrity"
-            title="Net Revenue Tracking."
-            description="Don't pay for revenue that gets refunded. RevShare calculates commissions based on actual net revenue after the refund window, ensuring founders stay profitable and marketers are fairly paid for quality."
-            items={["Refund-aware logic", "Net profit alignment", "Automated adjustments"]}
+            title="Pay on net revenue."
+            description="Don't pay for refunds. RevShare waits out the refund window and calculates commissions on net revenue, so founders stay profitable and partners get paid for real value."
+            items={["Refund-aware payouts", "Net revenue alignment", "Automatic adjustments"]}
             visual={(progress) => (
               <div className="relative w-full max-w-sm aspect-square bg-[#FFB347]/5 rounded-full flex items-center justify-center p-8">
                 <div className="w-full bg-white rounded-2xl shadow-xl p-6 border border-black/5 space-y-4">
@@ -225,15 +225,15 @@ export default function RevShareVsAffiliateMarketing() {
         <div className="mx-auto max-w-3xl px-6">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
             Stop chasing bounties. <br />
-            Start <span className="text-[#FFB347] italic">sharing revenue.</span>
+            Start <span className="text-[#FFB347] italic">sharing recurring revenue.</span>
           </h2>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold transition-all border-none shadow-none" asChild>
-              <Link href="/signup">Launch Your Program Now</Link>
+              <Link href="/signup">Launch your program</Link>
             </Button>
           </div>
           <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
-            A Better Model for Growth
+            A better model for SaaS
           </p>
         </div>
       </section>

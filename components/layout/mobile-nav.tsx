@@ -157,12 +157,6 @@ export function MobileNav({ isAuthed, theme, dashboardHref, dashboardLabel, trig
                       >
                         RevShare vs Networks
                       </MobileLink>
-                      <MobileLink
-                        href="/product/revshare-vs-affiliate-marketing"
-                        onClick={() => setIsOpen(false)}
-                      >
-                        RevShare vs Marketing
-                      </MobileLink>
                       <MobileLink href="/product/trust" onClick={() => setIsOpen(false)}>
                         Trust & Security
                       </MobileLink>

@@ -113,11 +113,6 @@ export function Footer({
                   </Link>
                 </li>
                 <li>
-                  <Link href="/product/revshare-vs-affiliate-marketing" className="text-sm text-white/70 hover:text-white transition-colors">
-                    vs Affiliate Marketing
-                  </Link>
-                </li>
-                <li>
                   <Link href="/product/trust" className="text-sm text-white/70 hover:text-white transition-colors">
                     Trust & Security
                   </Link>

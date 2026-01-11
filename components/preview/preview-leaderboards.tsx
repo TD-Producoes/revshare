@@ -108,7 +108,7 @@ export function PreviewLeaderboards() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/[0.03]">
-                  {previewMarketers.map((marketer, i) => {
+                  {previewMarketers.slice(0, 5).map((marketer, i) => {
                     const colors = getPastelColor(marketer.name);
                     return (
                       <tr key={marketer.id} className="group hover:bg-white/50 transition-colors">
