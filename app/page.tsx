@@ -24,6 +24,10 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useRef, useState } from "react";
 import { WaitlistModal } from "@/components/modals/waitlist-modal";
+import { PreviewLeaderboards } from "@/components/preview/preview-leaderboards";
+
+// Preview mode flag - set to false when launching with real data
+const IS_PREVIEW_MODE = true;
 
 // Skeleton Loader for Leaderboard Tables
 function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number, columns?: number }) {
@@ -616,7 +620,7 @@ export default function Home() {
                   transition={{ duration: 0.8, delay: 0.8, ease: [0.21, 0.47, 0.32, 0.98] }}
                   className="max-w-xl text-base md:text-lg text-white/40 leading-relaxed mx-auto"
                 >
-                  The first marketplace that connects high-quality SaaS products with expert marketers. Makers build. Marketers sell. Everyone wins.
+                  A marketplace that connects high-quality Indie Hackers products with expert marketers. Makers build. Marketers sell. Everyone wins.
                 </motion.p>
 
                 <motion.div
@@ -657,167 +661,171 @@ export default function Home() {
         {/* Main Content Area */}
         <div className="relative z-40 bg-white">
 
-          {/* Leaderboard Section */}
-          <section className="py-24">
-            <div className="mx-auto max-w-7xl px-6">
-              <div className="mb-12 px-4">
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black">Leaderboard</h2>
-              </div>
+          {/* Leaderboard Section - Conditional Preview/Live */}
+          {IS_PREVIEW_MODE ? (
+            <PreviewLeaderboards />
+          ) : (
+            <section className="py-24">
+              <div className="mx-auto max-w-7xl px-6">
+                <div className="mb-12 px-4">
+                  <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black">Leaderboard</h2>
+                </div>
 
-              {/* Side-by-side layout on large screens, stacked on smaller screens */}
-              <div className="flex flex-col lg:flex-row gap-6 lg:gap-4">
-                {/* Projects Table Card */}
-                <div className="bg-[#F9F8F6] rounded-[2.5rem] p-6 lg:p-8 flex-1 min-w-0">
-                  <div className="flex items-center justify-between px-2 mb-6">
-                    <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Top Startups</div>
-                    <Link href="/projects" className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-bold text-xs transition-colors">
-                      Startup Directory <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b border-black/5">
-                          <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 w-10">#</th>
-                          <th className="text-left pb-4 px-2 text-xs font-bold text-black/60">Startup</th>
-                          <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 hidden xl:table-cell">Founder</th>
-                          <th className="text-right pb-4 px-2 text-xs font-bold text-black/60">MRR</th>
-                          <th className="text-right pb-4 px-2 text-xs font-bold text-black/60 w-24">Growth</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-black/[0.03]">
-                        {isLoadingProjects ? (
-                          <TableSkeleton rows={5} columns={5} />
-                        ) : (
-                          topProjects.slice(0, 10).map((project, i) => (
-                            <tr key={project.id} className="group hover:bg-white/50 transition-colors">
-                              <td className="py-3 px-2">
-                                <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
-                              </td>
-                              <td className="py-3 px-2">
-                                <Link href={`/projects/${project.id}`} className="flex items-center gap-3">
-                                  <div className={`h-8 w-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.name || "Project").bg}`}>
-                                    <Avatar className="h-full w-full border-none shadow-none rounded-none">
-                                      <AvatarImage src={getProjectAvatarUrl(project.name, project.logoUrl)} />
-                                      <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(project.name || "Project").text}`}>
-                                        {getAvatarFallback(project.name)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className={`font-bold text-[14px] leading-tight text-black flex items-center gap-2 ${isAnonymousName(project.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
-                                      {project.name}
-                                      {project.revenue > 10000 && (
-                                        <Badge className="bg-amber-100/80 text-amber-700 hover:bg-amber-100 border-none text-[8px] font-bold px-1.5 h-4">top</Badge>
-                                      )}
-                                    </p>
-                                    <p className="text-[11px] text-gray-500 truncate max-w-[120px] lg:max-w-[150px] xl:max-w-[180px] mt-0.5">
-                                      {project.description || "Leading the future of digital innovation."}
-                                    </p>
-                                  </div>
-                                </Link>
-                              </td>
-                              <td className="py-3 px-2 hidden xl:table-cell">
-                                {project.founder ? (
-                                  <Link href={`/founders/${project.founder.id}`} className="flex items-center gap-2">
-                                    <div className={`h-5 w-5 rounded-lg overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.founder.name || "U").bg}`}>
+                {/* Side-by-side layout on large screens, stacked on smaller screens */}
+                <div className="flex flex-col lg:flex-row gap-6 lg:gap-4">
+                  {/* Projects Table Card */}
+                  <div className="bg-[#F9F8F6] rounded-[2.5rem] p-6 lg:p-8 flex-1 min-w-0">
+                    <div className="flex items-center justify-between px-2 mb-6">
+                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Top Startups</div>
+                      <Link href="/projects" className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-bold text-xs transition-colors">
+                        Startup Directory <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-black/5">
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 w-10">#</th>
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60">Startup</th>
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 hidden xl:table-cell">Founder</th>
+                            <th className="text-right pb-4 px-2 text-xs font-bold text-black/60">MRR</th>
+                            <th className="text-right pb-4 px-2 text-xs font-bold text-black/60 w-24">Growth</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-black/[0.03]">
+                          {isLoadingProjects ? (
+                            <TableSkeleton rows={5} columns={5} />
+                          ) : (
+                            topProjects.slice(0, 10).map((project, i) => (
+                              <tr key={project.id} className="group hover:bg-white/50 transition-colors">
+                                <td className="py-3 px-2">
+                                  <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
+                                </td>
+                                <td className="py-3 px-2">
+                                  <Link href={`/projects/${project.id}`} className="flex items-center gap-3">
+                                    <div className={`h-8 w-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.name || "Project").bg}`}>
                                       <Avatar className="h-full w-full border-none shadow-none rounded-none">
-                                        <AvatarImage src={project.founder.image || undefined} />
-                                        <AvatarFallback className={`text-[8px] font-extrabold ${getPastelColor(project.founder.name || "U").text}`}>
-                                          {getAvatarFallback(project.founder.name ?? "U")}
+                                        <AvatarImage src={getProjectAvatarUrl(project.name, project.logoUrl)} />
+                                        <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(project.name || "Project").text}`}>
+                                          {getAvatarFallback(project.name)}
                                         </AvatarFallback>
                                       </Avatar>
                                     </div>
-                                    <span className="text-[13px] font-medium text-gray-700">{project.founder.name}</span>
+                                    <div className="min-w-0">
+                                      <p className={`font-bold text-[14px] leading-tight text-black flex items-center gap-2 ${isAnonymousName(project.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
+                                        {project.name}
+                                        {project.revenue > 10000 && (
+                                          <Badge className="bg-amber-100/80 text-amber-700 hover:bg-amber-100 border-none text-[8px] font-bold px-1.5 h-4">top</Badge>
+                                        )}
+                                      </p>
+                                      <p className="text-[11px] text-gray-500 truncate max-w-[120px] lg:max-w-[150px] xl:max-w-[180px] mt-0.5">
+                                        {project.description || "Leading the future of digital innovation."}
+                                      </p>
+                                    </div>
                                   </Link>
-                                ) : (
-                                  <span className="text-[13px] text-gray-300">-</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-2 text-right">
-                                <p className="font-bold text-[14px] text-black tracking-tight">{formatCurrency(project.revenue)}</p>
-                              </td>
-                              <td className="py-3 px-2 text-right">
-                                <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${project.growth.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
-                                  {project.growth.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                                  {project.growth.replace(/[+-]/, "")}
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                                </td>
+                                <td className="py-3 px-2 hidden xl:table-cell">
+                                  {project.founder ? (
+                                    <Link href={`/founders/${project.founder.id}`} className="flex items-center gap-2">
+                                      <div className={`h-5 w-5 rounded-lg overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(project.founder.name || "U").bg}`}>
+                                        <Avatar className="h-full w-full border-none shadow-none rounded-none">
+                                          <AvatarImage src={project.founder.image || undefined} />
+                                          <AvatarFallback className={`text-[8px] font-extrabold ${getPastelColor(project.founder.name || "U").text}`}>
+                                            {getAvatarFallback(project.founder.name ?? "U")}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      </div>
+                                      <span className="text-[13px] font-medium text-gray-700">{project.founder.name}</span>
+                                    </Link>
+                                  ) : (
+                                    <span className="text-[13px] text-gray-300">-</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  <p className="font-bold text-[14px] text-black tracking-tight">{formatCurrency(project.revenue)}</p>
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${project.growth.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
+                                    {project.growth.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                    {project.growth.replace(/[+-]/, "")}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
 
-                {/* Marketers Table Card */}
-                <div className="bg-[#F9F8F6] rounded-[2.5rem] p-6 lg:p-8 flex-1 min-w-0">
-                  <div className="flex items-center justify-between px-2 mb-6">
-                    <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Top Marketers</div>
-                    <Link href="/marketers" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 font-bold text-xs transition-colors">
-                      Marketers <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b border-black/5">
-                          <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 w-10">#</th>
-                          <th className="text-left pb-4 px-2 text-xs font-bold text-black/60">Marketer</th>
-                          <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 hidden xl:table-cell">Focus</th>
-                          <th className="text-right pb-4 px-2 text-xs font-bold text-black/60">Revenue</th>
-                          <th className="text-right pb-4 px-2 text-xs font-bold text-black/60 w-24">Trend</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-black/[0.03]">
-                        {isLoadingMarketers ? (
-                          <TableSkeleton rows={5} columns={5} />
-                        ) : (
-                          topMarketers.slice(0, 5).map((marketer, i) => (
-                            <tr key={marketer.id} className="group hover:bg-white/50 transition-colors">
-                              <td className="py-3 px-2">
-                                <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
-                              </td>
-                              <td className="py-3 px-2">
-                                <Link href={`/marketers/${marketer.id}`} className="flex items-center gap-3">
-                                  <div className={`h-8 w-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(marketer.name || "Anonymous").bg}`}>
-                                    <Avatar className="h-full w-full border-none shadow-none rounded-none">
-                                      <AvatarImage src={marketer.image || undefined} />
-                                      <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(marketer.name || "Anonymous").text}`}>
-                                        {getAvatarFallback(marketer.name)}
-                                      </AvatarFallback>
-                                    </Avatar>
+                  {/* Marketers Table Card */}
+                  <div className="bg-[#F9F8F6] rounded-[2.5rem] p-6 lg:p-8 flex-1 min-w-0">
+                    <div className="flex items-center justify-between px-2 mb-6">
+                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Top Marketers</div>
+                      <Link href="/marketers" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 font-bold text-xs transition-colors">
+                        Marketers <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-black/5">
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 w-10">#</th>
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60">Marketer</th>
+                            <th className="text-left pb-4 px-2 text-xs font-bold text-black/60 hidden xl:table-cell">Focus</th>
+                            <th className="text-right pb-4 px-2 text-xs font-bold text-black/60">Revenue</th>
+                            <th className="text-right pb-4 px-2 text-xs font-bold text-black/60 w-24">Trend</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-black/[0.03]">
+                          {isLoadingMarketers ? (
+                            <TableSkeleton rows={5} columns={5} />
+                          ) : (
+                            topMarketers.slice(0, 5).map((marketer, i) => (
+                              <tr key={marketer.id} className="group hover:bg-white/50 transition-colors">
+                                <td className="py-3 px-2">
+                                  <span className="text-[11px] font-bold text-gray-400">{i + 1}</span>
+                                </td>
+                                <td className="py-3 px-2">
+                                  <Link href={`/marketers/${marketer.id}`} className="flex items-center gap-3">
+                                    <div className={`h-8 w-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${getPastelColor(marketer.name || "Anonymous").bg}`}>
+                                      <Avatar className="h-full w-full border-none shadow-none rounded-none">
+                                        <AvatarImage src={marketer.image || undefined} />
+                                        <AvatarFallback className={`text-[10px] font-extrabold ${getPastelColor(marketer.name || "Anonymous").text}`}>
+                                          {getAvatarFallback(marketer.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </div>
+                                    <div>
+                                      <p className={`font-bold text-[14px] leading-tight text-black ${isAnonymousName(marketer.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
+                                        {marketer.name || "Anonymous"}
+                                      </p>
+                                    </div>
+                                  </Link>
+                                </td>
+                                <td className="py-3 px-2 hidden xl:table-cell">
+                                  <p className="text-[12px] text-gray-600 font-medium">{marketer.focus}</p>
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  <p className="font-bold text-[14px] text-black tracking-tight">{formatCurrency(marketer.revenue)}</p>
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${marketer.trend.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
+                                    {marketer.trend.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                                    {marketer.trend.replace(/[+-]/, "")}
                                   </div>
-                                  <div>
-                                    <p className={`font-bold text-[14px] leading-tight text-black ${isAnonymousName(marketer.name) ? "blur-[2.5px] opacity-30 select-none" : ""}`}>
-                                      {marketer.name || "Anonymous"}
-                                    </p>
-                                  </div>
-                                </Link>
-                              </td>
-                              <td className="py-3 px-2 hidden xl:table-cell">
-                                <p className="text-[12px] text-gray-600 font-medium">{marketer.focus}</p>
-                              </td>
-                              <td className="py-3 px-2 text-right">
-                                <p className="font-bold text-[14px] text-black tracking-tight">{formatCurrency(marketer.revenue)}</p>
-                              </td>
-                              <td className="py-3 px-2 text-right">
-                                <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${marketer.trend.startsWith("+") ? "text-emerald-600" : "text-rose-500"}`}>
-                                  {marketer.trend.startsWith("+") ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                                  {marketer.trend.replace(/[+-]/, "")}
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* Public Snapshot Stats */}
           <section className="py-12 border-y border-gray-50 bg-gray-50/20">
@@ -844,7 +852,7 @@ export default function Home() {
           <FeatureSection
             badge="Marketplace"
             title="Direct access to verified SaaS revenue."
-            description="We've built the plumbing for the world's first true revenue-market. Browse high-quality SaaS products with verified Stripe revenue and immutable commission structures."
+            description="Stop guessing which products are actually making money. Browse projects with real Stripe revenue data and locked-in commission rates. No fluff, no fake numbers."
             items={["Verified data", "Direct connections", "Zero fees"]}
             visual={(progress) => <RevenueSquaresVisual progress={progress} />}
           />

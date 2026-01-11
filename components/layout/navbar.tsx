@@ -177,8 +177,12 @@ export function Navbar({
                       ? "text-white/80 hover:text-white hover:!bg-white/10"
                       : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
                   )}>
-                    <Link href="/projects">
+                    <Link href="/projects" className="flex items-center gap-1.5">
                       Projects
+                      <span className={cn(
+                        "text-[9px] font-bold uppercase",
+                        isTransparentActive ? "text-white/40" : "text-muted-foreground/50"
+                      )}>(Preview)</span>
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
@@ -190,8 +194,12 @@ export function Navbar({
                       ? "text-white/80 hover:text-white hover:!bg-white/10"
                       : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80"
                   )}>
-                    <Link href="/marketers">
+                    <Link href="/marketers" className="flex items-center gap-1.5">
                       Marketers
+                      <span className={cn(
+                        "text-[9px] font-bold uppercase",
+                        isTransparentActive ? "text-white/40" : "text-muted-foreground/50"
+                      )}>(Preview)</span>
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
