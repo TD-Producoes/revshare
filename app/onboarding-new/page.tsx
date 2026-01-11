@@ -598,11 +598,6 @@ export default function OnboardingNewPage() {
                           key={days}
                           selected={founderData.refundWindow === days}
                           onClick={() => updateFounderData({ refundWindow: days })}
-                          color={
-                            founderData.refundWindow === days
-                              ? "bg-primary"
-                              : "bg-secondary/20"
-                          }
                           height="h-16"
                           className="flex flex-col items-center justify-center"
                         >
@@ -705,9 +700,6 @@ export default function OnboardingNewPage() {
                       <SelectableCard
                         selected={founderData.acceptApplicationsAuto}
                         onClick={() => updateFounderData({ acceptApplicationsAuto: true })}
-                        color={
-                          founderData.acceptApplicationsAuto ? "bg-green-50/50" : "bg-secondary/20"
-                        }
                         className="p-4"
                       >
                         <p className="text-base font-black tracking-tight">Automatic</p>
@@ -719,9 +711,6 @@ export default function OnboardingNewPage() {
                       <SelectableCard
                         selected={!founderData.acceptApplicationsAuto}
                         onClick={() => updateFounderData({ acceptApplicationsAuto: false })}
-                        color={
-                          !founderData.acceptApplicationsAuto ? "bg-blue-50/50" : "bg-secondary/20"
-                        }
                         className="p-4"
                       >
                         <p className="text-base font-black tracking-tight">Manual</p>
@@ -856,16 +845,15 @@ export default function OnboardingNewPage() {
                     </Label>
                     <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
                       {[
-                        { id: "content", label: "Content", color: "bg-blue-50/50" },
-                        { id: "ads", label: "Ads", color: "bg-green-50/50" },
-                        { id: "email", label: "Email", color: "bg-orange-50/50" },
-                        { id: "social", label: "Social", color: "bg-purple-50/50" },
+                        { id: "content", label: "Content" },
+                        { id: "ads", label: "Ads" },
+                        { id: "email", label: "Email" },
+                        { id: "social", label: "Social" },
                       ].map((item) => (
                         <SelectableCard
                           key={item.id}
                           selected={marketerData.promotionTypes.includes(item.id)}
                           onClick={() => toggleMarketerPromotionType(item.id)}
-                          color={item.color}
                           className="p-4"
                         >
                           <p className="font-black text-base tracking-tight">{item.label}</p>
