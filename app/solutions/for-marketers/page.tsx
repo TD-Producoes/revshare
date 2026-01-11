@@ -533,7 +533,7 @@ function AlwaysFreeSection() {
               Always Free for Marketers
             </h2>
           </div>
-          
+
           <p className="text-lg text-black/60 max-w-2xl mx-auto leading-relaxed mb-8">
             RevShare is built on a commission-only model. Marketers never pay fees, subscriptions, or platform charges.
           </p>
@@ -692,7 +692,7 @@ export default function ForMarketers() {
           {/* Hero Content that fades out - Higher Z-INDEX (40) initially */}
           <motion.div
             style={{ opacity: heroOpacity, scale: heroContentScale, pointerEvents: heroPointerEvents }}
-            className="h-full flex flex-col items-center justify-center mx-auto max-w-4xl px-6 relative z-40 pt-[290px]"
+            className="flex flex-col items-center mx-auto max-w-4xl px-6 relative z-40 pt-32 md:pt-48"
           >
             <div className="flex flex-col items-center space-y-8 text-center">
               <motion.div
@@ -817,7 +817,7 @@ export default function ForMarketers() {
       <div className="relative z-40 bg-white">
         {/* Marketers Bento Grid */}
         <MarketersBentoGrid />
-        
+
         {/* Features Area */}
         <FeatureSection
           badge="Discovery"

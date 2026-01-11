@@ -14,14 +14,6 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  Menu,
   ChartPie,
   Workflow,
   Network,
@@ -32,6 +24,7 @@ import {
   Users,
   TrendingUp
 } from "lucide-react";
+import { MobileNav } from "./mobile-nav";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 
@@ -98,6 +91,34 @@ export function Navbar({
                       ? "text-white/80 hover:text-white hover:!bg-white/10 data-[state=open]:!bg-white/10 data-[state=open]:text-white"
                       : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80 data-[state=open]:!bg-amber-50/80 data-[state=open]:text-foreground"
                   )}>
+                    Solutions
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-2 p-4 md:w-[500px] md:grid-cols-1 lg:w-[450px]">
+                      <ListItem
+                        href="/solutions/for-founders"
+                        title="For Founders"
+                        icon={<Users className="text-amber-600 h-5 w-5" />}
+                      >
+                        Launch a commission-only sales force and scale your revenue without the CAC risk.
+                      </ListItem>
+                      <ListItem
+                        href="/solutions/for-marketers"
+                        title="For Marketers"
+                        icon={<TrendingUp className="text-amber-600 h-5 w-5" />}
+                      >
+                        Partner with high-growth SaaS founders and build a sustainable recurring income stream.
+                      </ListItem>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className={cn(
+                    "!bg-transparent transition-all duration-300 rounded-2xl",
+                    isTransparentActive
+                      ? "text-white/80 hover:text-white hover:!bg-white/10 data-[state=open]:!bg-white/10 data-[state=open]:text-white"
+                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80 data-[state=open]:!bg-amber-50/80 data-[state=open]:text-foreground"
+                  )}>
                     Product
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
@@ -144,34 +165,6 @@ export function Navbar({
                         icon={<Store className="text-amber-600 h-5 w-5" />}
                       >
                         The open directory for discovering projects and verified marketers.
-                      </ListItem>
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger className={cn(
-                    "!bg-transparent transition-all duration-300 rounded-2xl",
-                    isTransparentActive
-                      ? "text-white/80 hover:text-white hover:!bg-white/10 data-[state=open]:!bg-white/10 data-[state=open]:text-white"
-                      : "text-foreground/70 hover:text-foreground hover:!bg-amber-50/80 data-[state=open]:!bg-amber-50/80 data-[state=open]:text-foreground"
-                  )}>
-                    Solutions
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-2 p-4 md:w-[500px] md:grid-cols-1 lg:w-[450px]">
-                      <ListItem
-                        href="/solutions/for-founders"
-                        title="For Founders"
-                        icon={<Users className="text-amber-600 h-5 w-5" />}
-                      >
-                        Launch a commission-only sales force and scale your revenue without the CAC risk.
-                      </ListItem>
-                      <ListItem
-                        href="/solutions/for-marketers"
-                        title="For Marketers"
-                        icon={<TrendingUp className="text-amber-600 h-5 w-5" />}
-                      >
-                        Partner with high-growth SaaS founders and build a sustainable recurring income stream.
                       </ListItem>
                     </ul>
                   </NavigationMenuContent>
@@ -265,49 +258,17 @@ export function Navbar({
             </div>
           )}
 
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className={cn(
-                  "lg:hidden",
-                  isTransparentActive && "text-white border-white/20 bg-white/10"
-                )}
-              >
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-              </SheetHeader>
-              <div className="grid gap-4 py-6">
-                <Link href="/projects" className="text-sm font-medium">
-                  Projects
-                </Link>
-                <Link href="/marketers" className="text-sm font-medium">
-                  Marketers
-                </Link>
-                <Link href="/pricing" className="text-sm font-medium">
-                  Pricing
-                </Link>
-                <div className="my-2 h-px bg-border" />
-                {!isAuthed && !isLoadingUser ? (
-                  <Link href="/login" className="text-sm font-medium">
-                    Sign In
-                  </Link>
-                ) : null}
-                <Link
-                  href={isAuthed ? dashboardHref : "/signup"}
-                  className="text-sm font-medium text-primary"
-                >
-                  {dashboardLabel}
-                </Link>
-              </div>
-            </SheetContent>
-          </Sheet>
+          <MobileNav
+            isAuthed={isAuthed}
+            theme={theme || 'default'}
+            dashboardHref={dashboardHref}
+            dashboardLabel={dashboardLabel}
+            isTransparent={isTransparentActive}
+            triggerClassName={cn(
+              "lg:hidden",
+              isTransparentActive && "text-white border-white/20 bg-white/10"
+            )}
+          />
         </div>
       </div>
     </header>
