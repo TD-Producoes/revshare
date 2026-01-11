@@ -21,8 +21,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import React, { useRef, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, isWaitlistMode } from "@/lib/utils";
 import { FeatureSection } from "@/components/sections/feature-section";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
 
 // Helper components for the features sections move to shared components/sections/feature-section.tsx
 
@@ -247,7 +248,7 @@ function VisualToken({ label, sublabel, icon: Icon, className }: { label: string
 }
 
 // Card to fullscreen transition
-function ExpandingCardSection() {
+function ExpandingCardSection({ waitlistMode, onWaitlistClick }: { waitlistMode: boolean; onWaitlistClick: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -286,11 +287,21 @@ function ExpandingCardSection() {
           </p>
 
           <div className="pt-4">
-            <Button size="lg" className="h-12 rounded-full px-8 bg-[#FFB347] text-[#3D2B1F] hover:bg-[#FFA500] font-bold" asChild>
-              <Link href="/signup?role=marketer">
-                Join the Network
-              </Link>
-            </Button>
+            {waitlistMode ? (
+              <Button
+                size="lg"
+                className="h-12 rounded-full px-8 bg-[#FFB347] text-[#3D2B1F] hover:bg-[#FFA500] font-bold"
+                onClick={onWaitlistClick}
+              >
+                Claim Early Access
+              </Button>
+            ) : (
+              <Button size="lg" className="h-12 rounded-full px-8 bg-[#FFB347] text-[#3D2B1F] hover:bg-[#FFA500] font-bold" asChild>
+                <Link href="/signup?role=marketer">
+                  Join the Network
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </motion.div>
@@ -628,6 +639,8 @@ export default function ForMarketers() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [navbarForceTransparent, setNavbarForceTransparent] = useState(true);
   const [navbarHideDashboard, setNavbarHideDashboard] = useState(false);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const waitlistMode = isWaitlistMode();
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -769,9 +782,20 @@ export default function ForMarketers() {
                     <ArrowUpRight className="ml-1.5 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
-                  <Link href="/signup?role=marketer">Create profile</Link>
-                </Button>
+                {waitlistMode ? (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all"
+                    onClick={() => setIsWaitlistModalOpen(true)}
+                  >
+                    Claim Early Access
+                  </Button>
+                ) : (
+                  <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
+                    <Link href="/signup?role=marketer">Create profile</Link>
+                  </Button>
+                )}
               </motion.div>
 
               <motion.div
@@ -864,7 +888,7 @@ export default function ForMarketers() {
         {/* Always Free Promise Section */}
         <AlwaysFreeSection />
 
-        <ExpandingCardSection />
+        <ExpandingCardSection waitlistMode={waitlistMode} onWaitlistClick={() => setIsWaitlistModalOpen(true)} />
 
         <section className="relative z-10 py-24 text-center bg-gray-50/50">
           <div className="mx-auto max-w-2xl px-6">
@@ -885,6 +909,13 @@ export default function ForMarketers() {
 
         <Footer />
       </div>
+      {waitlistMode && (
+        <WaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          source="for-marketers"
+        />
+      )}
     </main>
   );
 }

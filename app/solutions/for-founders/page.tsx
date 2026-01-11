@@ -14,6 +14,8 @@ import { FoundersBentoGrid } from "@/components/founders/founders-features";
 import { FeatureSection } from "@/components/sections/feature-section";
 import { FoundersInfrastructure } from "@/components/founders/founders-infrastructure";
 import { RecruitmentVisual, NegotiationVisual, AnalyticsVisual } from "@/components/founders/founders-visuals";
+import { isWaitlistMode } from "@/lib/utils";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
 
 // Browser Window Preview revealed inside the white circle
 function FounderBrowserPreview({ progress }: { progress: MotionValue<number> }) {
@@ -62,6 +64,8 @@ export default function ForFounders() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [navbarForceTransparent, setNavbarForceTransparent] = useState(true);
   const [navbarHideDashboard, setNavbarHideDashboard] = useState(false);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const waitlistMode = isWaitlistMode();
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -200,17 +204,27 @@ export default function ForFounders() {
                 transition={{ duration: 0.8, delay: 1, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="flex flex-wrap items-center justify-center gap-4 pt-2"
               >
-                <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold border-none transition-all flex items-center" asChild>
-                  <Link href="/signup?role=founder">
-                    List Your Product
+                {waitlistMode ? (
+                  <Button
+                    size="lg"
+                    className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold border-none transition-all flex items-center"
+                    onClick={() => setIsWaitlistModalOpen(true)}
+                  >
+                    Claim Early Access
                     <div className="ml-2 h-7 w-7 rounded-full bg-[#0B1710]/10 flex items-center justify-center">
                       <ArrowUpRight className="h-4 w-4 text-[#0B1710]" />
                     </div>
-                  </Link>
-                </Button>
-                <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base text-white border-white/10 hover:bg-white/5 font-bold transition-all" asChild>
-                  <Link href="/login">See Demo</Link>
-                </Button>
+                  </Button>
+                ) : (
+                  <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold border-none transition-all flex items-center" asChild>
+                    <Link href="/signup?role=founder">
+                      List Your Product
+                      <div className="ml-2 h-7 w-7 rounded-full bg-[#0B1710]/10 flex items-center justify-center">
+                        <ArrowUpRight className="h-4 w-4 text-[#0B1710]" />
+                      </div>
+                    </Link>
+                  </Button>
+                )}
               </motion.div>
 
               <motion.div
@@ -290,15 +304,32 @@ export default function ForFounders() {
               <span className="text-[#128045]">customers?</span>
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all border-none shadow-none" asChild>
-                <Link href="/signup?role=founder">List Your Product Free</Link>
-              </Button>
+              {waitlistMode ? (
+                <Button
+                  size="lg"
+                  className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all border-none shadow-none"
+                  onClick={() => setIsWaitlistModalOpen(true)}
+                >
+                  Claim Early Access
+                </Button>
+              ) : (
+                <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#BFF2A0] hover:bg-[#BFF2A0]/90 text-[#0B1710] font-bold transition-all border-none shadow-none" asChild>
+                  <Link href="/signup?role=founder">List Your Product Free</Link>
+                </Button>
+              )}
             </div>
           </div>
         </section>
 
         <Footer theme="founders" />
       </div>
+      {waitlistMode && (
+        <WaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          source="for-founders"
+        />
+      )}
     </main>
   );
 }

@@ -27,6 +27,8 @@ import {
 import { MobileNav } from "./mobile-nav";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
+import { isWaitlistMode } from "@/lib/utils";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
 
 export function Navbar({
   isTransparent = false,
@@ -42,6 +44,7 @@ export function Navbar({
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
   const { data: currentUser, isLoading: isUserLoading } = useUser(authUserId);
   const [isScrolled, setIsScrolled] = React.useState(false);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!isTransparent) return;
@@ -54,9 +57,10 @@ export function Navbar({
 
   const isAuthed = Boolean(currentUser);
   const isLoadingUser = isAuthLoading || isUserLoading;
+  const waitlistMode = isWaitlistMode();
   const dashboardHref =
     currentUser?.role === "marketer" ? "/marketer" : "/founder";
-  const dashboardLabel = isAuthed ? "Dashboard" : "Signup";
+  const dashboardLabel = isAuthed ? "Dashboard" : waitlistMode ? "Claim Early Access" : "Signup";
 
   const isTransparentActive = (isTransparent && !isScrolled) || forceTransparent;
 
@@ -218,7 +222,7 @@ export function Navbar({
         <div className="flex items-center gap-4">
           {!isDashboardHidden && (
             <div className="flex items-center gap-2">
-              {!isAuthed && (
+              {!isAuthed && !waitlistMode && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -231,32 +235,59 @@ export function Navbar({
                   <Link href="/login">Sign In</Link>
                 </Button>
               )}
-              <Button
-                size="sm"
-                className={cn(
-                  "hidden md:flex transition-all duration-300",
-                  isTransparentActive
-                    ? theme === 'founders'
-                      ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710] font-bold rounded-full border-none shadow-none px-4 h-8"
-                      : theme === 'how-it-works'
-                        ? "bg-[#818CF8] hover:bg-[#717CF8] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
-                        : theme === 'trust'
-                          ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
-                          : theme === 'rewards'
-                            ? "bg-[#F59E0B] hover:bg-[#D97706] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
-                            : theme === 'integrations'
-                              ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
-                              : theme === 'marketplace'
-                                ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
-                                : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-none px-4 h-8"
-                    : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-lg px-3 shadow-amber-500/10"
-                )}
-                asChild
-              >
-                <Link href={isAuthed ? dashboardHref : "/signup"}>
+              {waitlistMode && !isAuthed ? (
+                <Button
+                  size="sm"
+                  className={cn(
+                    "hidden md:flex transition-all duration-300",
+                    isTransparentActive
+                      ? theme === 'founders'
+                        ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710] font-bold rounded-full border-none shadow-none px-4 h-8"
+                        : theme === 'how-it-works'
+                          ? "bg-[#818CF8] hover:bg-[#717CF8] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                          : theme === 'trust'
+                            ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                            : theme === 'rewards'
+                              ? "bg-[#F59E0B] hover:bg-[#D97706] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                              : theme === 'integrations'
+                                ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                : theme === 'marketplace'
+                                  ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                  : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                      : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-lg px-3 shadow-amber-500/10"
+                  )}
+                  onClick={() => setIsWaitlistModalOpen(true)}
+                >
                   {dashboardLabel}
-                </Link>
-              </Button>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className={cn(
+                    "hidden md:flex transition-all duration-300",
+                    isTransparentActive
+                      ? theme === 'founders'
+                        ? "bg-[#BFF2A0] hover:bg-[#AEE190] text-[#0B1710] font-bold rounded-full border-none shadow-none px-4 h-8"
+                        : theme === 'how-it-works'
+                          ? "bg-[#818CF8] hover:bg-[#717CF8] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                          : theme === 'trust'
+                            ? "bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                            : theme === 'rewards'
+                              ? "bg-[#F59E0B] hover:bg-[#D97706] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                              : theme === 'integrations'
+                                ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                : theme === 'marketplace'
+                                  ? "bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                                  : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-none px-4 h-8"
+                      : "bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full border-none shadow-lg px-3 shadow-amber-500/10"
+                  )}
+                  asChild
+                >
+                  <Link href={isAuthed ? dashboardHref : "/signup"}>
+                    {dashboardLabel}
+                  </Link>
+                </Button>
+              )}
             </div>
           )}
 
@@ -273,6 +304,13 @@ export function Navbar({
           />
         </div>
       </div>
+      {waitlistMode && (
+        <WaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          source="navbar"
+        />
+      )}
     </header>
   );
 }

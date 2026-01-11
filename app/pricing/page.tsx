@@ -8,10 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { isWaitlistMode } from "@/lib/utils";
+import { WaitlistModal } from "@/components/modals/waitlist-modal";
 
 export default function PricingPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isTransparent, setIsTransparent] = React.useState(true);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = React.useState(false);
+  const waitlistMode = isWaitlistMode();
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -139,14 +143,27 @@ export default function PricingPage() {
                 transition={{ duration: 0.8, delay: 1, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="flex flex-wrap items-center justify-center gap-4 pt-2"
               >
-                <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold border-none transition-all flex items-center group" asChild>
-                  <Link href="/signup">
-                    Get started free
+                {waitlistMode ? (
+                  <Button
+                    size="lg"
+                    className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold border-none transition-all flex items-center group"
+                    onClick={() => setIsWaitlistModalOpen(true)}
+                  >
+                    Claim Early Access
                     <div className="ml-2 h-7 w-7 rounded-full bg-[#3D2B1F]/10 flex items-center justify-center group-hover:bg-[#3D2B1F]/20">
                       <ArrowUpRight className="h-4 w-4 text-[#3D2B1F]" />
                     </div>
-                  </Link>
-                </Button>
+                  </Button>
+                ) : (
+                  <Button size="lg" className="h-12 rounded-full px-8 text-base bg-[#FFB347] hover:bg-[#FFA500] text-[#3D2B1F] font-bold border-none transition-all flex items-center group" asChild>
+                    <Link href="/signup">
+                      Get started free
+                      <div className="ml-2 h-7 w-7 rounded-full bg-[#3D2B1F]/10 flex items-center justify-center group-hover:bg-[#3D2B1F]/20">
+                        <ArrowUpRight className="h-4 w-4 text-[#3D2B1F]" />
+                      </div>
+                    </Link>
+                  </Button>
+                )}
               </motion.div>
 
               {/* Trust Bullets */}
@@ -236,9 +253,18 @@ export default function PricingPage() {
               </div>
 
               <div className="pt-6 border-t border-black/5">
-                <Button className="w-full h-11 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold border-none" asChild>
-                  <Link href="/signup?role=marketer">Create a marketer profile</Link>
-                </Button>
+                {waitlistMode ? (
+                  <Button
+                    className="w-full h-11 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold border-none"
+                    onClick={() => setIsWaitlistModalOpen(true)}
+                  >
+                    Claim Early Access
+                  </Button>
+                ) : (
+                  <Button className="w-full h-11 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold border-none" asChild>
+                    <Link href="/signup?role=marketer">Create a marketer profile</Link>
+                  </Button>
+                )}
               </div>
             </motion.div>
 
@@ -296,9 +322,18 @@ export default function PricingPage() {
               </div>
 
               <div className="pt-6 border-t border-black/5">
-                <Button className="w-full h-11 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold border-none" asChild>
-                  <Link href="/signup?role=founder">Launch your first project</Link>
-                </Button>
+                {waitlistMode ? (
+                  <Button
+                    className="w-full h-11 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold border-none"
+                    onClick={() => setIsWaitlistModalOpen(true)}
+                  >
+                    Claim Early Access
+                  </Button>
+                ) : (
+                  <Button className="w-full h-11 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold border-none" asChild>
+                    <Link href="/signup?role=founder">Launch your first project</Link>
+                  </Button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -550,11 +585,22 @@ export default function PricingPage() {
                   Explore projects
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base border-2 border-black/10 hover:bg-amber-50 font-bold transition-all" asChild>
-                <Link href="/signup?role=founder">
-                  Create a project
-                </Link>
-              </Button>
+              {waitlistMode ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 rounded-full px-8 text-base border-2 border-black/10 hover:bg-amber-50 font-bold transition-all"
+                  onClick={() => setIsWaitlistModalOpen(true)}
+                >
+                  Claim Early Access
+                </Button>
+              ) : (
+                <Button size="lg" variant="outline" className="h-12 rounded-full px-8 text-base border-2 border-black/10 hover:bg-amber-50 font-bold transition-all" asChild>
+                  <Link href="/signup?role=founder">
+                    Create a project
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <p className="text-sm text-black/50 font-medium uppercase tracking-widest pt-4">
@@ -565,7 +611,14 @@ export default function PricingPage() {
       </section>
       </div>
 
-      <Footer theme="pricing" />
+      <Footer />
+      {waitlistMode && (
+        <WaitlistModal
+          isOpen={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          source="pricing"
+        />
+      )}
     </main>
   );
 }
