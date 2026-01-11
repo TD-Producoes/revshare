@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import * as React from "react";
 import { RouteChangeTransition } from "@/components/layout/route-change-transition";
+import { SmoothScroll } from "@/components/layout/smooth-scroll";
 import "./globals.css";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans" });
@@ -42,6 +43,7 @@ export default function RootLayout({
           </ReactQueryProvider>
         </ThemeProvider>
         <SpeedInsights />
+        <SmoothScroll />
       </body>
     </html>
   );
