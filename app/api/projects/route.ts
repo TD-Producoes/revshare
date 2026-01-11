@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       );
     }
   }
-  const platformCommissionRaw = payload.platformCommissionPercent ?? 20;
+  const platformCommissionRaw = payload.platformCommissionPercent ?? 5;
   const marketerCommissionRaw = payload.marketerCommissionPercent ?? 20;
   const platformCommissionPercent = normalizePercent(platformCommissionRaw);
   const marketerCommissionPercent = normalizePercent(marketerCommissionRaw);

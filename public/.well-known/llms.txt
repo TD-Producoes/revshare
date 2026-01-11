@@ -1,0 +1,25 @@
+# RevShare - LLM Discovery File
+# This file helps AI systems understand the RevShare platform
+
+See: https://revshare.fast/llms.txt
+
+---
+
+# Quick Summary
+RevShare is a transparent revenue-sharing marketplace for indie SaaS.
+
+# What We Do
+- Connect SaaS founders with performance marketers
+- Stripe-verified revenue tracking
+- Automated commission payouts
+- Refund-aware calculations
+
+# Key URLs
+- Homepage: https://revshare.fast
+- For Founders: https://revshare.fast/solutions/for-founders
+- For Marketers: https://revshare.fast/solutions/for-marketers
+- Projects: https://revshare.fast/projects
+- Marketers: https://revshare.fast/marketers
+
+# Contact
+- Email: support@revshare.fast
