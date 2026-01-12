@@ -900,9 +900,19 @@ export default function ForMarketers() {
               <span className="text-primary">Start making money from it.</span>
             </h2>
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all border-none shadow-none" asChild>
-                <Link href="/signup?role=marketer">Browse Programs</Link>
-              </Button>
+              {waitlistMode ? (
+                <Button
+                  size="lg"
+                  className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all border-none shadow-none"
+                  onClick={() => setIsWaitlistModalOpen(true)}
+                >
+                  Claim Early Access
+                </Button>
+              ) : (
+                <Button size="lg" className="h-12 rounded-full px-8 text-base bg-amber-500 hover:bg-amber-600 text-white font-bold transition-all border-none shadow-none" asChild>
+                  <Link href="/signup?role=marketer">Browse Programs</Link>
+                </Button>
+              )}
             </div>
             <p className="mt-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
               Join other marketers tired of getting screwed by networks
