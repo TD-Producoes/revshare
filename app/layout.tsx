@@ -7,6 +7,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import * as React from "react";
 import { RouteChangeTransition } from "@/components/layout/route-change-transition";
 import { SmoothScroll } from "@/components/layout/smooth-scroll";
+import { Analytics } from "@vercel/analytics/next"
 import Script from "next/script";
 import "./globals.css";
 
@@ -272,6 +273,7 @@ export default function RootLayout({
           </ReactQueryProvider>
         </ThemeProvider>
         <SpeedInsights />
+        <Analytics/>
         <SmoothScroll />
       </body>
     </html>

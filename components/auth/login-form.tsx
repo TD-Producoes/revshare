@@ -73,7 +73,7 @@ export function LoginForm({
             <div className="flex flex-col gap-4">
               <Button
                 variant="outline"
-                className="w-full h-12 rounded-xl border-2 border-black/10 bg-white hover:bg-primary/10 text-black font-semibold"
+                className="w-full h-12 rounded-xl border-2 border-black/10 bg-white hover:bg-black/5 hover:border-black/20 hover:text-black text-black font-semibold"
                 type="button"
                 onClick={handleGoogleLogin}
               >
