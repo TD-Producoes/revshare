@@ -27,6 +27,7 @@ import {
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/lib/hooks/notifications";
 import { toast } from "sonner";
 import { CreateProjectForm } from "@/components/creator/create-project-form";
+import { useSetupGuide } from "@/components/creator/setup-guide-context";
 import {
   ChevronDown,
   Bell,
@@ -58,6 +59,7 @@ export function Header() {
     isFounder ? user?.id : undefined,
   );
   const creatorProjects = creatorDashboard?.projects ?? [];
+  const { isDismissed, openGuide } = useSetupGuide();
 
   const displayName = useMemo(() => user?.name ?? "User", [user?.name]);
   const notifications = notificationsPayload?.data ?? [];
@@ -167,78 +169,90 @@ export function Header() {
 
           <div className="ml-auto flex items-center gap-2">
           {isFounder ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" className="h-8 gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    setIsCreateProjectOpen(true);
-                  }}
+            <>
+              {isDismissed ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={openGuide}
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  Create project
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <TicketPercent className="h-3.5 w-3.5" />
-                    Create coupon
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {creatorProjects.length === 0 ? (
-                      <DropdownMenuItem disabled>
-                        No projects yet
-                      </DropdownMenuItem>
-                    ) : (
-                      creatorProjects.map((project) => (
-                        <DropdownMenuItem
-                          key={project.id}
-                          onSelect={() =>
-                            router.push(
-                              `/founder/projects/${project.id}?tab=coupons&create=coupon`,
-                            )
-                          }
-                        >
-                          {project.name}
+                  Setup
+                </Button>
+              ) : null}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="h-8 gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setIsCreateProjectOpen(true);
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Create project
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <TicketPercent className="h-3.5 w-3.5" />
+                      Create coupon
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {creatorProjects.length === 0 ? (
+                        <DropdownMenuItem disabled>
+                          No projects yet
                         </DropdownMenuItem>
-                      ))
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Gift className="h-3.5 w-3.5" />
-                    Create reward
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {creatorProjects.length === 0 ? (
-                      <DropdownMenuItem disabled>
-                        No projects yet
-                      </DropdownMenuItem>
-                    ) : (
-                      creatorProjects.map((project) => (
-                        <DropdownMenuItem
-                          key={project.id}
-                          onSelect={() =>
-                            router.push(
-                              `/founder/projects/${project.id}?tab=rewards&create=reward`,
-                            )
-                          }
-                        >
-                          {project.name}
+                      ) : (
+                        creatorProjects.map((project) => (
+                          <DropdownMenuItem
+                            key={project.id}
+                            onSelect={() =>
+                              router.push(
+                                `/founder/projects/${project.id}?tab=coupons&create=coupon`,
+                              )
+                            }
+                          >
+                            {project.name}
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Gift className="h-3.5 w-3.5" />
+                      Create reward
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {creatorProjects.length === 0 ? (
+                        <DropdownMenuItem disabled>
+                          No projects yet
                         </DropdownMenuItem>
-                      ))
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                      ) : (
+                        creatorProjects.map((project) => (
+                          <DropdownMenuItem
+                            key={project.id}
+                            onSelect={() =>
+                              router.push(
+                                `/founder/projects/${project.id}?tab=rewards&create=reward`,
+                              )
+                            }
+                          >
+                            {project.name}
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : null}
 
           <Popover open={feedbackOpen} onOpenChange={setFeedbackOpen}>

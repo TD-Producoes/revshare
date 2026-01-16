@@ -319,7 +319,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           userId: apiProject.userId,
           name: apiProject.name,
           description: apiProject.description ?? "",
-          category: "Other",
+          category: apiProject.category ?? "Other",
           pricingModel: "subscription",
           price: 0,
           publicMetrics: {
@@ -578,7 +578,6 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               </Link>
             </Button>
             <h1 className="text-2xl font-bold">{resolvedProject.name}</h1>
-            <Badge variant="secondary">{resolvedProject.category}</Badge>
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 self-end">
@@ -637,6 +636,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               price: resolvedProject.price,
               revSharePercent: resolvedProject.revSharePercent,
               cookieWindowDays: resolvedProject.cookieWindowDays,
+              autoApproveApplications: apiProject?.autoApproveApplications ?? false,
+              autoApproveMatchTerms: apiProject?.autoApproveMatchTerms ?? true,
+              autoApproveVerifiedOnly: apiProject?.autoApproveVerifiedOnly ?? true,
             }}
             metrics={metrics}
             currency={projectCurrency}

@@ -8,6 +8,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
+import { SetupGuideProvider } from "@/components/creator/setup-guide-context";
+import { SetupGuideWidget } from "@/components/creator/setup-guide-widget";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -52,17 +54,20 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <Sidebar />
-      <main
-        className={cn(
-          "pt-12 transition-all duration-200",
-          isCollapsed ? "pl-12" : "pl-48"
-        )}
-      >
-        <div className="mx-auto max-w-6xl p-4 lg:p-6">{children}</div>
-      </main>
-    </div>
+    <SetupGuideProvider>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <Sidebar />
+        <main
+          className={cn(
+            "pt-12 transition-all duration-200",
+            isCollapsed ? "pl-12" : "pl-48"
+          )}
+        >
+          <div className="mx-auto max-w-6xl p-4 lg:p-6">{children}</div>
+        </main>
+        <SetupGuideWidget />
+      </div>
+    </SetupGuideProvider>
   );
 }

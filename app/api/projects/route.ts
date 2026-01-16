@@ -27,6 +27,14 @@ const projectInput = z.object({
   logoUrl: z.string().url().optional(),
   imageUrls: z.array(z.string().url()).max(6).optional(),
   refundWindowDays: z.number().int().min(0).max(3650).optional(),
+  visibility: z.enum(["PUBLIC", "GHOST", "PRIVATE"]).optional(),
+  showMrr: z.boolean().optional(),
+  showRevenue: z.boolean().optional(),
+  showStats: z.boolean().optional(),
+  showAvgCommission: z.boolean().optional(),
+  autoApproveApplications: z.boolean().optional(),
+  autoApproveMatchTerms: z.boolean().optional(),
+  autoApproveVerifiedOnly: z.boolean().optional(),
 });
 
 function normalizePercent(value: number) {
@@ -160,6 +168,24 @@ export async function POST(request: Request) {
       ...(payload.features ? { features: payload.features } : {}),
       ...(payload.logoUrl ? { logoUrl: payload.logoUrl } : {}),
       ...(payload.imageUrls ? { imageUrls: payload.imageUrls } : {}),
+      ...(payload.visibility ? { visibility: payload.visibility } : {}),
+      ...(payload.showMrr !== undefined ? { showMrr: payload.showMrr } : {}),
+      ...(payload.showRevenue !== undefined
+        ? { showRevenue: payload.showRevenue }
+        : {}),
+      ...(payload.showStats !== undefined ? { showStats: payload.showStats } : {}),
+      ...(payload.showAvgCommission !== undefined
+        ? { showAvgCommission: payload.showAvgCommission }
+        : {}),
+      ...(payload.autoApproveApplications !== undefined
+        ? { autoApproveApplications: payload.autoApproveApplications }
+        : {}),
+      ...(payload.autoApproveMatchTerms !== undefined
+        ? { autoApproveMatchTerms: payload.autoApproveMatchTerms }
+        : {}),
+      ...(payload.autoApproveVerifiedOnly !== undefined
+        ? { autoApproveVerifiedOnly: payload.autoApproveVerifiedOnly }
+        : {}),
     },
     select: {
       id: true,

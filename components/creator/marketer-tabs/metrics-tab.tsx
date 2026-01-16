@@ -230,7 +230,11 @@ export function MarketerMetricsTab({
             revenue: entry.projectRevenue / 100,
             affiliateRevenue: entry.affiliateRevenue / 100,
           }))}
-          title="Affiliate vs Project Revenue"
+          title={
+            selectedProjectId
+              ? "Affiliate vs Project Revenue"
+              : "Total vs Affiliate Revenue"
+          }
           showAffiliate={true}
           currency={currency}
         />

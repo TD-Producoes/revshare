@@ -13,6 +13,7 @@ import { useMarketersLeaderboard } from "@/lib/hooks/marketer";
 import { useProjectsLeaderboard } from "@/lib/hooks/projects";
 import { getAvatarFallback, isAnonymousName } from "@/lib/utils/anonymous";
 import { motion, useMotionValueEvent, useScroll, useTransform } from "framer-motion";
+import type { MotionValue } from "framer-motion";
 import {
   ArrowDown,
   ArrowRight,
@@ -29,6 +30,43 @@ import { PreviewLeaderboards } from "@/components/preview/preview-leaderboards";
 
 // Preview mode flag - set to false when launching with real data
 const IS_PREVIEW_MODE = true;
+const PASTEL_BG_CLASSES = [
+  "bg-blue-50",
+  "bg-green-50",
+  "bg-purple-50",
+  "bg-rose-50",
+  "bg-amber-50",
+  "bg-cyan-50",
+  "bg-indigo-50",
+  "bg-teal-50",
+];
+const PASTEL_TEXT_CLASSES = [
+  "text-blue-600",
+  "text-green-600",
+  "text-purple-600",
+  "text-rose-600",
+  "text-amber-600",
+  "text-cyan-600",
+  "text-indigo-600",
+  "text-teal-600",
+];
+const REVENUE_SQUARES_DATA = [
+  { mrr: 45200, chartData: [32, 38, 42, 45, 48, 45] },
+  { mrr: 12800, chartData: [10, 12, 11, 13, 12, 13] },
+  { mrr: 89500, chartData: [65, 72, 78, 82, 85, 90] },
+  { mrr: 23400, chartData: [18, 20, 22, 21, 23, 23] },
+];
+const REVENUE_SPLITS = [
+  { label: "Founder", amount: 700, bgColor: "bg-emerald-500/20", barColor: "bg-gradient-to-r from-emerald-500 to-emerald-400" },
+  { label: "Marketer", amount: 250, bgColor: "bg-amber-500/20", barColor: "bg-gradient-to-r from-amber-500 to-amber-400" },
+  { label: "Platform", amount: 50, bgColor: "bg-blue-500/20", barColor: "bg-gradient-to-r from-blue-500 to-blue-400" },
+];
+const ACTIVE_DISTRIBUTION_ITEMS = [
+  { label: "Makers", value: "420", color: "text-white/80" },
+  { label: "Marketers", value: "850+", color: "text-amber-500" },
+  { label: "Integrations", value: "12", color: "text-white/80" },
+];
+const AVATAR_BG_COLORS = ["EC4899", "F59E0B", "2563EB", "8B5CF6", "10B981"];
 
 // Skeleton Loader for Leaderboard Tables
 function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number, columns?: number }) {
@@ -91,40 +129,12 @@ function BrowserPreview() {
 
 // Helper to get a consistent pastel color based on a string
 const getPastelColor = (name: string) => {
-  const colors = [
-    'bg-blue-50',
-    'bg-green-50',
-    'bg-purple-50',
-    'bg-rose-50',
-    'bg-amber-50',
-    'bg-cyan-50',
-    'bg-indigo-50',
-    'bg-teal-50',
-  ];
-  const textColors = [
-    'text-blue-600',
-    'text-green-600',
-    'text-purple-600',
-    'text-rose-600',
-    'text-amber-600',
-    'text-cyan-600',
-    'text-indigo-600',
-    'text-teal-600',
-  ];
-  const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
-  return { bg: colors[index], text: textColors[index] };
+  const index = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) % PASTEL_BG_CLASSES.length;
+  return { bg: PASTEL_BG_CLASSES[index], text: PASTEL_TEXT_CLASSES[index] };
 };
 
 // Revenue Squares Visual Component (separate component to use hooks properly)
-function RevenueSquaresVisual({ progress }: { progress: any }) {
-  // Sample data for each square: MRR values and chart data
-  const squaresData = [
-    { mrr: 45200, chartData: [32, 38, 42, 45, 48, 45] },
-    { mrr: 12800, chartData: [10, 12, 11, 13, 12, 13] },
-    { mrr: 89500, chartData: [65, 72, 78, 82, 85, 90] },
-    { mrr: 23400, chartData: [18, 20, 22, 21, 23, 23] },
-  ];
-
+function RevenueSquaresVisual({ progress }: { progress: MotionValue<number> }) {
   // Create transformed values (hooks can be used here since this is a component)
   const scale = useTransform(progress, [0.2, 0.4], [0.8, 1]);
   const opacity = useTransform(progress, [0.2, 0.4], [0, 1]);
@@ -132,7 +142,7 @@ function RevenueSquaresVisual({ progress }: { progress: any }) {
   return (
     <div className="relative w-full max-w-sm aspect-square bg-amber-50/30 rounded-full flex items-center justify-center p-12">
       <div className="grid grid-cols-2 gap-4 w-full h-full">
-        {squaresData.map((data, i) => (
+        {REVENUE_SQUARES_DATA.map((data, i) => (
           <motion.div
             key={i}
             style={{
@@ -182,20 +192,14 @@ function RevenueSquaresVisual({ progress }: { progress: any }) {
 }
 
 // Revenue Split Visual Component - Shows transaction and automatic money splitting
-function RevenueSplitVisual({ progress }: { progress: any }) {
+function RevenueSplitVisual({ progress }: { progress: MotionValue<number> }) {
   // Create transformed values for animations (finish earlier in scroll)
   const transactionY = useTransform(progress, [0.2, 0.4], [100, 0]);
   const transactionOpacity = useTransform(progress, [0.2, 0.35], [0, 1]);
   const recipientsOpacity = useTransform(progress, [0.35, 0.5], [0, 1]);
   const recipientsY = useTransform(progress, [0.35, 0.5], [20, 0]);
 
-  // Sample split data with explicit color classes
   const totalAmount = 1000;
-  const splits = [
-    { label: "Founder", amount: 700, bgColor: "bg-emerald-500/20", barColor: "bg-gradient-to-r from-emerald-500 to-emerald-400" },
-    { label: "Marketer", amount: 250, bgColor: "bg-amber-500/20", barColor: "bg-gradient-to-r from-amber-500 to-amber-400" },
-    { label: "Platform", amount: 50, bgColor: "bg-blue-500/20", barColor: "bg-gradient-to-r from-blue-500 to-blue-400" },
-  ];
 
   return (
     <div className="relative w-full max-w-sm aspect-square bg-emerald-50/30 rounded-full flex items-center justify-center p-8 overflow-hidden">
@@ -240,7 +244,7 @@ function RevenueSplitVisual({ progress }: { progress: any }) {
           }}
           className="w-full grid grid-cols-3 gap-2"
         >
-          {splits.map((split, i) => (
+          {REVENUE_SPLITS.map((split, i) => (
             <motion.div
               key={i}
               initial={{ scale: 0.8, opacity: 0 }}
@@ -284,7 +288,7 @@ function FeatureSection({
   title: string,
   description: string,
   items: string[],
-  visual: (progress: any) => React.ReactNode,
+  visual: (progress: MotionValue<number>) => React.ReactNode,
   reversed?: boolean
 }) {
   const sectionRef = useRef(null);
@@ -443,11 +447,7 @@ function HeroDashboardCards() {
       >
         <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-4">Active Distribution</div>
         <div className="space-y-3">
-          {[
-            { label: "Makers", value: "420", color: "text-white/80" },
-            { label: "Marketers", value: "850+", color: "text-amber-500" },
-            { label: "Integrations", value: "12", color: "text-white/80" }
-          ].map((item, i) => (
+          {ACTIVE_DISTRIBUTION_ITEMS.map((item, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, x: -10 }}
@@ -469,9 +469,8 @@ function HeroDashboardCards() {
 function getProjectAvatarUrl(name: string, logoUrl: string | null): string {
   if (logoUrl) return logoUrl;
   const initials = name.split(" ").map((word) => word[0]).join("").toUpperCase().slice(0, 2);
-  const colors = ["EC4899", "F59E0B", "2563EB", "8B5CF6", "10B981"];
-  const colorIndex = name.length % colors.length;
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${colors[colorIndex]}&color=fff`;
+  const colorIndex = name.length % AVATAR_BG_COLORS.length;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${AVATAR_BG_COLORS[colorIndex]}&color=fff`;
 }
 
 export default function Home() {
@@ -493,7 +492,7 @@ export default function Home() {
 
   const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
   const heroContentScale = useTransform(scrollYProgress, [0, 0.4], [1, 0.95]);
-  const heroPointerEvents = useTransform(scrollYProgress, [0, 0.4], ["auto", "none"] as any);
+  const heroPointerEvents = useTransform(scrollYProgress, [0, 0.4], ["auto", "none"] as const);
 
   // Browser Animation Transforms
   const browserY = useTransform(scrollYProgress, [0, 0.7], ["55vh", "0vh"]);

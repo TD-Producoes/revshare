@@ -171,11 +171,11 @@ export function ProjectActivityTab({
             <p className="text-sm font-medium">Commission Adjustments</p>
           </div>
           {isAdjustmentsLoading ? (
-            <p className="text-muted-foreground text-sm mt-3">
+            <p className="text-muted-foreground mt-3">
               Loading adjustments...
             </p>
           ) : projectAdjustments.length === 0 ? (
-            <p className="text-muted-foreground text-sm mt-3">
+            <p className="text-muted-foreground mt-3">
               No adjustments recorded yet.
             </p>
           ) : (

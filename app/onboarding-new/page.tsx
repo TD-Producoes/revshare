@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
@@ -13,26 +14,47 @@ import { OnboardingInput } from "@/components/onboarding/onboarding-input";
 import { BulletList } from "@/components/onboarding/bullet-list";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FeaturesInput } from "@/components/ui/features-input";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { X, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthUserId } from "@/lib/hooks/auth";
+import { countries } from "@/lib/data/countries";
+import {
+  isValidCategory,
+  projectCategories,
+} from "@/lib/data/categories";
+import type { WebsiteScrapeResult } from "@/lib/services/website-scraper";
 
 // Types for onboarding state
 type Role = "founder" | "marketer" | null;
 
 type FounderData = {
-  name: string;
   projectName: string;
   projectDescription: string;
   projectIcon: string | null;
   website: string;
-  businessType: string;
+  category: string;
+  country: string;
+  foundedAt: string;
+  keyFeatures: string[];
+  about: string;
   isPublic: boolean;
   commissionPercentage: number;
   refundWindow: string;
   allowPerformanceRewards: boolean;
   listInDirectory: boolean;
   showRevenueStats: boolean;
-  acceptApplicationsAuto: boolean;
+  autoApproveApplications: boolean;
+  autoApproveMatchTerms: boolean;
+  autoApproveVerifiedOnly: boolean;
 };
 
 type MarketerData = {
@@ -43,24 +65,31 @@ type MarketerData = {
 };
 
 export default function OnboardingNewPage() {
+  const router = useRouter();
   const [role, setRole] = useState<Role>(null);
   const [founderStep, setFounderStep] = useState(1);
   const [marketerStep, setMarketerStep] = useState(1);
+  const { data: authUserId } = useAuthUserId();
 
   const [founderData, setFounderData] = useState<FounderData>({
-    name: "",
     projectName: "",
     projectDescription: "",
     projectIcon: null,
     website: "",
-    businessType: "",
+    category: "",
+    country: "",
+    foundedAt: "",
+    keyFeatures: [],
+    about: "",
     isPublic: true,
     commissionPercentage: 20,
     refundWindow: "30",
     allowPerformanceRewards: false,
     listInDirectory: true,
     showRevenueStats: false,
-    acceptApplicationsAuto: false,
+    autoApproveApplications: false,
+    autoApproveMatchTerms: true,
+    autoApproveVerifiedOnly: true,
   });
 
   const [marketerData, setMarketerData] = useState<MarketerData>({
@@ -69,9 +98,16 @@ export default function OnboardingNewPage() {
     promotionTypes: [],
     isPublicProfile: true,
   });
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [createProjectError, setCreateProjectError] = useState<string | null>(
+    null
+  );
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
 
   // Founder flow constants
-  const FOUNDER_STEPS_COUNT = 6; // Name → Project website (optional) → Project details → Commission → Publish → Connect revenue (skippable)
+  const FOUNDER_STEPS_COUNT = 5; // Project website (optional) → Project details → Commission → Publish → Connect revenue (skippable)
 
   // Marketer flow constants
   const MARKETER_STEPS_COUNT = 3; // Profile → Discover → Attribution
@@ -91,6 +127,206 @@ export default function OnboardingNewPage() {
         ? prev.promotionTypes.filter((t) => t !== type)
         : [...prev.promotionTypes, type],
     }));
+  };
+
+  const countryOptions = useMemo(() => countries, []);
+
+  const normalizeDateInput = (value: string) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const applyScrapeData = (data: WebsiteScrapeResult) => {
+    const nextUpdates: Partial<FounderData> = {};
+    const normalizedCategory =
+      data.category && isValidCategory(data.category) ? data.category : "";
+    const normalizedCountry = data.country ?? "";
+    const normalizedFoundedAt = data.foundedAt
+      ? normalizeDateInput(data.foundedAt)
+      : "";
+
+    if (!founderData.projectName && data.projectName) {
+      nextUpdates.projectName = data.projectName;
+    }
+    if (!founderData.projectDescription && data.shortDescription) {
+      nextUpdates.projectDescription = data.shortDescription;
+    }
+    if (!founderData.projectIcon && data.logoUrl) {
+      nextUpdates.projectIcon = data.logoUrl;
+    }
+    if (!founderData.category && normalizedCategory) {
+      nextUpdates.category = normalizedCategory;
+    }
+    if (
+      !founderData.country &&
+      normalizedCountry &&
+      countryOptions.some((country) => country.code === normalizedCountry)
+    ) {
+      nextUpdates.country = normalizedCountry;
+    }
+    if (!founderData.foundedAt && normalizedFoundedAt) {
+      nextUpdates.foundedAt = normalizedFoundedAt;
+    }
+    if (founderData.keyFeatures.length === 0 && data.keyFeatures.length > 0) {
+      nextUpdates.keyFeatures = data.keyFeatures;
+    }
+    if (!founderData.about && data.about) {
+      nextUpdates.about = data.about;
+    }
+
+    if (Object.keys(nextUpdates).length > 0) {
+      updateFounderData(nextUpdates);
+    }
+  };
+
+  const handleWebsiteContinue = async () => {
+    const website = founderData.website.trim();
+    if (!website) {
+      setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT));
+      return;
+    }
+
+    setIsScraping(true);
+    setScrapeError(null);
+    try {
+      const response = await fetch("/api/projects/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: website }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Failed to scrape website");
+      }
+
+      applyScrapeData(payload.data as WebsiteScrapeResult);
+      setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT));
+    } catch (error) {
+      setScrapeError(
+        error instanceof Error ? error.message : "Failed to scrape website"
+      );
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  const formatScrapeError = (message: string, website: string) => {
+    const trimmed = website.trim();
+    if (message.toLowerCase().includes("invalid url")) {
+      return {
+        title: "Please enter a valid website URL.",
+        detail: "Try including the full domain, like example.com.",
+      };
+    }
+    if (message.toLowerCase().includes("err_name_not_resolved")) {
+      return {
+        title: "We couldn’t find that website.",
+        detail: `Double-check the spelling${trimmed ? ` of ${trimmed}` : ""}.`,
+      };
+    }
+    if (message.toLowerCase().includes("timeout")) {
+      return {
+        title: "That site is taking too long to respond.",
+        detail: "Try again in a moment, or skip and add details later.",
+      };
+    }
+    if (message.toLowerCase().includes("failed to load website")) {
+      return {
+        title: "We couldn’t load that website.",
+        detail: "Check the URL or try again later.",
+      };
+    }
+    return {
+      title: "We couldn’t fetch details from that website.",
+      detail: "Check the URL or skip this step and fill it in later.",
+    };
+  };
+
+  const formattedScrapeError = scrapeError
+    ? formatScrapeError(scrapeError, founderData.website)
+    : null;
+
+  const normalizeWebsiteUrl = (value: string) => {
+    if (!value) return "";
+    return value.startsWith("http") ? value : `https://${value}`;
+  };
+
+  const handlePublishProject = async () => {
+    if (createdProjectId) {
+      setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT));
+      return;
+    }
+    if (!authUserId) {
+      setCreateProjectError("You need to be logged in to publish a project.");
+      return;
+    }
+    if (!founderData.projectName.trim()) {
+      setCreateProjectError("Project name is required before publishing.");
+      return;
+    }
+
+    setIsCreatingProject(true);
+    setCreateProjectError(null);
+    try {
+      const refundWindowDays = Number(founderData.refundWindow);
+      const marketerCommissionPercent = Number(founderData.commissionPercentage);
+      const website = normalizeWebsiteUrl(founderData.website.trim());
+      const foundationDate = founderData.foundedAt
+        ? new Date(founderData.foundedAt).toISOString()
+        : "";
+      const payload = {
+        userId: authUserId,
+        name: founderData.projectName.trim(),
+        ...(founderData.projectDescription.trim()
+          ? { description: founderData.projectDescription.trim() }
+          : {}),
+        ...(founderData.category ? { category: founderData.category } : {}),
+        ...(Number.isFinite(marketerCommissionPercent)
+          ? { marketerCommissionPercent }
+          : {}),
+        ...(Number.isFinite(refundWindowDays) ? { refundWindowDays } : {}),
+        ...(founderData.country ? { country: founderData.country } : {}),
+        ...(website ? { website } : {}),
+        ...(foundationDate ? { foundationDate } : {}),
+        ...(founderData.about.trim() ? { about: founderData.about.trim() } : {}),
+        ...(founderData.keyFeatures.length > 0
+          ? { features: founderData.keyFeatures }
+          : {}),
+        ...(founderData.projectIcon?.startsWith("http")
+          ? { logoUrl: founderData.projectIcon }
+          : {}),
+        visibility: founderData.listInDirectory ? "PUBLIC" : "PRIVATE",
+        showMrr: founderData.showRevenueStats,
+        showRevenue: founderData.showRevenueStats,
+        showStats: founderData.showRevenueStats,
+        autoApproveApplications: founderData.autoApproveApplications,
+        autoApproveMatchTerms: founderData.autoApproveMatchTerms,
+        autoApproveVerifiedOnly: founderData.autoApproveVerifiedOnly,
+      };
+
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Unable to publish project.");
+      }
+
+      setCreatedProjectId(data?.data?.id ?? null);
+      router.push("/founder");
+    } catch (error) {
+      setCreateProjectError(
+        error instanceof Error ? error.message : "Unable to publish project."
+      );
+    } finally {
+      setIsCreatingProject(false);
+    }
   };
 
   // Left panel content based on current step
@@ -115,27 +351,6 @@ export default function OnboardingNewPage() {
         return (
           <>
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
-              Create your first project.
-            </h2>
-            <p className="mb-8 text-lg text-muted-foreground tracking-tight font-bold">
-              Start simple. No Stripe, no RevenueCat — just the basics.
-            </p>
-            <BulletList
-              items={[
-                "No technical setup required",
-                "You can add integrations later",
-                "Focus on defining your program",
-              ]}
-              className="space-y-4"
-            />
-          </>
-        );
-      }
-
-      if (founderStep === 2) {
-        return (
-          <>
-            <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
               Set up your first project.
             </h2>
             <p className="mb-8 text-lg text-muted-foreground tracking-tight font-bold">
@@ -153,7 +368,7 @@ export default function OnboardingNewPage() {
         );
       }
 
-      if (founderStep === 3) {
+      if (founderStep === 2) {
         return (
           <>
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
@@ -174,7 +389,7 @@ export default function OnboardingNewPage() {
         );
       }
 
-      if (founderStep === 4) {
+      if (founderStep === 3) {
         return (
           <>
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
@@ -195,7 +410,7 @@ export default function OnboardingNewPage() {
         );
       }
 
-      if (founderStep === 5) {
+      if (founderStep === 4) {
         return (
           <>
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
@@ -216,7 +431,7 @@ export default function OnboardingNewPage() {
         );
       }
 
-      if (founderStep === 6) {
+      if (founderStep === 5) {
         return (
           <>
             <h2 className="mb-6 text-4xl font-black leading-tight tracking-tight">
@@ -330,7 +545,7 @@ export default function OnboardingNewPage() {
                   color="bg-blue-50/50"
                   className="p-6"
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-2 pt-2">
                     <div className="flex items-center gap-3">
                       <p className="font-black text-xl tracking-tight">I&apos;m a Founder</p>
                     </div>
@@ -380,49 +595,23 @@ export default function OnboardingNewPage() {
     if (role === "founder") {
       return (
         <>
-          <OnboardingProgress currentStep={founderStep} totalSteps={FOUNDER_STEPS_COUNT} />
+          <div className="flex items-center gap-4 w-full px-4">
+            <div className="flex-1">
+              <OnboardingProgress currentStep={founderStep} totalSteps={FOUNDER_STEPS_COUNT} />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-[11px] font-black"
+              onClick={() => router.push("/founder")}
+            >
+              Skip to dashboard
+            </Button>
+          </div>
 
           <OnboardingStepWrapper currentStep={founderStep}>
-            {/* Founder Step 1: Name */}
+            {/* Founder Step 1: Project website (optional) */}
             {founderStep === 1 && (
-              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <h1 className="text-2xl font-black tracking-tight">What&apos;s your name?</h1>
-                  <p className="text-sm text-muted-foreground tracking-tight font-bold">
-                    Let&apos;s start with the basics. Project setup is optional.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <OnboardingInput
-                    id="name"
-                    label="Full name"
-                    value={founderData.name}
-                    onChange={(value) => updateFounderData({ name: value })}
-                    placeholder="John Doe"
-                    autoFocus
-                  />
-                </div>
-
-                <OnboardingNavigation
-                  currentStep={founderStep}
-                  totalSteps={FOUNDER_STEPS_COUNT}
-                  onBack={() => {
-                    if (founderStep === 1) {
-                      setRole(null);
-                    } else {
-                      setFounderStep((prev) => Math.max(prev - 1, 1));
-                    }
-                  }}
-                  onNext={() => setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT))}
-                  disableNext={!founderData.name}
-                  allowBackOnFirstStep={true}
-                />
-              </div>
-            )}
-
-            {/* Founder Step 2: Project website (optional) */}
-            {founderStep === 2 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <h1 className="text-2xl font-black tracking-tight">Set up your first project</h1>
@@ -436,24 +625,44 @@ export default function OnboardingNewPage() {
                     id="website"
                     label="Website / app URL"
                     value={founderData.website}
-                    onChange={(value) => updateFounderData({ website: value })}
+                    onChange={(value) => {
+                      updateFounderData({ website: value });
+                      if (scrapeError) setScrapeError(null);
+                    }}
                     placeholder="https://..."
                     autoFocus
                   />
                 </div>
 
+                {formattedScrapeError && (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    <p className="font-semibold">{formattedScrapeError.title}</p>
+                    <p className="text-xs text-destructive/80">
+                      {formattedScrapeError.detail}
+                    </p>
+                  </div>
+                )}
+
                 <OnboardingNavigation
                   currentStep={founderStep}
                   totalSteps={FOUNDER_STEPS_COUNT}
-                  onBack={() => setFounderStep((prev) => Math.max(prev - 1, 1))}
-                  onNext={() => setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT))}
-                  nextButtonText="Continue"
+                  onBack={() => {
+                    if (founderStep === 1) {
+                      setRole(null);
+                    } else {
+                      setFounderStep((prev) => Math.max(prev - 1, 1));
+                    }
+                  }}
+                  onNext={handleWebsiteContinue}
+                  disableNext={isScraping}
+                  nextButtonText={isScraping ? "Fetching details..." : "Continue"}
+                  allowBackOnFirstStep={true}
                 />
               </div>
             )}
 
-            {/* Founder Step 3: Project details */}
-            {founderStep === 3 && (
+            {/* Founder Step 2: Project details */}
+            {founderStep === 2 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <h1 className="text-2xl font-black tracking-tight">Project details</h1>
@@ -536,6 +745,82 @@ export default function OnboardingNewPage() {
                       className="min-h-[100px] rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40 resize-none"
                     />
                   </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="projectCategory" className="text-sm font-semibold text-black">
+                        Category
+                      </Label>
+                      <Select
+                        value={founderData.category}
+                        onValueChange={(value) => updateFounderData({ category: value })}
+                      >
+                        <SelectTrigger id="projectCategory">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projectCategories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="projectCountry" className="text-sm font-semibold text-black">
+                        Country
+                      </Label>
+                      <Select
+                        value={founderData.country}
+                        onValueChange={(value) => updateFounderData({ country: value })}
+                      >
+                        <SelectTrigger id="projectCountry">
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countryOptions.map((country) => (
+                            <SelectItem key={country.code} value={country.code}>
+                              {country.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <OnboardingInput
+                    id="foundedAt"
+                    label="Founded"
+                    type="date"
+                    value={founderData.foundedAt}
+                    onChange={(value) => updateFounderData({ foundedAt: value })}
+                  />
+
+                  <div className="space-y-2">
+                    <Label htmlFor="keyFeatures" className="text-sm font-semibold text-black">
+                      Key features
+                    </Label>
+                    <FeaturesInput
+                      value={founderData.keyFeatures}
+                      onChange={(features) => updateFounderData({ keyFeatures: features })}
+                      placeholder="Add a feature"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="about" className="text-sm font-semibold text-black">
+                      About
+                    </Label>
+                    <Textarea
+                      id="about"
+                      placeholder="Share more details about your project..."
+                      value={founderData.about}
+                      onChange={(e) => updateFounderData({ about: e.target.value })}
+                      className="min-h-[140px] rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black placeholder:text-black/40 resize-none"
+                    />
+                  </div>
                 </div>
 
                 <OnboardingNavigation
@@ -548,8 +833,8 @@ export default function OnboardingNewPage() {
               </div>
             )}
 
-            {/* Founder Step 4: Commission & rules */}
-            {founderStep === 4 && (
+            {/* Founder Step 3: Commission & rules */}
+            {founderStep === 3 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <h1 className="text-2xl font-black tracking-tight">
@@ -574,7 +859,7 @@ export default function OnboardingNewPage() {
                       id="commission"
                       type="range"
                       min="5"
-                      max="50"
+                      max="90"
                       step="5"
                       value={founderData.commissionPercentage}
                       onChange={(e) =>
@@ -608,17 +893,14 @@ export default function OnboardingNewPage() {
                     </div>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-secondary/10 space-y-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="size-1.5 rounded-full bg-primary" />
+                  <div className="py-5 rounded-2xl bg-secondary/10 space-y-3">
                       <p className="text-xs font-black text-muted-foreground">
                         Commissions unlock only after the refund window ends. This protects you
                         from chargebacks.
                       </p>
-                    </div>
                   </div>
 
-                    <div className="flex items-center justify-between p-5 bg-secondary/20 rounded-2xl">
+                  {/* <div className="flex items-center justify-between p-5 bg-secondary/20 rounded-2xl">
                     <div className="space-y-0.5">
                       <p className="font-black tracking-tight text-sm">
                         Allow performance rewards
@@ -632,7 +914,7 @@ export default function OnboardingNewPage() {
                       }
                       className="size-6 rounded-md bg-background data-[state=checked]:bg-primary shadow-none"
                     />
-                  </div>
+                  </div> */}
                 </div>
 
                 <OnboardingNavigation
@@ -645,8 +927,8 @@ export default function OnboardingNewPage() {
               </div>
             )}
 
-            {/* Founder Step 5: Publish & discovery */}
-            {founderStep === 5 && (
+            {/* Founder Step 4: Publish & discovery */}
+            {founderStep === 4 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <h1 className="text-2xl font-black tracking-tight">
@@ -658,7 +940,20 @@ export default function OnboardingNewPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-5 bg-secondary/20 rounded-2xl">
+                  <div
+                    className="flex items-center justify-between p-5 bg-secondary/20 rounded-2xl cursor-pointer transition-all duration-300 hover:bg-primary/10"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      updateFounderData({ listInDirectory: !founderData.listInDirectory })
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        updateFounderData({ listInDirectory: !founderData.listInDirectory });
+                      }
+                    }}
+                  >
                     <div className="space-y-0.5">
                       <p className="font-black tracking-tight text-sm">
                         List in public directory
@@ -672,11 +967,25 @@ export default function OnboardingNewPage() {
                       onCheckedChange={(checked) =>
                         updateFounderData({ listInDirectory: checked as boolean })
                       }
+                      onClick={(event) => event.stopPropagation()}
                       className="size-6 rounded-md bg-background data-[state=checked]:bg-primary shadow-none"
                     />
                   </div>
 
-                  <div className="flex items-center justify-between p-5 bg-secondary/20 rounded-2xl">
+                  <div
+                    className="flex items-center justify-between p-5 bg-secondary/20 rounded-2xl cursor-pointer transition-all duration-300 hover:bg-primary/10"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      updateFounderData({ showRevenueStats: !founderData.showRevenueStats })
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        updateFounderData({ showRevenueStats: !founderData.showRevenueStats });
+                      }
+                    }}
+                  >
                     <div className="space-y-0.5">
                       <p className="font-black tracking-tight text-sm">
                         Show revenue stats publicly
@@ -688,58 +997,171 @@ export default function OnboardingNewPage() {
                       onCheckedChange={(checked) =>
                         updateFounderData({ showRevenueStats: checked as boolean })
                       }
+                      onClick={(event) => event.stopPropagation()}
                       className="size-6 rounded-md bg-background data-[state=checked]:bg-primary shadow-none"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="approval" className="text-sm font-semibold text-black">
-                      Application approval
-                    </Label>
-                    <div className="space-y-2.5">
-                      <SelectableCard
-                        selected={founderData.acceptApplicationsAuto}
-                        onClick={() => updateFounderData({ acceptApplicationsAuto: true })}
-                        className="p-4"
-                      >
-                        <p className="text-base font-black tracking-tight">Automatic</p>
-                        <p className="text-[11px] text-muted-foreground font-bold mt-0.5">
-                          Accept applications immediately
+                    <div
+                      className="flex items-center justify-between gap-4 pt-2 cursor-pointer transition-all duration-300 hover:bg-primary/10 rounded-2xl px-2 py-2"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        updateFounderData({
+                          autoApproveApplications: !founderData.autoApproveApplications,
+                        })
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          updateFounderData({
+                            autoApproveApplications: !founderData.autoApproveApplications,
+                          });
+                        }
+                      }}
+                    >
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="autoApproveToggle"
+                          className="text-sm font-black tracking-tight text-black"
+                        >
+                          Auto-approve applications
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground font-bold">
+                          Approve marketers automatically when they apply.
                         </p>
-                      </SelectableCard>
-
-                      <SelectableCard
-                        selected={!founderData.acceptApplicationsAuto}
-                        onClick={() => updateFounderData({ acceptApplicationsAuto: false })}
-                        className="p-4"
-                      >
-                        <p className="text-base font-black tracking-tight">Manual</p>
-                        <p className="text-[11px] text-muted-foreground font-bold mt-0.5">
-                          Review every application
-                        </p>
-                      </SelectableCard>
+                      </div>
+                      <Switch
+                        id="autoApproveToggle"
+                        checked={founderData.autoApproveApplications}
+                        onCheckedChange={(checked) =>
+                          updateFounderData({ autoApproveApplications: checked })
+                        }
+                        onClick={(event) => event.stopPropagation()}
+                      />
                     </div>
+
+                    {founderData.autoApproveApplications && (
+                      <div className="space-y-3 pt-2">
+                        <div
+                          className="flex items-center justify-between p-5 bg-secondary/20 rounded-2xl cursor-pointer transition-all duration-300 hover:bg-primary/10"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            updateFounderData({
+                              autoApproveMatchTerms: !founderData.autoApproveMatchTerms,
+                            })
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              updateFounderData({
+                                autoApproveMatchTerms: !founderData.autoApproveMatchTerms,
+                              });
+                            }
+                          }}
+                        >
+                          <div className="space-y-0.5">
+                            <Label
+                              htmlFor="autoApproveRequirements"
+                              className="text-sm font-semibold text-black"
+                            >
+                              Application matches project requirements
+                            </Label>
+                            <p className="text-[11px] text-muted-foreground font-bold">
+                              Commission and refund window
+                            </p>
+                          </div>
+                          <Checkbox
+                            id="autoApproveRequirements"
+                            checked={founderData.autoApproveMatchTerms}
+                            onCheckedChange={(checked) =>
+                              updateFounderData({
+                                autoApproveMatchTerms: Boolean(checked),
+                              })
+                            }
+                            onClick={(event) => event.stopPropagation()}
+                            className="size-6 rounded-md bg-background data-[state=checked]:bg-primary shadow-none"
+                          />
+                        </div>
+                        <div
+                          className="flex items-center justify-between p-5 bg-secondary/20 rounded-2xl cursor-pointer transition-all duration-300 hover:bg-primary/10"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            updateFounderData({
+                              autoApproveVerifiedOnly: !founderData.autoApproveVerifiedOnly,
+                            })
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              updateFounderData({
+                                autoApproveVerifiedOnly: !founderData.autoApproveVerifiedOnly,
+                              });
+                            }
+                          }}
+                        >
+                          <div className="space-y-0.5">
+                            <Label
+                              htmlFor="autoApproveVerified"
+                              className="text-sm font-semibold text-black"
+                            >
+                              Marketer is verified
+                            </Label>
+                            <p className="text-[11px] text-muted-foreground font-bold">
+                              Stripe connected
+                            </p>
+                          </div>
+                          <Checkbox
+                            id="autoApproveVerified"
+                            checked={founderData.autoApproveVerifiedOnly}
+                            onCheckedChange={(checked) =>
+                              updateFounderData({
+                                autoApproveVerifiedOnly: Boolean(checked),
+                              })
+                            }
+                            onClick={(event) => event.stopPropagation()}
+                            className="size-6 rounded-md bg-background data-[state=checked]:bg-primary shadow-none"
+                          />
+                        </div>
+                        {!founderData.autoApproveMatchTerms &&
+                          !founderData.autoApproveVerifiedOnly && (
+                            <p className="text-xs text-muted-foreground font-semibold">
+                              No conditions selected. Applications will auto-approve immediately.
+                            </p>
+                          )}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-secondary/10">
+                  <div className="py-5 rounded-2xl bg-secondary/10">
                     <p className="text-xs font-black text-muted-foreground">
                       You&apos;re always in control. You can pause or edit anytime.
                     </p>
                   </div>
                 </div>
 
+                {createProjectError && (
+                  <p className="text-sm text-destructive font-semibold">
+                    {createProjectError}
+                  </p>
+                )}
+
                 <OnboardingNavigation
                   currentStep={founderStep}
                   totalSteps={FOUNDER_STEPS_COUNT}
                   onBack={() => setFounderStep((prev) => Math.max(prev - 1, 1))}
-                  onNext={() => setFounderStep((prev) => Math.min(prev + 1, FOUNDER_STEPS_COUNT))}
-                  nextButtonText="Publish project"
+                  onNext={handlePublishProject}
+                  disableNext={isCreatingProject}
+                  nextButtonText={isCreatingProject ? "Publishing..." : "Publish project"}
                 />
               </div>
             )}
 
-            {/* Founder Step 6: Connect revenue source (skippable) */}
-            {founderStep === 6 && (
+            {/* Founder Step 5: Connect revenue source (skippable) */}
+            {founderStep === 5 && (
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <h1 className="text-2xl font-black tracking-tight">
@@ -814,7 +1236,19 @@ export default function OnboardingNewPage() {
     if (role === "marketer") {
       return (
         <>
-          <OnboardingProgress currentStep={marketerStep} totalSteps={MARKETER_STEPS_COUNT} />
+          <div className="flex items-center gap-4 w-full">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-[11px] font-black"
+              onClick={() => router.push("/marketer")}
+            >
+              Skip to dashboard
+            </Button>
+            <div className="flex-1">
+              <OnboardingProgress currentStep={marketerStep} totalSteps={MARKETER_STEPS_COUNT} />
+            </div>
+          </div>
 
           <OnboardingStepWrapper currentStep={marketerStep}>
             {/* Marketer Step 1: Profile basics */}
@@ -1037,4 +1471,3 @@ export default function OnboardingNewPage() {
     />
   );
 }
-

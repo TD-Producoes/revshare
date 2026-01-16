@@ -119,7 +119,7 @@ export function MyOffers({
                         <p className="font-medium">
                           Project: {contract.projectName}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground">
                           Applied {new Date(contract.createdAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -158,7 +158,7 @@ export function MyOffers({
                         <p className="font-medium">
                           Project: {contract.projectName}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground">
                           Applied {new Date(contract.createdAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -194,10 +194,13 @@ export function MyOffers({
                       className="flex items-center justify-between p-3 border rounded-md"
                     >
                       <div>
-                        <p className="font-medium">
-                          Project: {contract.projectName}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
+                        <Link
+                          href={`/marketer/applications/${contract.projectId}`}
+                          className="font-medium hover:underline"
+                        >
+                          {contract.projectName}
+                        </Link>
+                        <p className="text-muted-foreground">
                           Commission: {(contract.commissionPercent * 100).toFixed(0)}%
                         </p>
                       </div>
