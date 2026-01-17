@@ -55,6 +55,7 @@ model Project {
   category                  String?                   @default("Other")
   refundWindowDays          Int                       @default(30)
   creatorStripeAccountId    String?
+  integrations              ProjectIntegration[]
   onboardingStatus          String?
   onboardingData            Json?
   onboardingCompletedAt     DateTime?
@@ -94,6 +95,30 @@ model Project {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+enum IntegrationProvider {
+  REVENUECAT
+}
+
+model ProjectIntegration {
+  id             String              @id @default(cuid())
+  projectId      String
+  provider       IntegrationProvider
+  externalId     String?
+  apiKeyCipherText String
+  apiKeyIv       String
+  apiKeyTag      String
+  webhookSecretCipherText String
+  webhookSecretIv String
+  webhookSecretTag String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, provider])
+  @@index([projectId])
 }
 
 model Contract {
@@ -241,10 +266,12 @@ model Purchase {
   id                       String           @id @default(cuid())
   projectId                String
   couponId                 String?
-  stripeEventId            String           @unique
+  stripeEventId            String?          @unique
   stripeChargeId           String?
   stripeInvoiceId          String?
   stripePaymentIntentId    String?
+  revenueCatEventId        String?          @unique
+  revenueCatTransactionId  String?          @unique
   amount                   Int
   currency                 String
   customerEmail            String?

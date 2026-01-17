@@ -34,6 +34,8 @@ export type ApiProject = {
   autoApproveApplications?: boolean;
   autoApproveMatchTerms?: boolean;
   autoApproveVerifiedOnly?: boolean;
+  revenueCatProjectId?: string | null;
+  revenueCatConnected?: boolean;
 };
 
 export type ProjectStats = {

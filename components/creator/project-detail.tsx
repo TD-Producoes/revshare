@@ -34,6 +34,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,7 +57,13 @@ import {
 import { useUser } from "@/lib/hooks/users";
 import { cn } from "@/lib/utils";
 import { VisibilityMode } from "@prisma/client";
-import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronsUpDown,
+  ExternalLink,
+  MoreHorizontal,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -161,6 +174,17 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [marketersOpen, setMarketersOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [shouldOpenReward, setShouldOpenReward] = useState(false);
+  const [isRevenueCatDialogOpen, setIsRevenueCatDialogOpen] = useState(false);
+  const [revenueCatProjectId, setRevenueCatProjectId] = useState("");
+  const [revenueCatApiKey, setRevenueCatApiKey] = useState("");
+  const [revenueCatWebhookSecret, setRevenueCatWebhookSecret] = useState("");
+  const [revenueCatError, setRevenueCatError] = useState<string | null>(null);
+  const [revenueCatWebhookError, setRevenueCatWebhookError] = useState<string | null>(null);
+  const [revenueCatWebhookStatus, setRevenueCatWebhookStatus] = useState<string | null>(null);
+  const [isSavingRevenueCat, setIsSavingRevenueCat] = useState(false);
+  const [isDisconnectDialogOpen, setIsDisconnectDialogOpen] = useState(false);
+  const [isDisconnectingRevenueCat, setIsDisconnectingRevenueCat] = useState(false);
+  const [isCreatingRevenueCatWebhook, setIsCreatingRevenueCatWebhook] = useState(false);
   const [templateForm, setTemplateForm] = useState({
     name: "",
     description: "",
@@ -192,8 +216,17 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     error: templatesError,
   } = useProjectCouponTemplates(projectId, true);
   const isStripeConnected = Boolean(apiProject?.creatorStripeAccountId);
+  const isRevenueCatConnected = Boolean(
+    apiProject?.revenueCatConnected || apiProject?.revenueCatProjectId,
+  );
+  const shouldShowStripeConnect = !isRevenueCatConnected;
+  const shouldShowRevenueCatConnect = !isStripeConnected;
   const projectCurrency =
     typeof apiProject?.currency === "string" ? apiProject.currency : "USD";
+  const webhookUrl =
+    typeof window !== "undefined" && apiProject?.revenueCatProjectId
+      ? `${window.location.origin}/api/revenuecat/webhook/${apiProject.revenueCatProjectId}`
+      : "";
   const activeTabLabel = {
     overview: "Overview",
     metrics: "Metrics",
@@ -236,6 +269,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       }
     }
   }, [searchParams, projectId]);
+
+  useEffect(() => {
+    setRevenueCatProjectId(apiProject?.revenueCatProjectId ?? "");
+  }, [apiProject?.revenueCatProjectId]);
 
   useEffect(() => {
     if (!isTemplateOpen) {
@@ -406,6 +443,65 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       setConnectError(
         error instanceof Error ? error.message : "Unable to start Stripe connect."
       );
+    }
+  };
+
+  const handleConnectRevenueCat = async () => {
+    if (!projectId) return;
+    setRevenueCatError(null);
+    if (!revenueCatProjectId.trim() || !revenueCatApiKey.trim()) {
+      setRevenueCatError("RevenueCat project ID and API key are required.");
+      return;
+    }
+    setIsSavingRevenueCat(true);
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/revenuecat`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            revenueCatProjectId: revenueCatProjectId.trim(),
+            apiKey: revenueCatApiKey.trim(),
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Unable to connect RevenueCat.");
+      }
+      setRevenueCatApiKey("");
+      setRevenueCatWebhookSecret(payload?.data?.webhookSecret ?? "");
+      await queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+    } catch (error) {
+      setRevenueCatError(
+        error instanceof Error ? error.message : "Unable to connect RevenueCat.",
+      );
+    } finally {
+      setIsSavingRevenueCat(false);
+    }
+  };
+
+  const handleDisconnectRevenueCat = async () => {
+    if (!projectId) return;
+    setRevenueCatError(null);
+    setIsDisconnectingRevenueCat(true);
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/revenuecat`,
+        { method: "DELETE" },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Unable to disconnect RevenueCat.");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+    } catch (error) {
+      setRevenueCatError(
+        error instanceof Error ? error.message : "Unable to disconnect RevenueCat.",
+      );
+    } finally {
+      setIsDisconnectingRevenueCat(false);
     }
   };
 
@@ -582,20 +678,362 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
         <div className="flex flex-col items-end gap-2 self-end">
           {isStripeConnected ? (
-            <Badge className="self-end" variant="secondary">Stripe connected</Badge>
-          ):(
+            <Badge className="self-end" variant="secondary">
+              Stripe connected
+            </Badge>
+          ) : null}
+
+          {isRevenueCatConnected ? (
+            <div className="inline-flex items-center">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-r-none border-r-0 text-xs font-medium"
+                onClick={() => setIsRevenueCatDialogOpen(true)}
+              >
+                RevenueCat connected
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="rounded-l-none"
+                    aria-label="RevenueCat actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setIsRevenueCatDialogOpen(true)}
+                  >
+                    Webhook setup
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setIsDisconnectDialogOpen(true)}
+                    disabled={isDisconnectingRevenueCat}
+                  >
+                    {isDisconnectingRevenueCat
+                      ? "Disconnecting..."
+                      : "Disconnect RevenueCat"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : null}
+
+          {shouldShowStripeConnect && !isStripeConnected && (
+            <Button onClick={handleConnectStripe}>Connect Stripe</Button>
+          )}
+
+          {shouldShowRevenueCatConnect && !isRevenueCatConnected && (
             <Button
-              onClick={handleConnectStripe}
-              disabled={isStripeConnected}
+              variant="outline"
+              onClick={() => setIsRevenueCatDialogOpen(true)}
             >
-              Connect Stripe
+              Connect RevenueCat
             </Button>
           )}
+
           {connectError && (
             <p className="text-sm text-destructive">{connectError}</p>
           )}
+          {revenueCatError && (
+            <p className="text-sm text-destructive">{revenueCatError}</p>
+          )}
         </div>
       </div>
+
+      <Dialog
+        open={isRevenueCatDialogOpen}
+        onOpenChange={(open) => {
+          setIsRevenueCatDialogOpen(open);
+          if (open) {
+            setRevenueCatError(null);
+            setRevenueCatWebhookError(null);
+            setRevenueCatWebhookStatus(null);
+          }
+          if (open && !isRevenueCatConnected) {
+            setRevenueCatApiKey("");
+            setRevenueCatWebhookSecret("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>
+              {isRevenueCatConnected ? "RevenueCat webhook" : "Connect RevenueCat"}
+            </DialogTitle>
+            <DialogDescription>
+              {isRevenueCatConnected
+                ? "Copy the webhook URL and secret into RevenueCat to start tracking purchases."
+                : "Add your RevenueCat project ID and API key to start tracking purchases."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="revenuecat-project-id">RevenueCat project ID</Label>
+              <Input
+                id="revenuecat-project-id"
+                value={revenueCatProjectId}
+                onChange={(event) => setRevenueCatProjectId(event.target.value)}
+                placeholder="proj_123..."
+                disabled={isRevenueCatConnected}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="revenuecat-api-key">RevenueCat API key</Label>
+              <Input
+                id="revenuecat-api-key"
+                type="password"
+                value={revenueCatApiKey}
+                onChange={(event) => setRevenueCatApiKey(event.target.value)}
+                placeholder="rcat_live_..."
+                disabled={isRevenueCatConnected}
+              />
+            </div>
+            {isRevenueCatConnected ? (
+              <div className="space-y-2 rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-foreground">
+                    Webhook URL
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      if (webhookUrl) {
+                        navigator.clipboard.writeText(webhookUrl);
+                      }
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <p className="break-all">{webhookUrl}</p>
+                {revenueCatWebhookSecret ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-foreground">
+                        Webhook secret
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2"
+                        onClick={() => {
+                          navigator.clipboard.writeText(revenueCatWebhookSecret);
+                        }}
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                    <p className="break-all text-foreground">
+                      {revenueCatWebhookSecret}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Set the webhook header to `Authorization: Bearer {revenueCatWebhookSecret}`.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Save this secret now. It won&apos;t be shown again.
+                    </p>
+                    <a
+                      href={`https://app.revenuecat.com/projects/${apiProject?.revenueCatProjectId}/integrations/webhooks/add`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Open RevenueCat webhooks
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                    <p className="text-[11px]">
+                      Include `marketer_id` in subscriber attributes to attribute sales.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7"
+                      onClick={async () => {
+                        setRevenueCatWebhookError(null);
+                        setRevenueCatWebhookStatus(null);
+                        setIsCreatingRevenueCatWebhook(true);
+                        try {
+                          const response = await fetch(
+                            `/api/projects/${projectId}/revenuecat/webhooks`,
+                            { method: "POST" },
+                          );
+                          const payload = await response.json().catch(() => null);
+                          if (!response.ok) {
+                            throw new Error(
+                              payload?.error ?? "Failed to create webhook.",
+                            );
+                          }
+                          setRevenueCatWebhookStatus("Webhook created in RevenueCat.");
+                        } catch (error) {
+                          setRevenueCatWebhookError(
+                            error instanceof Error
+                              ? error.message
+                              : "Failed to create webhook.",
+                          );
+                        } finally {
+                          setIsCreatingRevenueCatWebhook(false);
+                        }
+                      }}
+                      disabled={isCreatingRevenueCatWebhook}
+                    >
+                      {isCreatingRevenueCatWebhook ? "Creating..." : "Create webhook automatically"}
+                    </Button>
+                    {revenueCatWebhookStatus && (
+                      <p className="text-[11px] text-emerald-500">
+                        {revenueCatWebhookStatus}
+                      </p>
+                    )}
+                    {revenueCatWebhookError && (
+                      <p className="text-[11px] text-destructive">
+                        {revenueCatWebhookError}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <a
+                      href={`https://app.revenuecat.com/projects/${apiProject?.revenueCatProjectId}/integrations/webhooks/add`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Open RevenueCat webhooks
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                    <p className="text-[11px]">
+                      Include `marketer_id` in subscriber attributes to attribute sales.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7"
+                      onClick={async () => {
+                        setRevenueCatWebhookError(null);
+                        setRevenueCatWebhookStatus(null);
+                        setIsCreatingRevenueCatWebhook(true);
+                        try {
+                          const response = await fetch(
+                            `/api/projects/${projectId}/revenuecat/webhooks`,
+                            { method: "POST" },
+                          );
+                          const payload = await response.json().catch(() => null);
+                          if (!response.ok) {
+                            throw new Error(
+                              payload?.error ?? "Failed to create webhook.",
+                            );
+                          }
+                          setRevenueCatWebhookStatus("Webhook created in RevenueCat.");
+                        } catch (error) {
+                          setRevenueCatWebhookError(
+                            error instanceof Error
+                              ? error.message
+                              : "Failed to create webhook.",
+                          );
+                        } finally {
+                          setIsCreatingRevenueCatWebhook(false);
+                        }
+                      }}
+                      disabled={isCreatingRevenueCatWebhook}
+                    >
+                      {isCreatingRevenueCatWebhook ? "Creating..." : "Create webhook automatically"}
+                    </Button>
+                    {revenueCatWebhookStatus && (
+                      <p className="text-[11px] text-emerald-500">
+                        {revenueCatWebhookStatus}
+                      </p>
+                    )}
+                    {revenueCatWebhookError && (
+                      <p className="text-[11px] text-destructive">
+                        {revenueCatWebhookError}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : null}
+            {revenueCatError && (
+              <p className="text-sm text-destructive">{revenueCatError}</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            {isRevenueCatConnected ? (
+              <Button
+                type="button"
+                onClick={() => setIsRevenueCatDialogOpen(false)}
+              >
+                Close
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsRevenueCatDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConnectRevenueCat}
+                  disabled={isSavingRevenueCat}
+                >
+                  {isSavingRevenueCat ? "Connecting..." : "Connect RevenueCat"}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isDisconnectDialogOpen}
+        onOpenChange={setIsDisconnectDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Disconnect RevenueCat?</DialogTitle>
+            <DialogDescription>
+              RevenueCat events will stop syncing and purchases will no longer
+              be attributed automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDisconnectDialogOpen(false)}
+              disabled={isDisconnectingRevenueCat}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                void handleDisconnectRevenueCat();
+                setIsDisconnectDialogOpen(false);
+              }}
+              disabled={isDisconnectingRevenueCat}
+            >
+              {isDisconnectingRevenueCat ? "Disconnecting..." : "Disconnect RevenueCat"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Project Info Card */}
       <Tabs
