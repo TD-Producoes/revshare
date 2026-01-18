@@ -678,13 +678,19 @@ export default function PayoutsPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(purchase.amount)}
+                              {formatCurrency(purchase.amount, purchase.currency)}
                             </TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(purchase.commissionAmount)}
+                              {formatCurrency(
+                                purchase.commissionAmount,
+                                purchase.currency,
+                              )}
                             </TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(purchase.platformFee)}
+                              {formatCurrency(
+                                purchase.platformFee,
+                                purchase.currency,
+                              )}
                             </TableCell>
                             <TableCell>
                               {getEffectiveCommissionStatus(purchase) ===

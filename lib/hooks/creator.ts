@@ -163,6 +163,7 @@ export type CreatorPurchase = {
   projectName: string;
   customerEmail: string | null;
   amount: number;
+  currency: string;
   commissionAmount: number;
   platformFee: number;
   commissionStatus: string;

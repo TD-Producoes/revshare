@@ -6,6 +6,7 @@ type PurchaseRow = {
   amount: number;
   commissionAmount: number;
   couponId: string | null;
+  marketerId: string | null;
   customerEmail: string | null;
   createdAt: string;
   coupon: { marketerId: string | null } | null;
@@ -118,7 +119,7 @@ Deno.serve(async (request) => {
   const { data, error } = await supabase
     .from("Purchase")
     .select(
-      "projectId,amount,commissionAmount,couponId,customerEmail,createdAt,coupon:Coupon(marketerId)",
+      "projectId,amount,commissionAmount,couponId,marketerId,customerEmail,createdAt,coupon:Coupon(marketerId)",
     )
     .not("commissionStatus", "in", '("REFUNDED","CHARGEBACK")')
     .gte("createdAt", since.toISOString());
@@ -150,7 +151,7 @@ Deno.serve(async (request) => {
   });
 
   rows.forEach((row) => {
-    const marketerId = row.coupon?.marketerId;
+    const marketerId = row.coupon?.marketerId ?? row.marketerId;
     if (!row.projectId || !marketerId) return;
     const dateKey = getDateKey(row.createdAt);
     const key = `${row.projectId}:${marketerId}:${dateKey}`;

@@ -5,6 +5,7 @@ type PurchaseRow = {
   amount: number;
   commissionAmount: number;
   couponId: string | null;
+  marketerId: string | null;
   customerEmail: string | null;
   createdAt: string;
   project: {
@@ -299,7 +300,7 @@ Deno.serve(async (request) => {
   const { data: totalData, error: totalError } = await supabase
     .from("Purchase")
     .select(
-      "projectId,amount,commissionAmount,couponId,customerEmail,project:Project(platformCommissionPercent)",
+      "projectId,amount,commissionAmount,couponId,marketerId,customerEmail,project:Project(platformCommissionPercent)",
     )
     .not("commissionStatus", "in", '("REFUNDED","CHARGEBACK")')
     .in("projectId", projectIds);
@@ -315,7 +316,7 @@ Deno.serve(async (request) => {
     totals.purchasesCount += 1;
     const commissionAmount = Number(row.commissionAmount) || 0;
     const platformPercent = Number(row.project?.platformCommissionPercent) || 0;
-    if (row.couponId) {
+    if (row.couponId || row.marketerId) {
       totals.affiliatePurchasesCount += 1;
       totals.affiliateRevenue += Number(row.amount) || 0;
       if (row.customerEmail) {
@@ -335,7 +336,7 @@ Deno.serve(async (request) => {
   const { data, error } = await supabase
     .from("Purchase")
     .select(
-      "projectId,amount,commissionAmount,couponId,customerEmail,createdAt,project:Project(platformCommissionPercent)",
+      "projectId,amount,commissionAmount,couponId,marketerId,customerEmail,createdAt,project:Project(platformCommissionPercent)",
     )
     .not("commissionStatus", "in", '("REFUNDED","CHARGEBACK")')
     .in("projectId", projectIds)
@@ -359,7 +360,7 @@ Deno.serve(async (request) => {
     existing.totalRevenueDay += Number(row.amount) || 0;
     const commissionAmount = Number(row.commissionAmount) || 0;
     const platformPercent = Number(row.project?.platformCommissionPercent) || 0;
-    if (row.couponId) {
+    if (row.couponId || row.marketerId) {
       existing.affiliateRevenueDay += Number(row.amount) || 0;
       existing.affiliatePurchasesCountDay += 1;
       if (row.customerEmail) {

@@ -897,6 +897,7 @@ export async function POST(request: Request) {
     data: {
       projectId: projectMatch.id,
       couponId: coupon && isContractApproved ? coupon.id : null,
+      marketerId: coupon && isContractApproved ? coupon.marketerId : null,
       stripeEventId: event.id,
       stripeChargeId: details.stripeChargeId,
       stripeInvoiceId: details.stripeInvoiceId,

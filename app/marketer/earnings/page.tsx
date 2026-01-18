@@ -33,7 +33,6 @@ export default function EarningsPage() {
     isLoading: isAdjustmentsLoading,
   } = useMarketerAdjustments(currentUser?.id);
   const adjustments = adjustmentsPayload?.data ?? [];
-  const pendingAdjustmentsTotal = adjustmentsPayload?.pendingTotal ?? 0;
   const { data: contracts = [], isLoading: isContractsLoading } =
     useContractsForMarketer(currentUser?.id);
 
@@ -75,41 +74,110 @@ export default function EarningsPage() {
       : "awaiting_refund_window";
   };
 
-  const totals = purchases.reduce(
-    (acc, purchase) => {
-      const effectiveStatus = getEffectiveCommissionStatus(purchase);
-      if (effectiveStatus === "refunded" || effectiveStatus === "chargeback") {
-        return acc;
-      }
-      acc.totalRevenue += purchase.amount;
-      acc.totalEarnings += purchase.commissionAmount;
-      switch (effectiveStatus) {
-        case "paid":
-          acc.paid += purchase.commissionAmount;
-          break;
-        case "ready_for_payout":
-          acc.ready += purchase.commissionAmount;
-          break;
-        case "awaiting_refund_window":
-          acc.awaitingRefund += purchase.commissionAmount;
-          break;
-        case "pending_creator_payment":
-          acc.awaitingCreator += purchase.commissionAmount;
-          break;
-        default:
-          break;
-      }
+  const totalsByCurrency = purchases.reduce((acc, purchase) => {
+    const effectiveStatus = getEffectiveCommissionStatus(purchase);
+    if (effectiveStatus === "refunded" || effectiveStatus === "chargeback") {
       return acc;
-    },
-    {
+    }
+    const currency =
+      (purchase.projectCurrency ?? purchase.currency ?? "USD").toUpperCase();
+    const existing = acc.get(currency) ?? {
       totalRevenue: 0,
       totalEarnings: 0,
       paid: 0,
       ready: 0,
       awaitingRefund: 0,
       awaitingCreator: 0,
-    },
-  );
+    };
+    existing.totalRevenue += purchase.amount;
+    existing.totalEarnings += purchase.commissionAmount;
+    switch (effectiveStatus) {
+      case "paid":
+        existing.paid += purchase.commissionAmount;
+        break;
+      case "ready_for_payout":
+        existing.ready += purchase.commissionAmount;
+        break;
+      case "awaiting_refund_window":
+        existing.awaitingRefund += purchase.commissionAmount;
+        break;
+      case "pending_creator_payment":
+        existing.awaitingCreator += purchase.commissionAmount;
+        break;
+      default:
+        break;
+    }
+    acc.set(currency, existing);
+    return acc;
+  }, new Map<
+    string,
+    {
+      totalRevenue: number;
+      totalEarnings: number;
+      paid: number;
+      ready: number;
+      awaitingRefund: number;
+      awaitingCreator: number;
+    }
+  >());
+
+  const pendingAdjustmentsByCurrency = adjustments.reduce((acc, adjustment) => {
+    if (adjustment.status !== "PENDING") {
+      return acc;
+    }
+    const currency = adjustment.currency.toUpperCase();
+    acc.set(currency, (acc.get(currency) ?? 0) + adjustment.amount);
+    return acc;
+  }, new Map<string, number>());
+
+  const formatCurrencyList = (entries: Array<[string, number]>) => {
+    if (entries.length === 0) {
+      return formatCurrency(0);
+    }
+    if (entries.length === 1) {
+      const [currency, amount] = entries[0];
+      return formatCurrency(amount, currency);
+    }
+    return entries
+      .map(([currency, amount]) => formatCurrency(amount, currency))
+      .join(" · ");
+  };
+
+  const summarizeTotals = (
+    selector: (value: {
+      totalRevenue: number;
+      totalEarnings: number;
+      paid: number;
+      ready: number;
+      awaitingRefund: number;
+      awaitingCreator: number;
+    }) => number,
+  ) =>
+    formatCurrencyList(
+      Array.from(totalsByCurrency.entries())
+        .map(([currency, value]) => [currency, selector(value)] as [string, number])
+        .filter(([, amount]) => amount !== 0),
+    );
+
+  const netEarningsByCurrency = Array.from(totalsByCurrency.entries())
+    .map(([currency, value]) => [
+      currency,
+      value.totalEarnings + (pendingAdjustmentsByCurrency.get(currency) ?? 0),
+    ] as [string, number])
+    .filter(([, amount]) => amount !== 0);
+
+  const netReadyByCurrency = Array.from(totalsByCurrency.entries())
+    .map(([currency, value]) => [
+      currency,
+      Math.max(
+        0,
+        value.ready + (pendingAdjustmentsByCurrency.get(currency) ?? 0),
+      ),
+    ] as [string, number])
+    .filter(([, amount]) => amount !== 0);
+
+  const pendingAdjustmentsEntries = Array.from(pendingAdjustmentsByCurrency.entries())
+    .filter(([, amount]) => amount !== 0);
 
   const contractByProject = new Map(
     contracts.map((contract) => [contract.projectId, contract]),
@@ -124,6 +192,7 @@ export default function EarningsPage() {
       const existing = acc.get(purchase.projectId) ?? {
         projectId: purchase.projectId,
         projectName: purchase.projectName,
+        currency: purchase.projectCurrency ?? purchase.currency,
         purchaseCount: 0,
         totalRevenue: 0,
         totalEarnings: 0,
@@ -156,6 +225,10 @@ export default function EarningsPage() {
         existing.commissionPercent = percent;
       }
 
+      if (!existing.currency) {
+        existing.currency = purchase.projectCurrency ?? purchase.currency;
+      }
+
       acc.set(purchase.projectId, existing);
       return acc;
     },
@@ -164,6 +237,7 @@ export default function EarningsPage() {
       {
         projectId: string;
         projectName: string;
+        currency: string | null;
         purchaseCount: number;
         totalRevenue: number;
         totalEarnings: number;
@@ -179,12 +253,8 @@ export default function EarningsPage() {
   const projectEarningsList = Array.from(projectEarnings.values()).sort(
     (a, b) => b.totalEarnings - a.totalEarnings,
   );
-  const totalAdjustments = adjustments.reduce(
-    (sum, adjustment) => sum + adjustment.amount,
-    0,
-  );
-  const netEarnings = totals.totalEarnings + totalAdjustments;
-  const netReady = Math.max(0, totals.ready + pendingAdjustmentsTotal);
+  const netEarnings = formatCurrencyList(netEarningsByCurrency);
+  const netReady = formatCurrencyList(netReadyByCurrency);
 
   const InfoLabel = ({
     label,
@@ -225,7 +295,7 @@ export default function EarningsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Earnings"
-          value={formatCurrency(totals.totalEarnings)}
+          value={summarizeTotals((value) => value.totalEarnings)}
           description="All time"
           icon={DollarSign}
         />
@@ -236,7 +306,7 @@ export default function EarningsPage() {
               help="Outstanding refunds or chargebacks that reduce your next payout."
             />
           }
-          value={formatCurrency(pendingAdjustmentsTotal)}
+          value={formatCurrencyList(pendingAdjustmentsEntries)}
           description="Outstanding balance"
           icon={Clock}
         />
@@ -247,13 +317,13 @@ export default function EarningsPage() {
               help="Total earnings after adjustments."
             />
           }
-          value={formatCurrency(netEarnings)}
+          value={netEarnings}
           description="After adjustments"
           icon={DollarSign}
         />
         <StatCard
           title="Received"
-          value={formatCurrency(totals.paid)}
+          value={summarizeTotals((value) => value.paid)}
           description="Paid out to you"
           icon={CheckCircle}
         />
@@ -264,7 +334,7 @@ export default function EarningsPage() {
               help="Available for payout after adjustments are applied."
             />
           }
-          value={formatCurrency(netReady)}
+          value={netReady}
           description="Founder paid"
           icon={CheckCircle}
         />
@@ -275,7 +345,7 @@ export default function EarningsPage() {
               help="Commissions held until the refund window ends."
             />
           }
-          value={formatCurrency(totals.awaitingRefund)}
+          value={summarizeTotals((value) => value.awaitingRefund)}
           description="Waiting period"
           icon={Timer}
         />
@@ -286,13 +356,13 @@ export default function EarningsPage() {
               help="Commissions pending founder payment."
             />
           }
-          value={formatCurrency(totals.awaitingCreator)}
+          value={summarizeTotals((value) => value.awaitingCreator)}
           description="Founder payment pending"
           icon={Clock}
         />
         <StatCard
           title="Revenue"
-          value={formatCurrency(totals.totalRevenue)}
+          value={summarizeTotals((value) => value.totalRevenue)}
           description="Coupon-attributed"
           icon={TrendingUp}
         />
@@ -346,22 +416,28 @@ export default function EarningsPage() {
                         {item.purchaseCount}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(item.totalRevenue)}
+                        {formatCurrency(item.totalRevenue, item.currency ?? undefined)}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatCurrency(item.totalEarnings)}
+                        {formatCurrency(item.totalEarnings, item.currency ?? undefined)}
                       </TableCell>
                       <TableCell className="text-right text-green-600">
-                        {formatCurrency(item.paidEarnings)}
+                        {formatCurrency(item.paidEarnings, item.currency ?? undefined)}
                       </TableCell>
                       <TableCell className="text-right text-sky-400">
-                        {formatCurrency(item.readyEarnings)}
+                        {formatCurrency(item.readyEarnings, item.currency ?? undefined)}
                       </TableCell>
                       <TableCell className="text-right text-amber-500">
-                        {formatCurrency(item.awaitingRefundEarnings)}
+                        {formatCurrency(
+                          item.awaitingRefundEarnings,
+                          item.currency ?? undefined,
+                        )}
                       </TableCell>
                       <TableCell className="text-right text-yellow-600">
-                        {formatCurrency(item.awaitingCreatorEarnings)}
+                        {formatCurrency(
+                          item.awaitingCreatorEarnings,
+                          item.currency ?? undefined,
+                        )}
                       </TableCell>
                     </TableRow>
                   );

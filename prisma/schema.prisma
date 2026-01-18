@@ -27,6 +27,7 @@ model User {
   projects                 Project[]
   coupons                  Coupon[]
   contracts                Contract[]
+  purchases                Purchase[]
   paymentMethods           PaymentMethod[]
   creatorTransfers         Transfer[]                @relation("CreatorTransfers")
   marketerTransfers        Transfer[]                @relation("MarketerTransfers")
@@ -299,6 +300,7 @@ model Purchase {
   id                       String           @id @default(cuid())
   projectId                String
   couponId                 String?
+  marketerId               String?
   stripeEventId            String?          @unique
   stripeChargeId           String?
   stripeInvoiceId          String?
@@ -326,12 +328,14 @@ model Purchase {
 
   project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
   coupon                Coupon?                @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  marketer              User?                  @relation(fields: [marketerId], references: [id], onDelete: SetNull)
   transferRecord        Transfer?              @relation(fields: [transferRecordId], references: [id], onDelete: SetNull)
   creatorPayment        CreatorPayment?        @relation(fields: [creatorPaymentId], references: [id], onDelete: SetNull)
   commissionAdjustments CommissionAdjustment[]
 
   @@index([projectId])
   @@index([couponId])
+  @@index([marketerId])
   @@index([transferRecordId])
   @@index([creatorPaymentId])
 }

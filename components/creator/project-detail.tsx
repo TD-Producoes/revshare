@@ -92,6 +92,7 @@ function buildAffiliateRows(
     amount: number;
     commissionAmount: number;
     coupon: { marketer: { id: string } } | null;
+    marketer: { id: string } | null;
   }>,
   approvedMarketers: Array<{ id: string; name: string }>,
   marketerClicks: Map<string, number>,
@@ -118,7 +119,8 @@ function buildAffiliateRows(
     { purchases: number; revenue: number; commission: number }
   >();
   projectPurchases.forEach((purchase) => {
-    const marketerId = purchase.coupon?.marketer?.id;
+    const marketerId =
+      purchase.coupon?.marketer?.id ?? purchase.marketer?.id ?? null;
     if (!marketerId) return;
     const existing = purchaseMap.get(marketerId) ?? {
       purchases: 0,

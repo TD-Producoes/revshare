@@ -76,6 +76,11 @@ export type ProjectPurchase = {
       email: string;
     };
   } | null;
+  marketer: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
 };
 
 export type RevenueDataPoint = {

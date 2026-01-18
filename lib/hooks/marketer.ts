@@ -6,6 +6,7 @@ export type MarketerPurchase = {
   id: string;
   projectId: string;
   projectName: string;
+  projectCurrency: string | null;
   couponCode: string | null;
   percentOff: number | null;
   amount: number;

@@ -114,6 +114,7 @@ export async function GET(request: Request) {
           marketer: { select: { id: true, name: true, email: true } },
         },
       },
+      marketer: { select: { id: true, name: true, email: true } },
     },
   });
 
@@ -164,7 +165,8 @@ export async function GET(request: Request) {
   >();
 
   for (const purchase of purchases) {
-    if (!purchase.coupon?.marketerId) {
+    const marketerId = purchase.coupon?.marketerId ?? purchase.marketerId;
+    if (!marketerId) {
       continue;
     }
     if (
@@ -173,8 +175,7 @@ export async function GET(request: Request) {
     ) {
       continue;
     }
-    const marketerId = purchase.coupon.marketerId;
-    const marketer = purchase.coupon.marketer;
+    const marketer = purchase.coupon?.marketer ?? purchase.marketer;
     const existing =
       marketerMap.get(marketerId) ??
       {

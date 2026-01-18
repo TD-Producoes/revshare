@@ -6,6 +6,7 @@ type PurchaseRow = {
   amount: number;
   commissionAmount: number;
   couponId: string | null;
+  marketerId: string | null;
   customerEmail: string | null;
   createdAt: string;
   project: {
@@ -119,12 +120,21 @@ Deno.serve(async (request) => {
     return new Response(projectsError.message, { status: 500 });
   }
 
+  const stripeProjectIds = (projects ?? [])
+    .filter((project) => Boolean(project.creatorStripeAccountId))
+    .map((project) => project.id);
+
+  if (stripeProjectIds.length === 0) {
+    return new Response(JSON.stringify({ ok: true, count: 0 }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const mrrByProject = new Map<string, number>();
   const totalRevenueByProjectDate = new Map<string, number>();
   const totalRevenueByProject = new Map<string, number>();
   for (const project of projects ?? []) {
     if (!project.creatorStripeAccountId) {
-      mrrByProject.set(project.id, 0);
       continue;
     }
     let startingAfter: string | undefined = undefined;
@@ -194,8 +204,9 @@ Deno.serve(async (request) => {
   const { data: totalData, error: totalError } = await supabase
     .from("Purchase")
     .select(
-      "projectId,amount,commissionAmount,couponId,customerEmail,project:Project(platformCommissionPercent)",
+      "projectId,amount,commissionAmount,couponId,marketerId,customerEmail,project:Project(platformCommissionPercent)",
     )
+    .in("projectId", stripeProjectIds)
     .not("commissionStatus", "in", '("REFUNDED","CHARGEBACK")');
 
   if (totalError) {
@@ -209,7 +220,7 @@ Deno.serve(async (request) => {
     totals.purchasesCount += 1;
     const commissionAmount = Number(row.commissionAmount) || 0;
     const platformPercent = Number(row.project?.platformCommissionPercent) || 0;
-    if (row.couponId) {
+    if (row.couponId || row.marketerId) {
       totals.affiliatePurchasesCount += 1;
       totals.affiliateRevenue += Number(row.amount) || 0;
       if (row.customerEmail) {
@@ -229,9 +240,10 @@ Deno.serve(async (request) => {
   const { data, error } = await supabase
     .from("Purchase")
     .select(
-      "projectId,amount,commissionAmount,couponId,customerEmail,createdAt,project:Project(platformCommissionPercent)",
+      "projectId,amount,commissionAmount,couponId,marketerId,customerEmail,createdAt,project:Project(platformCommissionPercent)",
     )
     .not("commissionStatus", "in", '("REFUNDED","CHARGEBACK")')
+    .in("projectId", stripeProjectIds)
     .gte("createdAt", since.toISOString());
 
   if (error) {
@@ -257,7 +269,7 @@ Deno.serve(async (request) => {
 
     const commissionAmount = Number(row.commissionAmount) || 0;
     const platformPercent = Number(row.project?.platformCommissionPercent) || 0;
-    if (row.couponId) {
+    if (row.couponId || row.marketerId) {
       existing.affiliateRevenueDay += Number(row.amount) || 0;
       existing.affiliatePurchasesCountDay += 1;
       if (row.customerEmail) {

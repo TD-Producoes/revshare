@@ -22,9 +22,11 @@ type RevenueCatEvent = {
   app_user_id?: string;
   original_app_user_id?: string;
   transaction_id?: string;
+  original_transaction_id?: string;
   price?: number | string;
   price_in_purchased_currency?: number | string;
   currency?: string;
+  cancel_reason?: string;
   subscriber_attributes?: Record<string, { value?: string }>;
   metadata?: Record<string, string>;
 };
@@ -199,10 +201,11 @@ export async function POST(
     "PRODUCT_CHANGE",
     "UNCANCELLATION",
   ]);
+  const cancellationEvents = new Set(["CANCELLATION"]);
   const refundEvents = new Set(["REFUND"]);
 
-  if (refundEvents.has(eventType)) {
-    const existing = await prisma.purchase.findFirst({
+  const findPurchaseForRefund = async () => {
+    return prisma.purchase.findFirst({
       where: {
         projectId: project.id,
         OR: [
@@ -210,36 +213,54 @@ export async function POST(
           event.transaction_id
             ? { revenueCatTransactionId: event.transaction_id }
             : undefined,
+          event.original_transaction_id
+            ? { revenueCatTransactionId: event.original_transaction_id }
+            : undefined,
         ].filter(Boolean) as Array<{
           revenueCatEventId?: string;
           revenueCatTransactionId?: string;
         }>,
       },
-      select: { id: true },
+      select: { id: true, amount: true },
     });
+  };
 
-    if (existing) {
-      await prisma.purchase.update({
-        where: { id: existing.id },
-        data: {
-          refundedAt: new Date(),
-          refundedAmount: amount,
-          commissionStatus: "REFUNDED",
-          status: "FAILED",
-        },
-      });
-      await prisma.event.create({
-        data: {
-          type: "PURCHASE_REFUNDED",
-          projectId: project.id,
-          subjectType: "Purchase",
-          subjectId: existing.id,
-          data: { amount, currency: event.currency ?? "usd" },
-        },
-      });
+  const handleRefundEvent = async () => {
+    const existing = await findPurchaseForRefund();
+    if (!existing) {
+      return respond("refund_event_no_purchase");
     }
-
+    const refundedAmount = amount > 0 ? amount : existing.amount;
+    await prisma.purchase.update({
+      where: { id: existing.id },
+      data: {
+        refundedAt: new Date(),
+        refundedAmount,
+        commissionStatus: "REFUNDED",
+        status: "FAILED",
+      },
+    });
+    await prisma.event.create({
+      data: {
+        type: "PURCHASE_REFUNDED",
+        projectId: project.id,
+        subjectType: "Purchase",
+        subjectId: existing.id,
+        data: { amount: refundedAmount, currency: event.currency ?? "usd" },
+      },
+    });
     return respond("refund_event_processed");
+  };
+
+  if (cancellationEvents.has(eventType)) {
+    if (event.cancel_reason === "CUSTOMER_SUPPORT") {
+      return handleRefundEvent();
+    }
+    return respond("cancellation_event");
+  }
+
+  if (refundEvents.has(eventType)) {
+    return handleRefundEvent();
   }
 
   if (!revenueEvents.has(eventType)) {
@@ -269,6 +290,7 @@ export async function POST(
     data: {
       projectId: project.id,
       couponId: null,
+      marketerId: marketerId && isContractApproved ? marketerId : null,
       revenueCatEventId: eventId,
       revenueCatTransactionId: event.transaction_id ?? null,
       amount,
