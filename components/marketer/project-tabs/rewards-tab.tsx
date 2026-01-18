@@ -17,11 +17,15 @@ const statusLabel: Record<
   PENDING_REFUND: { label: "Pending refund window", variant: "secondary" },
   UNLOCKED: { label: "Unlocked", variant: "default" },
   CLAIMED: { label: "Claimed", variant: "secondary" },
+  PAID: { label: "Paid", variant: "secondary" },
 };
 
-const getMilestoneCopy = (reward: MarketerProjectReward["reward"]) => {
+const getMilestoneCopy = (
+  reward: MarketerProjectReward["reward"],
+  currency: string,
+) => {
   if (reward.milestoneType === "NET_REVENUE") {
-    return `${reward.milestoneValue} net revenue`;
+    return `${formatCurrency(reward.milestoneValue, currency)} net revenue`;
   }
   if (reward.milestoneType === "COMPLETED_SALES") {
     return `${reward.milestoneValue} completed sales`;
@@ -29,7 +33,7 @@ const getMilestoneCopy = (reward: MarketerProjectReward["reward"]) => {
   return `${reward.milestoneValue} customers`;
 };
 
-const getRewardCopy = (reward: MarketerProjectReward["reward"]) => {
+const getRewardCopy = (reward: MarketerProjectReward["reward"], currency: string) => {
   if (reward.rewardType === "DISCOUNT_COUPON") {
     return `${reward.rewardPercentOff ?? 0}% discount`;
   }
@@ -40,13 +44,32 @@ const getRewardCopy = (reward: MarketerProjectReward["reward"]) => {
   if (reward.rewardType === "PLAN_UPGRADE") {
     return "Plan upgrade";
   }
+  if (reward.rewardType === "MONEY") {
+    return formatCurrency(reward.rewardAmount ?? 0, reward.rewardCurrency ?? currency);
+  }
   return "Access / perk";
+};
+
+const renderEarnedAt = (value?: string | Date | null) => {
+  if (!value) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+  const date = new Date(value);
+  return (
+    <div className="flex flex-col items-end text-right leading-tight">
+      <span className="text-black">{date.toLocaleDateString()}</span>
+      <span className="text-xs text-muted-foreground">
+        {date.toLocaleTimeString()}
+      </span>
+    </div>
+  );
 };
 
 export function MarketerRewardsTab({
   rewards,
   isLoading,
   currency,
+  marketerId,
   onClaimReward,
   isClaiming,
   claimError,
@@ -54,16 +77,44 @@ export function MarketerRewardsTab({
   rewards: MarketerProjectReward[];
   isLoading: boolean;
   currency: string;
+  marketerId?: string | null;
   onClaimReward: (rewardEarnedId: string) => Promise<void>;
   isClaiming: boolean;
   claimError?: string | null;
 }) {
   const earnedRewards = useMemo(
     () =>
-      rewards.filter(
-        (item) => item.earned && item.earned.status !== "PENDING_REFUND",
-      ),
+      rewards.flatMap((item) => {
+        const earnedList = item.earnedList?.length
+          ? item.earnedList
+          : item.earned
+            ? [item.earned]
+            : [];
+        return earnedList
+          .filter((earned) => earned.status !== "PENDING_REFUND")
+          .map((earned) => ({
+            reward: item.reward,
+            earned,
+          }));
+      }).sort((a, b) => {
+        const aTime = new Date(a.earned.earnedAt).getTime();
+        const bTime = new Date(b.earned.earnedAt).getTime();
+        return bTime - aTime;
+      }),
     [rewards],
+  );
+  const activeRewards = useMemo(
+    () =>
+      rewards.filter((item) => {
+        if (item.reward.status !== "ACTIVE") return false;
+        const allowed = Array.isArray(item.reward.allowedMarketerIds)
+          ? item.reward.allowedMarketerIds
+          : [];
+        if (allowed.length === 0) return true;
+        if (!marketerId) return false;
+        return allowed.includes(marketerId);
+      }),
+    [marketerId, rewards],
   );
 
   return (
@@ -72,6 +123,7 @@ export function MarketerRewardsTab({
         <h2 className="text-lg font-semibold">Performance Rewards</h2>
         <p className="text-sm text-muted-foreground">
           Earn additional rewards by hitting revenue milestones after refunds clear.
+          For repeatable rewards, progress resets after each milestone.
         </p>
       </div>
 
@@ -81,7 +133,7 @@ export function MarketerRewardsTab({
             Loading rewards...
           </CardContent>
         </Card>
-      ) : rewards.length === 0 ? (
+      ) : activeRewards.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
             No rewards available yet for this project.
@@ -89,7 +141,7 @@ export function MarketerRewardsTab({
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
-          {rewards.map((item) => {
+          {activeRewards.map((item) => {
             const badge = statusLabel[item.status];
             const progressPercent = Math.max(
               0,
@@ -98,7 +150,8 @@ export function MarketerRewardsTab({
             const canClaim =
               item.status === "UNLOCKED" &&
               item.earned?.id &&
-              item.earned.status === "UNLOCKED";
+              item.earned.status === "UNLOCKED" &&
+              item.reward.rewardType !== "MONEY";
             const isClaimed = item.status === "CLAIMED";
             const rewardCode = item.earned?.rewardCoupon?.code ?? null;
 
@@ -109,7 +162,7 @@ export function MarketerRewardsTab({
                     <div>
                       <CardTitle className="text-base">{item.reward.name}</CardTitle>
                       <p className="text-muted-foreground">
-                        Unlock at: {getMilestoneCopy(item.reward)}
+                        Unlock at: {getMilestoneCopy(item.reward, currency)}
                       </p>
                     </div>
                     <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -138,7 +191,10 @@ export function MarketerRewardsTab({
                   </div>
 
                   <div className="text-muted-foreground">
-                    Reward: <span className="text-foreground">{getRewardCopy(item.reward)}</span>
+                    Reward:{" "}
+                    <span className="text-foreground">
+                      {getRewardCopy(item.reward, currency)}
+                    </span>
                   </div>
 
                   {rewardCode ? (
@@ -193,19 +249,21 @@ export function MarketerRewardsTab({
               </TableHeader>
               <TableBody>
                 {earnedRewards.map((item) => (
-                  <TableRow key={item.reward.id}>
+                  <TableRow key={item.earned.id}>
                     <TableCell className="font-medium">{item.reward.name}</TableCell>
-                    <TableCell>{getMilestoneCopy(item.reward)}</TableCell>
-                    <TableCell>{getRewardCopy(item.reward)}</TableCell>
+                    <TableCell>{getMilestoneCopy(item.reward, currency)}</TableCell>
+                    <TableCell>{getRewardCopy(item.reward, currency)}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {item.status === "CLAIMED" ? "Claimed" : "Unlocked"}
+                        {item.earned.status === "PAID"
+                          ? "Paid"
+                          : item.earned.status === "CLAIMED"
+                            ? "Claimed"
+                            : "Unlocked"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
-                      {item.earned?.earnedAt
-                        ? new Date(item.earned.earnedAt).toLocaleDateString()
-                        : "-"}
+                      {renderEarnedAt(item.earned.earnedAt)}
                     </TableCell>
                   </TableRow>
                 ))}

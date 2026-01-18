@@ -114,6 +114,33 @@ export type CreatorPaymentHistory = {
   createdAt: string | Date;
   purchaseCount: number;
   stripeCheckoutSessionId: string | null;
+  type: "commission" | "reward";
+};
+
+export type CreatorRewardPayoutItem = {
+  id: string;
+  rewardId: string;
+  rewardName: string;
+  projectId: string;
+  projectName: string;
+  marketerId: string;
+  marketerName: string;
+  marketerEmail: string | null;
+  amount: number;
+  currency: string;
+  earnedAt: string | Date;
+  status: "UNLOCKED" | "PAID" | "CLAIMED" | "PENDING_REFUND";
+};
+
+export type CreatorRewardPayoutGroup = {
+  currency: string;
+  totalAmount: number;
+  rewardCount: number;
+  items: CreatorRewardPayoutItem[];
+};
+
+export type CreatorRewardPayoutsResponse = {
+  groups: CreatorRewardPayoutGroup[];
 };
 
 export type CreatorMarketerMetrics = {
@@ -295,6 +322,75 @@ export function useCreatorPayments(userId?: string | null) {
       }
       const payload = await response.json();
       return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export function useCreatorRewardPayouts(userId?: string | null) {
+  return useQuery<CreatorRewardPayoutsResponse>({
+    queryKey: ["creator-reward-payouts", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/founder/rewards/payouts?userId=${userId}`,
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch reward payouts.");
+      }
+      const payload = await response.json();
+      return payload?.data as CreatorRewardPayoutsResponse;
+    },
+  });
+}
+
+export function usePayCreatorRewardPayouts() {
+  return useMutation({
+    mutationFn: async (payload: { currency: string }) => {
+      const response = await fetch("/api/founder/rewards/payouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to pay rewards.");
+      }
+      return data?.data ?? null;
+    },
+  });
+}
+
+export function useCreatorRewardPayoutCharge() {
+  return useMutation({
+    mutationFn: async (payload: { currency: string; paymentMethodId?: string }) => {
+      const response = await fetch("/api/founder/rewards/payouts/charge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to charge reward payout.");
+      }
+      return data?.data ?? null;
+    },
+  });
+}
+
+export function useCreatorRewardPayoutCheckout() {
+  return useMutation({
+    mutationFn: async (payload: { currency: string }) => {
+      const response = await fetch("/api/founder/rewards/payouts/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to create reward checkout.");
+      }
+      return data?.data ?? null;
     },
   });
 }

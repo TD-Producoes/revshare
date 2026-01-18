@@ -25,15 +25,20 @@ type RewardRow = {
   createdAt: string;
   milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
   milestoneValue: number;
+  rewardType: "DISCOUNT_COUPON" | "FREE_SUBSCRIPTION" | "PLAN_UPGRADE" | "ACCESS_PERK" | "MONEY";
+  rewardAmount: number | null;
+  rewardCurrency: string | null;
   earnLimit: "ONCE_PER_MARKETER" | "MULTIPLE";
   availabilityType: "UNLIMITED" | "FIRST_N";
   availabilityLimit: number | null;
   status: "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED";
+  allowedMarketerIds?: string[] | null;
 };
 
 type PurchaseRow = {
   projectId: string;
   amount: number;
+  marketerId: string | null;
   customerEmail: string | null;
   createdAt: string;
   coupon: { marketerId: string | null } | null;
@@ -77,7 +82,7 @@ Deno.serve(async (request) => {
   const { data: rewards, error: rewardsError } = await supabase
     .from("Reward")
     .select(
-      "id,projectId,name,startsAt,createdAt,milestoneType,milestoneValue,earnLimit,availabilityType,availabilityLimit,status",
+      "id,projectId,name,startsAt,createdAt,milestoneType,milestoneValue,rewardType,rewardAmount,rewardCurrency,earnLimit,availabilityType,availabilityLimit,status,allowedMarketerIds",
     )
     .eq("status", "ACTIVE");
 
@@ -115,7 +120,7 @@ Deno.serve(async (request) => {
 
   const { data: purchases, error: purchasesError } = await supabase
     .from("Purchase")
-    .select("projectId,amount,customerEmail,createdAt,coupon:Coupon(marketerId)")
+    .select("projectId,amount,marketerId,customerEmail,createdAt,coupon:Coupon(marketerId)")
     .in("projectId", projectIds)
     .not("commissionStatus", "in", '("REFUNDED","CHARGEBACK")')
     .not("refundEligibleAt", "is", null)
@@ -128,7 +133,7 @@ Deno.serve(async (request) => {
   const purchasesByProjectMarketer = new Map<string, PurchaseRow[]>();
 
   for (const row of (purchases ?? []) as PurchaseRow[]) {
-    const marketerId = row.coupon?.marketerId;
+    const marketerId = row.coupon?.marketerId ?? row.marketerId;
     if (!row.projectId || !marketerId) continue;
     const key = `${row.projectId}:${marketerId}`;
     const existing = purchasesByProjectMarketer.get(key) ?? [];
@@ -170,6 +175,12 @@ Deno.serve(async (request) => {
     for (const [key, rows] of purchasesByProjectMarketer.entries()) {
       const [projectId, marketerId] = key.split(":");
       if (projectId !== reward.projectId) continue;
+      const allowed = Array.isArray(reward.allowedMarketerIds)
+        ? reward.allowedMarketerIds
+        : [];
+      if (allowed.length > 0 && !allowed.includes(marketerId)) {
+        continue;
+      }
 
       const totals = { revenue: 0, sales: 0, customers: new Set<string>() };
       for (const row of rows) {
@@ -215,6 +226,10 @@ Deno.serve(async (request) => {
       }
 
       for (let index = existingCount + 1; index <= desired; index += 1) {
+        const rewardAmount =
+          reward.rewardType === "MONEY" ? reward.rewardAmount ?? 0 : null;
+        const rewardCurrency =
+          reward.rewardType === "MONEY" ? reward.rewardCurrency ?? null : null;
         inserts.push({
           id: createId(),
           rewardId: reward.id,
@@ -224,6 +239,8 @@ Deno.serve(async (request) => {
           status: "UNLOCKED",
           earnedAt: now.toISOString(),
           unlockedAt: now.toISOString(),
+          rewardAmount,
+          rewardCurrency,
         });
       }
     }

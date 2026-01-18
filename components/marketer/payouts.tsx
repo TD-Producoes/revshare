@@ -196,6 +196,7 @@ export function MarketerPayouts() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Projects</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
@@ -210,6 +211,9 @@ export function MarketerPayouts() {
                     <TableRow key={transfer.id}>
                       <TableCell>
                         {new Date(transfer.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {transfer.type === "reward" ? "Reward payout" : "Commission"}
                       </TableCell>
                       <TableCell>
                         {transfer.projects.length > 0

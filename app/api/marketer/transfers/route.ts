@@ -60,7 +60,99 @@ export async function GET(_request: Request) {
       createdAt: transfer.createdAt,
       updatedAt: transfer.updatedAt,
       projects: projectNames,
+      type: "commission",
     };
+  });
+
+  const rewardRows = await prisma.rewardEarned.findMany({
+    where: {
+      marketerId: marketer.id,
+      status: "PAID",
+      paidAt: { not: null },
+      reward: { rewardType: "MONEY" },
+    },
+    select: {
+      id: true,
+      paidAt: true,
+      rewardAmount: true,
+      rewardCurrency: true,
+      rewardTransferId: true,
+      reward: {
+        select: {
+          rewardAmount: true,
+          rewardCurrency: true,
+          project: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { paidAt: "desc" },
+  });
+
+  const rewardGroups = new Map<
+    string,
+    {
+      id: string;
+      amount: number;
+      currency: string | null;
+      createdAt: Date;
+      projects: string[];
+      stripeTransferId: string | null;
+    }
+  >();
+
+  rewardRows.forEach((row) => {
+    const amount = row.rewardAmount ?? row.reward.rewardAmount ?? 0;
+    if (!amount || !row.paidAt) return;
+    const currency = (
+      row.rewardCurrency ?? row.reward.rewardCurrency ?? null
+    )?.toLowerCase() ?? null;
+    const key = row.rewardTransferId ?? `reward-${row.id}`;
+    const existing = rewardGroups.get(key) ?? {
+      id: `reward-${key}`,
+      amount: 0,
+      currency,
+      createdAt: row.paidAt,
+      projects: [],
+      stripeTransferId: row.rewardTransferId ?? null,
+    };
+    existing.amount += amount;
+    if (row.paidAt > existing.createdAt) {
+      existing.createdAt = row.paidAt;
+    }
+    if (existing.currency && currency && existing.currency !== currency) {
+      existing.currency = null;
+    }
+    const projectName = row.reward.project?.name ?? null;
+    if (projectName && !existing.projects.includes(projectName)) {
+      existing.projects.push(projectName);
+    }
+    rewardGroups.set(key, existing);
+  });
+
+  const rewardTransfers = Array.from(rewardGroups.values())
+    .map((reward) => {
+      if (!reward.currency) {
+        return null;
+      }
+      currencies.add(reward.currency);
+      totals.paid += reward.amount;
+      return {
+        id: reward.id,
+        amount: reward.amount,
+        currency: reward.currency,
+        status: "PAID",
+        stripeTransferId: reward.stripeTransferId,
+        failureReason: null,
+        createdAt: reward.createdAt,
+        updatedAt: reward.createdAt,
+        projects: reward.projects,
+        type: "reward",
+      };
+    })
+    .filter(Boolean);
+
+  const combined = [...transferRows, ...(rewardTransfers as typeof transferRows)].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   const currency = currencies.size === 1 ? Array.from(currencies)[0] : null;
@@ -69,7 +161,7 @@ export async function GET(_request: Request) {
     data: {
       totals,
       currency,
-      transfers: transferRows,
+      transfers: combined,
     },
   });
 }

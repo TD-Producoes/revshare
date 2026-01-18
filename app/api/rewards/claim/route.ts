@@ -58,6 +58,8 @@ export async function POST(request: Request) {
           rewardType: true,
           rewardPercentOff: true,
           rewardDurationMonths: true,
+          rewardAmount: true,
+          rewardCurrency: true,
           fulfillmentType: true,
         },
       },
@@ -97,6 +99,13 @@ export async function POST(request: Request) {
   const { reward } = rewardEarned;
   if (!reward) {
     return NextResponse.json({ error: "Reward not found" }, { status: 404 });
+  }
+
+  if (reward.rewardType === "MONEY") {
+    return NextResponse.json(
+      { error: "Cash rewards are paid by founders and cannot be claimed." },
+      { status: 400 },
+    );
   }
 
   if (reward.fulfillmentType === "MANUAL") {

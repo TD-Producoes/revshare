@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import * as React from "react";
 
 import { prisma } from "@/lib/prisma";
+import { createRewardTransfers } from "@/lib/rewards/payouts";
 import { platformStripe } from "@/lib/stripe";
 import { notificationMessages } from "@/lib/notifications/messages";
 import { sendEmail } from "@/lib/email/send-email";
@@ -267,6 +268,24 @@ export async function POST(request: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    const rewardPayoutType = session.metadata?.rewardPayoutType ?? null;
+    if (rewardPayoutType === "REWARD_PAYOUT") {
+      const creatorId = session.metadata?.creatorId ?? null;
+      const currency = session.metadata?.currency ?? null;
+      const cutoffMs = Number(session.metadata?.cutoffMs ?? "0");
+      const cutoff =
+        Number.isFinite(cutoffMs) && cutoffMs > 0
+          ? new Date(cutoffMs)
+          : undefined;
+      if (creatorId && currency) {
+        await createRewardTransfers({
+          creatorId,
+          currency,
+          cutoff,
+        });
+        return NextResponse.json({ received: true, rewardPayout: true });
+      }
+    }
     const creatorPaymentId = session.metadata?.creatorPaymentId ?? null;
     if (creatorPaymentId) {
       const updatedPayment = await prisma.creatorPayment.update({

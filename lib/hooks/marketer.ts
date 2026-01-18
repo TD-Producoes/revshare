@@ -53,6 +53,18 @@ export type MarketerTransfer = {
   createdAt: string | Date;
   updatedAt: string | Date;
   projects: string[];
+  type: "commission" | "reward";
+};
+
+export type MarketerRewardEarning = {
+  id: string;
+  rewardName: string;
+  projectName: string;
+  amount: number;
+  currency: string;
+  status: "UNLOCKED" | "PAID" | "CLAIMED" | "PENDING_REFUND";
+  earnedAt: string | Date;
+  paidAt: string | Date | null;
 };
 
 export type MarketerTransfersResponse = {
@@ -89,10 +101,18 @@ export type MarketerProjectReward = {
     description?: string | null;
     milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
     milestoneValue: number;
-    rewardType: "DISCOUNT_COUPON" | "FREE_SUBSCRIPTION" | "PLAN_UPGRADE" | "ACCESS_PERK";
+    rewardType:
+      | "DISCOUNT_COUPON"
+      | "FREE_SUBSCRIPTION"
+      | "PLAN_UPGRADE"
+      | "ACCESS_PERK"
+      | "MONEY";
     rewardLabel: string | null;
     rewardPercentOff?: number | null;
     rewardDurationMonths?: number | null;
+    rewardAmount?: number | null;
+    rewardCurrency?: string | null;
+    allowedMarketerIds?: string[] | null;
     fulfillmentType: "AUTO_COUPON" | "MANUAL";
     earnLimit: "ONCE_PER_MARKETER" | "MULTIPLE";
     availabilityType: "UNLIMITED" | "FIRST_N";
@@ -104,7 +124,7 @@ export type MarketerProjectReward = {
   };
   earned?: {
     id: string;
-    status: "PENDING_REFUND" | "UNLOCKED" | "CLAIMED";
+    status: "PENDING_REFUND" | "UNLOCKED" | "CLAIMED" | "PAID";
     earnedAt: string | Date;
     unlockedAt?: string | Date | null;
     claimedAt?: string | Date | null;
@@ -115,13 +135,26 @@ export type MarketerProjectReward = {
       stripePromotionCodeId: string | null;
     } | null;
   } | null;
+  earnedList?: Array<{
+    id: string;
+    status: "PENDING_REFUND" | "UNLOCKED" | "CLAIMED" | "PAID";
+    earnedAt: string | Date;
+    unlockedAt?: string | Date | null;
+    claimedAt?: string | Date | null;
+    rewardCoupon?: {
+      id: string;
+      code: string | null;
+      stripeCouponId: string | null;
+      stripePromotionCodeId: string | null;
+    } | null;
+  }>;
   progress: {
     current: number;
     total: number;
     goal: number;
     percent: number;
   };
-  status: "IN_PROGRESS" | "PENDING_REFUND" | "UNLOCKED" | "CLAIMED";
+  status: "IN_PROGRESS" | "PENDING_REFUND" | "UNLOCKED" | "CLAIMED" | "PAID";
 };
 
 export function useMarketerProjectRewards(
@@ -259,6 +292,22 @@ export function useMarketerTransfers(userId?: string | null) {
       }
       const payload = await response.json();
       return payload?.data as MarketerTransfersResponse;
+    },
+  });
+}
+
+export function useMarketerRewardEarnings(userId?: string | null) {
+  return useQuery<MarketerRewardEarning[]>({
+    queryKey: ["marketer-reward-earnings", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch("/api/marketer/rewards");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch reward earnings.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
     },
   });
 }

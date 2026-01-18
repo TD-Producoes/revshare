@@ -405,6 +405,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
             rewards={rewardItems}
             isLoading={isRewardsLoading}
             currency={projectCurrency}
+            marketerId={currentUser?.id}
             onClaimReward={handleClaimReward}
             isClaiming={isClaiming}
             claimError={claimError}

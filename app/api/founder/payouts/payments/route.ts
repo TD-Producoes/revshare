@@ -55,7 +55,78 @@ export async function GET(request: Request) {
     createdAt: payment.createdAt,
     purchaseCount: payment._count.purchases,
     stripeCheckoutSessionId: payment.stripeCheckoutSessionId,
+    type: "commission",
   }));
 
-  return NextResponse.json({ data });
+  const rewardRows = await prisma.rewardEarned.findMany({
+    where: {
+      status: "PAID",
+      paidAt: { not: null },
+      reward: { rewardType: "MONEY", project: { userId } },
+    },
+    select: {
+      id: true,
+      paidAt: true,
+      rewardAmount: true,
+      rewardCurrency: true,
+      rewardTransferId: true,
+      reward: { select: { rewardAmount: true, rewardCurrency: true } },
+    },
+    orderBy: { paidAt: "desc" },
+  });
+
+  const rewardGroups = new Map<
+    string,
+    {
+      id: string;
+      createdAt: Date;
+      amountTotal: number;
+      rewardCount: number;
+      currency: string | null;
+    }
+  >();
+
+  rewardRows.forEach((row) => {
+    const amount = row.rewardAmount ?? row.reward.rewardAmount ?? 0;
+    if (!amount || !row.paidAt) return;
+    const currency = (
+      row.rewardCurrency ?? row.reward.rewardCurrency ?? null
+    )?.toLowerCase() ?? null;
+    const key = row.rewardTransferId ?? `reward-${row.id}`;
+    const existing = rewardGroups.get(key) ?? {
+      id: `reward-${key}`,
+      createdAt: row.paidAt,
+      amountTotal: 0,
+      rewardCount: 0,
+      currency,
+    };
+    existing.amountTotal += amount;
+    existing.rewardCount += 1;
+    if (row.paidAt > existing.createdAt) {
+      existing.createdAt = row.paidAt;
+    }
+    if (existing.currency && currency && existing.currency !== currency) {
+      existing.currency = null;
+    }
+    rewardGroups.set(key, existing);
+  });
+
+  const rewardPayments = Array.from(rewardGroups.values()).map((entry) => ({
+    id: entry.id,
+    amountTotal: entry.amountTotal,
+    marketerTotal: entry.amountTotal,
+    platformFeeTotal: 0,
+    currency: entry.currency,
+    status: "paid",
+    createdAt: entry.createdAt,
+    purchaseCount: entry.rewardCount,
+    stripeCheckoutSessionId: null,
+    type: "reward",
+  }));
+
+  const combined = [...data, ...rewardPayments].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  return NextResponse.json({ data: combined });
 }

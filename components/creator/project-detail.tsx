@@ -1154,6 +1154,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           <ProjectRewardsTab
             projectId={projectId}
             creatorId={currentUser?.id}
+            projectCurrency={projectCurrency}
             autoOpenCreate={shouldOpenReward}
             onAutoOpenHandled={() => setShouldOpenReward(false)}
           />

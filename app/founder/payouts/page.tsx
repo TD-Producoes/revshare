@@ -13,10 +13,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Clock, CheckCircle, Percent, Info } from "lucide-react";
+import { DollarSign, Clock, CheckCircle, Percent, Info, ListChecks } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import {
+  CreatorRewardPayoutGroup,
   useCreatorPayouts,
   useCreatorPaymentCharge,
   useCreatorPaymentCheckout,
@@ -24,6 +25,7 @@ import {
   useCreatorPayments,
   useCreatorPurchaseDetails,
   useCreatorAdjustments,
+  useCreatorRewardPayouts,
   useProcessMarketerTransfers,
 } from "@/lib/hooks/creator";
 import { usePaymentMethods } from "@/lib/hooks/payment-methods";
@@ -53,6 +55,8 @@ import {
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { RewardPayoutDialog } from "@/components/creator/reward-payout-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type HeaderInfoProps = {
   label: string;
@@ -125,9 +129,12 @@ export default function PayoutsPage() {
     currentUser?.id,
   );
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isRewardReceiptOpen, setIsRewardReceiptOpen] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
+  const [selectedRewardGroup, setSelectedRewardGroup] =
+    useState<CreatorRewardPayoutGroup | null>(null);
   const [transferResults, setTransferResults] = useState<
     Array<{
       marketerId: string;
@@ -148,6 +155,10 @@ export default function PayoutsPage() {
     useCreatorPurchaseDetails(currentUser?.id);
   const { data: adjustments = [], isLoading: isAdjustmentsLoading } =
     useCreatorAdjustments(currentUser?.id);
+  const {
+    data: rewardPayouts,
+    isLoading: isRewardPayoutsLoading,
+  } = useCreatorRewardPayouts(currentUser?.id);
   const { data: paymentMethods = [] } = usePaymentMethods(currentUser?.id);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<
     string | null
@@ -183,6 +194,19 @@ export default function PayoutsPage() {
   }, [router, searchParams]);
 
   useEffect(() => {
+    const status = searchParams.get("reward");
+    if (status === "success") {
+      toast.success("Reward payment received. Transfers are processing.");
+      if (currentUser?.id) {
+        void queryClient.invalidateQueries({
+          queryKey: ["creator-reward-payouts", currentUser.id],
+        });
+      }
+      router.replace("/founder/payouts");
+    }
+  }, [currentUser?.id, queryClient, router, searchParams]);
+
+  useEffect(() => {
     if (!isReceiptOpen) {
       return;
     }
@@ -205,7 +229,8 @@ export default function PayoutsPage() {
     isPayoutsLoading ||
     isPaymentsLoading ||
     isPurchasesLoading ||
-    isAdjustmentsLoading
+    isAdjustmentsLoading ||
+    isRewardPayoutsLoading
   ) {
     return (
       <div className="flex h-40 items-center justify-center text-muted-foreground">
@@ -231,6 +256,38 @@ export default function PayoutsPage() {
           payouts,
         },
       ];
+  const rewardGroups = rewardPayouts?.groups ?? [];
+  const paidRewardTotalsByCurrency = payments.reduce(
+    (acc, payment) => {
+      if (payment.type !== "reward" || payment.status !== "paid") {
+        return acc;
+      }
+      const currency = (payment.currency ?? "USD").toUpperCase();
+      acc.set(currency, (acc.get(currency) ?? 0) + payment.amountTotal);
+      return acc;
+    },
+    new Map<string, number>(),
+  );
+  const rewardTotalsLabel =
+    rewardGroups.length > 0
+      ? rewardGroups
+          .map((group) => formatCurrency(group.totalAmount, group.currency))
+          .join(" · ")
+      : formatCurrency(0);
+  const rewardPaidLabel =
+    paidRewardTotalsByCurrency.size > 0
+      ? Array.from(paidRewardTotalsByCurrency.entries())
+          .map(([currency, amount]) => formatCurrency(amount, currency))
+          .join(" · ")
+      : formatCurrency(0);
+  const rewardCount = rewardGroups.reduce(
+    (sum, group) => sum + group.rewardCount,
+    0,
+  );
+  const rewardCurrenciesLabel =
+    rewardGroups.length > 0
+      ? rewardGroups.map((group) => group.currency.toUpperCase()).join(" · ")
+      : "—";
   const totals = data?.totals ?? {
     totalCommissions: 0,
     paidCommissions: 0,
@@ -349,6 +406,18 @@ export default function PayoutsPage() {
     }
   };
 
+  const handleOpenRewardReceipt = (group: CreatorRewardPayoutGroup) => {
+    setSelectedRewardGroup(group);
+    setIsRewardReceiptOpen(true);
+  };
+
+  const handleRewardPaid = async () => {
+    if (!currentUser) return;
+    await queryClient.invalidateQueries({
+      queryKey: ["creator-reward-payouts", currentUser.id],
+    });
+  };
+
   const getEffectiveCommissionStatus = (purchase: {
     commissionStatus: string;
     refundEligibleAt?: string | Date | null;
@@ -436,8 +505,21 @@ export default function PayoutsPage() {
         </Card>
       ) : null}
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Tabs defaultValue="commissions" className="space-y-6">
+        <div className="border-b">
+          <TabsList variant="line" className="h-auto bg-transparent p-0">
+            <TabsTrigger className="px-3 py-2 text-sm" value="commissions">
+              Commissions
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="rewards">
+              Rewards
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="commissions" className="space-y-6">
+          {/* Stats */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Commissions"
           value={formatCurrency(totals.totalCommissions)}
@@ -877,6 +959,7 @@ export default function PayoutsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="text-right">Purchases</TableHead>
                     <TableHead className="text-right">Marketer</TableHead>
                     <TableHead className="text-right">Platform</TableHead>
@@ -888,6 +971,9 @@ export default function PayoutsPage() {
                   {payments.map((payment) => (
                     <TableRow key={payment.id}>
                       <TableCell>{renderDateTime(payment.createdAt)}</TableCell>
+                      <TableCell>
+                        {payment.type === "reward" ? "Reward payout" : "Commission"}
+                      </TableCell>
                       <TableCell className="text-right">
                         {payment.purchaseCount}
                       </TableCell>
@@ -922,6 +1008,128 @@ export default function PayoutsPage() {
           )}
         </CardContent>
       </Card>
+
+        </TabsContent>
+
+        <TabsContent value="rewards" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Ready to pay"
+              value={rewardTotalsLabel}
+              description="Cash rewards"
+              icon={DollarSign}
+            />
+            <StatCard
+              title="Rewards count"
+              value={String(rewardCount)}
+              description="Eligible payouts"
+              icon={ListChecks}
+            />
+            <StatCard
+              title="Paid rewards"
+              value={rewardPaidLabel}
+              description="Transferred"
+              icon={CheckCircle}
+            />
+            <StatCard
+              title="Currencies"
+              value={rewardCurrenciesLabel}
+              description="Grouped payouts"
+              icon={CheckCircle}
+            />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Reward Payouts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {rewardGroups.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  No cash rewards ready to pay.
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {rewardGroups.map((group) => (
+                    <div key={group.currency} className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {group.currency.toUpperCase()} rewards
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {group.rewardCount} rewards ·{" "}
+                            {formatCurrency(group.totalAmount, group.currency)}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleOpenRewardReceipt(group)}
+                        >
+                          Pay all
+                        </Button>
+                      </div>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Marketer</TableHead>
+                              <TableHead>Project</TableHead>
+                              <TableHead>Reward</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Earned</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.items.map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">
+                                  {item.marketerName}
+                                  {item.marketerEmail ? (
+                                    <p className="text-xs text-muted-foreground">
+                                      {item.marketerEmail}
+                                    </p>
+                                  ) : null}
+                                </TableCell>
+                                <TableCell>{item.projectName}</TableCell>
+                                <TableCell>{item.rewardName}</TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.amount, item.currency)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      item.status === "PAID" ? "secondary" : "outline"
+                                    }
+                                  >
+                                    {item.status === "PAID" ? "Paid" : "Ready"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {renderDateTime(item.earnedAt, "right")}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <RewardPayoutDialog
+        open={isRewardReceiptOpen}
+        onOpenChange={setIsRewardReceiptOpen}
+        group={selectedRewardGroup}
+        paymentMethods={paymentMethods}
+        defaultPaymentMethodId={defaultPaymentMethod?.id ?? null}
+        onPaid={handleRewardPaid}
+      />
 
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
         <DialogContent className="sm:max-w-[720px]">
@@ -967,22 +1175,24 @@ export default function PayoutsPage() {
                   ) : null}
                 </div>
               ) : null}
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>Reduce processing fees</AlertTitle>
-                <AlertDescription>
-                  Add a payment method and enable auto-charge so platform
-                  payments can be collected automatically without the processing
-                  fee.{" "}
-                  <Link
-                    href="/founder/settings"
-                    className="underline underline-offset-4 text-foreground"
-                  >
-                    Update payment methods
-                  </Link>
-                  .
-                </AlertDescription>
-              </Alert>
+              {paymentMethods.length === 0 ? (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Reduce processing fees</AlertTitle>
+                  <AlertDescription>
+                    Add a payment method and enable auto-charge so platform
+                    payments can be collected automatically without the processing
+                    fee.{" "}
+                    <Link
+                      href="/founder/settings"
+                      className="underline underline-offset-4 text-foreground"
+                    >
+                      Update payment methods
+                    </Link>
+                    .
+                  </AlertDescription>
+                </Alert>
+              ) : null}
               {!payDisabled ? (
                 <div className="rounded-md border">
                   <Table>
@@ -1085,17 +1295,19 @@ export default function PayoutsPage() {
                             : "Multiple currencies"}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Processing fee</span>
-                        <span>
-                          {preview.totals.currency
-                            ? formatCurrency(
-                                preview.totals.processingFee,
-                                preview.totals.currency,
-                              )
-                            : "Multiple currencies"}
-                        </span>
-                      </div>
+                      {paymentMethods.length === 0 ? (
+                        <div className="flex justify-between">
+                          <span>Processing fee</span>
+                          <span>
+                            {preview.totals.currency
+                              ? formatCurrency(
+                                  preview.totals.processingFee,
+                                  preview.totals.currency,
+                                )
+                              : "Multiple currencies"}
+                          </span>
+                        </div>
+                      ) : null}
                       <div className="flex justify-between font-medium">
                         <span>Total due</span>
                         <span>
@@ -1158,7 +1370,6 @@ export default function PayoutsPage() {
             </Button>
             {paymentMethods.length > 0 ? (
               <Button
-                variant="secondary"
                 onClick={handleChargePaymentMethod}
                 disabled={
                   charge.isPending ||
@@ -1170,17 +1381,19 @@ export default function PayoutsPage() {
                 {charge.isPending ? "Charging..." : "Pay with saved method"}
               </Button>
             ) : null}
-            <Button
-              onClick={handleCreateCheckout}
-              disabled={
-                checkout.isPending ||
-                charge.isPending ||
-                !preview?.totals.grandTotal ||
-                payDisabled
-              }
-            >
-              {checkout.isPending ? "Creating checkout..." : "Proceed to pay"}
-            </Button>
+            {paymentMethods.length === 0 ? (
+              <Button
+                onClick={handleCreateCheckout}
+                disabled={
+                  checkout.isPending ||
+                  charge.isPending ||
+                  !preview?.totals.grandTotal ||
+                  payDisabled
+                }
+              >
+                {checkout.isPending ? "Creating checkout..." : "Proceed to pay"}
+              </Button>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>

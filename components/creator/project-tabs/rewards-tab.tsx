@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,15 +33,36 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatCard } from "@/components/shared/stat-card";
+import { formatCurrency } from "@/lib/data/metrics";
+import { useProjectMarketers, useRewards } from "@/lib/hooks/projects";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Gift, Target, ShieldCheck } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Gift,
+  MoreHorizontal,
+  ShieldCheck,
+  Target,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MoreHorizontal } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 type RewardStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "ARCHIVED";
 
@@ -51,9 +73,17 @@ type Reward = {
   milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
   milestoneValue: number;
   startsAt?: string | null;
-  rewardType: "DISCOUNT_COUPON" | "FREE_SUBSCRIPTION" | "PLAN_UPGRADE" | "ACCESS_PERK";
+  rewardType:
+    | "DISCOUNT_COUPON"
+    | "FREE_SUBSCRIPTION"
+    | "PLAN_UPGRADE"
+    | "ACCESS_PERK"
+    | "MONEY";
   rewardPercentOff?: number | null;
   rewardDurationMonths?: number | null;
+  rewardAmount?: number | null;
+  rewardCurrency?: string | null;
+  allowedMarketerIds?: string[] | null;
   fulfillmentType: "AUTO_COUPON" | "MANUAL";
   earnLimit: "ONCE_PER_MARKETER" | "MULTIPLE";
   availabilityType: "UNLIMITED" | "FIRST_N";
@@ -76,9 +106,9 @@ const statusBadge: Record<RewardStatus, string> = {
   ARCHIVED: "secondary",
 };
 
-const getMilestoneLabel = (reward: Reward) => {
+const getMilestoneLabel = (reward: Reward, currency: string) => {
   if (reward.milestoneType === "NET_REVENUE") {
-    return `$${reward.milestoneValue} net revenue`;
+    return `${formatCurrency(reward.milestoneValue, currency)} net revenue`;
   }
   if (reward.milestoneType === "COMPLETED_SALES") {
     return `${reward.milestoneValue} completed sales`;
@@ -86,10 +116,16 @@ const getMilestoneLabel = (reward: Reward) => {
   return `${reward.milestoneValue} active customers`;
 };
 
-const getRewardTypeLabel = (reward: Reward) => {
+const getRewardTypeLabel = (reward: Reward, currency: string) => {
   if (reward.rewardType === "DISCOUNT_COUPON") return "Discount coupon";
   if (reward.rewardType === "FREE_SUBSCRIPTION") return "Free subscription period";
   if (reward.rewardType === "PLAN_UPGRADE") return "Plan upgrade";
+  if (reward.rewardType === "MONEY") {
+    return `Cash reward ${formatCurrency(
+      reward.rewardAmount ?? 0,
+      reward.rewardCurrency ?? currency,
+    )}`;
+  }
   return "Access / perk";
 };
 
@@ -111,21 +147,46 @@ const formatDateForInput = (value?: string | null) => {
 export function ProjectRewardsTab({
   projectId,
   creatorId,
+  projectCurrency,
   autoOpenCreate,
   onAutoOpenHandled,
 }: {
   projectId: string;
   creatorId?: string | null;
+  projectCurrency?: string | null;
   autoOpenCreate?: boolean;
   onAutoOpenHandled?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [rewards, setRewards] = useState<Reward[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
+  const [marketersOpen, setMarketersOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const rewardsQueryKey = useMemo(
+    () => ["rewards", projectId ?? "none", "all"],
+    [projectId],
+  );
+  const {
+    data: rewards = [],
+    isLoading: isRewardsLoading,
+    error: rewardsError,
+  } = useRewards({
+    projectId,
+    includeAll: true,
+    enabled: Boolean(creatorId),
+  });
+  const { data: projectMarketers = [], isLoading: isMarketersLoading } =
+    useProjectMarketers(projectId);
+  const marketerOptions = useMemo(
+    () =>
+      projectMarketers.map((marketer) => ({
+        id: marketer.id,
+        label: marketer.name?.trim() || marketer.email,
+      })),
+    [projectMarketers],
+  );
   const [formState, setFormState] = useState({
     name: "",
     description: "",
@@ -135,11 +196,13 @@ export function ProjectRewardsTab({
     rewardType: "DISCOUNT_COUPON",
     rewardPercentOff: "100",
     rewardDurationMonths: "1",
+    rewardAmount: "",
     fulfillmentType: "AUTO_COUPON",
     earnLimit: "ONCE_PER_MARKETER",
     availabilityType: "UNLIMITED",
     availabilityLimit: "",
     visibility: "PUBLIC",
+    allowedMarketerIds: [] as string[],
     confirm: false,
   });
 
@@ -159,6 +222,11 @@ export function ProjectRewardsTab({
           }`
         : formState.rewardType === "PLAN_UPGRADE"
           ? "Plan upgrade"
+          : formState.rewardType === "MONEY"
+            ? formatCurrency(
+                Math.round((Number(formState.rewardAmount) || 0) * 100),
+                projectCurrency ?? "USD",
+              )
           : "Access / perk";
 
   const resetForm = () => {
@@ -171,52 +239,48 @@ export function ProjectRewardsTab({
       rewardType: "DISCOUNT_COUPON",
       rewardPercentOff: "100",
       rewardDurationMonths: "1",
+      rewardAmount: "",
       fulfillmentType: "AUTO_COUPON",
       earnLimit: "ONCE_PER_MARKETER",
       availabilityType: "UNLIMITED",
       availabilityLimit: "",
       visibility: "PUBLIC",
+      allowedMarketerIds: [],
       confirm: false,
     });
     setCreateError(null);
   };
 
-  const loadRewards = async () => {
-    if (!creatorId) return;
-    setIsLoading(true);
-    setLoadError(null);
-    try {
-      const response = await fetch(
-        `/api/projects/${projectId}/rewards?creatorId=${creatorId}`,
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.error ?? "Failed to load rewards.");
-      }
-      const rows = Array.isArray(payload?.data) ? payload.data : [];
-      setRewards(rows as Reward[]);
-    } catch (error) {
-      setLoadError(
-        error instanceof Error ? error.message : "Failed to load rewards.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    void loadRewards();
-  }, [creatorId, projectId]);
+    if (!rewardsError) {
+      setLoadError(null);
+      return;
+    }
+    setLoadError(
+      rewardsError instanceof Error
+        ? rewardsError.message
+        : "Failed to load rewards.",
+    );
+  }, [rewardsError]);
 
   const handleCreate = async () => {
     if (!creatorId) return;
     if (!formState.name.trim()) return;
     if (!formState.milestoneValue) return;
+    if (formState.rewardType === "MONEY" && !formState.rewardAmount) return;
     if (!formState.confirm) return;
     setCreateError(null);
     setIsCreating(true);
 
     try {
+      const milestoneValue =
+        formState.milestoneType === "NET_REVENUE"
+          ? Math.round((Number(formState.milestoneValue) || 0) * 100)
+          : Number(formState.milestoneValue);
+      const rewardAmount =
+        formState.rewardType === "MONEY"
+          ? Math.round((Number(formState.rewardAmount) || 0) * 100)
+          : undefined;
       const response = await fetch(`/api/projects/${projectId}/rewards`, {
         method: editingRewardId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -226,7 +290,7 @@ export function ProjectRewardsTab({
           name: formState.name,
           description: formState.description || undefined,
           milestoneType: formState.milestoneType,
-          milestoneValue: Number(formState.milestoneValue),
+          milestoneValue,
           startsAt: formState.startsAt || undefined,
           rewardType: formState.rewardType,
           rewardPercentOff:
@@ -237,13 +301,21 @@ export function ProjectRewardsTab({
             formState.rewardType === "FREE_SUBSCRIPTION"
               ? Number(formState.rewardDurationMonths)
               : undefined,
-          fulfillmentType: formState.fulfillmentType,
+          rewardAmount,
+          fulfillmentType:
+            formState.rewardType === "MONEY"
+              ? "MANUAL"
+              : formState.fulfillmentType,
           earnLimit: formState.earnLimit,
           availabilityType: formState.availabilityType,
           availabilityLimit: formState.availabilityLimit
             ? Number(formState.availabilityLimit)
             : undefined,
           visibility: formState.visibility,
+          allowedMarketerIds:
+            formState.allowedMarketerIds.length > 0
+              ? formState.allowedMarketerIds
+              : [],
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -251,7 +323,7 @@ export function ProjectRewardsTab({
         throw new Error(payload?.error ?? "Failed to create reward.");
       }
 
-      await loadRewards();
+      await queryClient.invalidateQueries({ queryKey: rewardsQueryKey });
       setIsOpen(false);
       setEditingRewardId(null);
       resetForm();
@@ -278,7 +350,10 @@ export function ProjectRewardsTab({
       name: reward.name,
       description: reward.description ?? "",
       milestoneType: reward.milestoneType,
-      milestoneValue: String(reward.milestoneValue),
+      milestoneValue:
+        reward.milestoneType === "NET_REVENUE"
+          ? String(Math.round((reward.milestoneValue ?? 0) / 100))
+          : String(reward.milestoneValue),
       startsAt: formatDateForInput(reward.startsAt),
       rewardType: reward.rewardType,
       rewardPercentOff: reward.rewardPercentOff
@@ -287,6 +362,10 @@ export function ProjectRewardsTab({
       rewardDurationMonths: reward.rewardDurationMonths
         ? String(reward.rewardDurationMonths)
         : "1",
+      rewardAmount:
+        reward.rewardType === "MONEY"
+          ? String(Math.round((reward.rewardAmount ?? 0) / 100))
+          : "",
       fulfillmentType: reward.fulfillmentType,
       earnLimit: reward.earnLimit,
       availabilityType: reward.availabilityType,
@@ -294,6 +373,9 @@ export function ProjectRewardsTab({
         ? String(reward.availabilityLimit)
         : "",
       visibility: reward.visibility,
+      allowedMarketerIds: Array.isArray(reward.allowedMarketerIds)
+        ? reward.allowedMarketerIds
+        : [],
       confirm: true,
     });
     setIsOpen(true);
@@ -315,7 +397,7 @@ export function ProjectRewardsTab({
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to update reward.");
       }
-      await loadRewards();
+      await queryClient.invalidateQueries({ queryKey: rewardsQueryKey });
     } catch (error) {
       setLoadError(
         error instanceof Error ? error.message : "Failed to update reward.",
@@ -327,7 +409,7 @@ export function ProjectRewardsTab({
     if (!autoOpenCreate || !creatorId) return;
     openCreate();
     onAutoOpenHandled?.();
-  }, [autoOpenCreate, creatorId]);
+  }, [autoOpenCreate, creatorId, onAutoOpenHandled]);
 
   return (
     <div className="space-y-6">
@@ -369,7 +451,7 @@ export function ProjectRewardsTab({
           <CardTitle className="text-base">Rewards list</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isRewardsLoading ? (
             <p className="text-muted-foreground">Loading rewards...</p>
           ) : rewards.length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -391,8 +473,12 @@ export function ProjectRewardsTab({
                 {rewards.map((reward) => (
                   <TableRow key={reward.id}>
                     <TableCell className="font-medium">{reward.name}</TableCell>
-                    <TableCell>{getMilestoneLabel(reward)}</TableCell>
-                    <TableCell>{getRewardTypeLabel(reward)}</TableCell>
+                    <TableCell>
+                      {getMilestoneLabel(reward, projectCurrency ?? "USD")}
+                    </TableCell>
+                    <TableCell>
+                      {getRewardTypeLabel(reward, projectCurrency ?? "USD")}
+                    </TableCell>
                     <TableCell>{getAvailabilityLabel(reward)}</TableCell>
                     <TableCell>
                       <Badge
@@ -570,7 +656,11 @@ export function ProjectRewardsTab({
                 <Select
                   value={formState.rewardType}
                   onValueChange={(value) =>
-                    setFormState((prev) => ({ ...prev, rewardType: value }))
+                    setFormState((prev) => ({
+                      ...prev,
+                      rewardType: value,
+                      fulfillmentType: value === "MONEY" ? "MANUAL" : prev.fulfillmentType,
+                    }))
                   }
                 >
                   <SelectTrigger>
@@ -587,10 +677,11 @@ export function ProjectRewardsTab({
                       Plan upgrade
                     </SelectItem>
                     <SelectItem value="ACCESS_PERK">Access / perk</SelectItem>
+                    <SelectItem value="MONEY">Cash reward</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              {formState.rewardType === "DISCOUNT_COUPON" ? (
                 <div className="space-y-2">
                   <Label htmlFor="rewardPercentOff">Discount percent</Label>
                   <Input
@@ -607,6 +698,8 @@ export function ProjectRewardsTab({
                     }
                   />
                 </div>
+              ) : null}
+              {formState.rewardType === "FREE_SUBSCRIPTION" ? (
                 <div className="space-y-2">
                   <Label htmlFor="rewardDurationMonths">Duration (months)</Label>
                   <Input
@@ -622,7 +715,27 @@ export function ProjectRewardsTab({
                     }
                   />
                 </div>
-              </div>
+              ) : null}
+              {formState.rewardType === "MONEY" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="rewardAmount">
+                    Cash reward ({(projectCurrency ?? "USD").toUpperCase()})
+                  </Label>
+                  <Input
+                    id="rewardAmount"
+                    type="number"
+                    min={1}
+                    value={formState.rewardAmount}
+                    onChange={(event) =>
+                      setFormState((prev) => ({
+                        ...prev,
+                        rewardAmount: event.target.value,
+                      }))
+                    }
+                    placeholder="100"
+                  />
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <Label>Fulfillment</Label>
                 <Select
@@ -630,6 +743,7 @@ export function ProjectRewardsTab({
                   onValueChange={(value) =>
                     setFormState((prev) => ({ ...prev, fulfillmentType: value }))
                   }
+                  disabled={formState.rewardType === "MONEY"}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -644,8 +758,9 @@ export function ProjectRewardsTab({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Auto coupons are delivered instantly. Manual fulfillment is for
-                  perks outside Stripe.
+                  {formState.rewardType === "MONEY"
+                    ? "Cash rewards are paid manually after the refund window."
+                    : "Auto coupons are delivered instantly. Manual fulfillment is for perks outside Stripe."}
                 </p>
               </div>
             </div>
@@ -716,6 +831,82 @@ export function ProjectRewardsTab({
                 </div>
               ) : null}
               <div className="space-y-2">
+                <Label>Marketers</Label>
+                <Popover open={marketersOpen} onOpenChange={setMarketersOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={marketersOpen}
+                      className="w-full justify-between"
+                      disabled={isMarketersLoading}
+                    >
+                      {formState.allowedMarketerIds.length === 0
+                        ? "All marketers"
+                        : formState.allowedMarketerIds.length === 1
+                          ? marketerOptions.find(
+                              (item) =>
+                                item.id === formState.allowedMarketerIds[0],
+                            )?.label ?? "1 marketer selected"
+                          : `${formState.allowedMarketerIds.length} marketers selected`}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search marketers..." />
+                      <CommandList>
+                        <CommandEmpty>No marketers found.</CommandEmpty>
+                        <CommandGroup>
+                          {marketerOptions.map((marketer) => {
+                            const isSelected =
+                              formState.allowedMarketerIds.includes(
+                                marketer.id,
+                              );
+                            return (
+                              <CommandItem
+                                key={marketer.id}
+                                value={marketer.label}
+                                onSelect={() => {
+                                  setFormState((prev) => {
+                                    const alreadySelected =
+                                      prev.allowedMarketerIds.includes(
+                                        marketer.id,
+                                      );
+                                    return {
+                                      ...prev,
+                                      allowedMarketerIds: alreadySelected
+                                        ? prev.allowedMarketerIds.filter(
+                                            (id) => id !== marketer.id,
+                                          )
+                                        : [
+                                            ...prev.allowedMarketerIds,
+                                            marketer.id,
+                                          ],
+                                    };
+                                  });
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "ml-2 mr-2 h-4 w-4",
+                                    isSelected ? "opacity-100" : "opacity-0",
+                                  )}
+                                />
+                                {marketer.label}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to allow all approved marketers.
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label>Visibility</Label>
                 <Select
                   value={formState.visibility}
@@ -741,7 +932,10 @@ export function ProjectRewardsTab({
                   Milestone:{" "}
                   <span className="text-foreground">
                     {formState.milestoneType === "NET_REVENUE"
-                      ? `$${formState.milestoneValue || 0} net revenue`
+                      ? `${formatCurrency(
+                          Math.round((Number(formState.milestoneValue) || 0) * 100),
+                          projectCurrency ?? "USD",
+                        )} net revenue`
                       : formState.milestoneType === "COMPLETED_SALES"
                         ? `${formState.milestoneValue || 0} completed sales`
                         : `${formState.milestoneValue || 0} active customers`}
