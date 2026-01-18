@@ -551,6 +551,7 @@ model CreatorPayment {
   amountTotal             Int
   marketerTotal           Int
   platformFeeTotal        Int
+  currency                String?
   status                  PaymentStatus @default(PENDING)
   stripeCheckoutSessionId String?
   stripePaymentIntentId   String?

@@ -11,7 +11,8 @@ function defaultUrl(path: string) {
 
 async function buildReceiptPurchases(
   creatorId: string,
-  paymentId?: string | null
+  paymentId?: string | null,
+  currency?: string | null,
 ) {
   if (paymentId) {
     const payment = await prisma.creatorPayment.findUnique({
@@ -35,6 +36,17 @@ async function buildReceiptPurchases(
     if (!payment) {
       return { purchases: [], payment };
     }
+    if (currency && payment.currency && payment.currency !== currency) {
+      return { purchases: [], payment };
+    }
+    if (currency && !payment.currency) {
+      const currencies = new Set(
+        payment.purchases.map((purchase) => purchase.currency.toLowerCase()),
+      );
+      if (currencies.size !== 1 || !currencies.has(currency)) {
+        return { purchases: [], payment };
+      }
+    }
     return { purchases: payment.purchases, payment };
   }
 
@@ -44,6 +56,7 @@ async function buildReceiptPurchases(
       creatorPaymentId: null,
       commissionAmount: { gt: 0 },
       project: { userId: creatorId },
+      ...(currency ? { currency } : {}),
       OR: [
         { commissionStatus: "PENDING_CREATOR_PAYMENT" },
         {
@@ -64,7 +77,7 @@ async function buildReceiptPurchases(
   return { purchases, payment: null };
 }
 
-export async function POST(_request: Request) {
+export async function POST(request: Request) {
   let authUser;
   try {
     authUser = await requireAuthUser();
@@ -80,14 +93,25 @@ export async function POST(_request: Request) {
     return NextResponse.json({ error: "Founder not found" }, { status: 404 });
   }
 
+  const payload = await request.json().catch(() => ({}));
+  const currencyParam =
+    typeof payload?.currency === "string" && payload.currency.length > 0
+      ? payload.currency.toLowerCase()
+      : null;
+
   const existingPayment = await prisma.creatorPayment.findFirst({
-    where: { creatorId: creator.id, status: "PENDING" },
+    where: {
+      creatorId: creator.id,
+      status: "PENDING",
+      ...(currencyParam ? { currency: currencyParam } : {}),
+    },
     orderBy: { createdAt: "desc" },
   });
 
   const { purchases, payment } = await buildReceiptPurchases(
     creator.id,
-    existingPayment?.id ?? null
+    existingPayment?.id ?? null,
+    currencyParam,
   );
 
   if (purchases.length === 0) {
@@ -96,6 +120,15 @@ export async function POST(_request: Request) {
       { status: 400 }
     );
   }
+
+  const currencies = new Set(purchases.map((purchase) => purchase.currency));
+  if (!currencyParam && currencies.size > 1) {
+    return NextResponse.json(
+      { error: "Multiple currencies detected. Select a currency to pay." },
+      { status: 400 }
+    );
+  }
+  const currency = (currencyParam ?? Array.from(currencies)[0] ?? "usd").toLowerCase();
 
   const totals = purchases.reduce(
     (acc, purchase) => {
@@ -124,6 +157,7 @@ export async function POST(_request: Request) {
           amountTotal: totalWithFee,
           marketerTotal: totals.marketerTotal,
           platformFeeTotal: totals.platformTotal,
+          currency,
           status: "PENDING",
         },
       });
@@ -157,6 +191,13 @@ export async function POST(_request: Request) {
     createdNewPayment = true;
   }
 
+  if (creatorPayment && !createdNewPayment && currency) {
+    await prisma.creatorPayment.update({
+      where: { id: creatorPayment.id },
+      data: { currency },
+    });
+  }
+
   if (createdNewPayment && creatorPayment) {
     await prisma.purchase.updateMany({
       where: { id: { in: purchases.map((purchase) => purchase.id) } },
@@ -177,7 +218,7 @@ export async function POST(_request: Request) {
     line_items: [
       {
         price_data: {
-          currency: "usd",
+          currency,
           product_data: {
             name: "Affiliate commission payout",
             description: `Marketers: ${totals.marketerTotal / 100}, Platform: ${

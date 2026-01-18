@@ -30,6 +30,7 @@ export type CreatorPayout = {
   adjustmentsTotal?: number;
   netReadyEarnings?: number;
   failureReason?: string | null;
+  currency?: string;
 };
 
 export type CreatorDashboardTotals = {
@@ -100,6 +101,7 @@ export type CreatorPaymentPreview = {
     totalWithFee: number;
     currency: string | null;
   };
+  availableCurrencies: string[];
 };
 
 export type CreatorPaymentHistory = {
@@ -107,6 +109,7 @@ export type CreatorPaymentHistory = {
   amountTotal: number;
   marketerTotal: number;
   platformFeeTotal: number;
+  currency: string | null;
   status: string;
   createdAt: string | Date;
   purchaseCount: number;
@@ -179,7 +182,11 @@ export type CreatorPurchase = {
 };
 
 export function useCreatorPayouts(userId?: string | null) {
-  return useQuery<{ totals: CreatorPayoutTotals; payouts: CreatorPayout[] }>({
+  return useQuery<{
+    totals: CreatorPayoutTotals;
+    payouts: CreatorPayout[];
+    payoutsByCurrency?: Array<{ currency: string; payouts: CreatorPayout[] }>;
+  }>({
     queryKey: ["creator-payouts", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
@@ -192,17 +199,26 @@ export function useCreatorPayouts(userId?: string | null) {
       return payload?.data as {
         totals: CreatorPayoutTotals;
         payouts: CreatorPayout[];
+        payoutsByCurrency?: Array<{ currency: string; payouts: CreatorPayout[] }>;
       };
     },
   });
 }
 
-export function useCreatorPaymentPreview(userId?: string | null, enabled = true) {
+export function useCreatorPaymentPreview(
+  userId?: string | null,
+  enabled = true,
+  currency?: string | null,
+) {
   return useQuery<CreatorPaymentPreview>({
-    queryKey: ["creator-payment-preview", userId ?? "none"],
+    queryKey: ["creator-payment-preview", userId ?? "none", currency ?? "all"],
     enabled: Boolean(userId) && enabled,
     queryFn: async () => {
-      const response = await fetch(`/api/founder/payouts/preview?userId=${userId}`);
+      const params = new URLSearchParams({ userId: userId ?? "" });
+      if (currency) {
+        params.set("currency", currency);
+      }
+      const response = await fetch(`/api/founder/payouts/preview?${params}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to load payout preview.");
@@ -215,7 +231,7 @@ export function useCreatorPaymentPreview(userId?: string | null, enabled = true)
 
 export function useCreatorPaymentCheckout() {
   return useMutation({
-    mutationFn: async (payload: { userId: string }) => {
+    mutationFn: async (payload: { userId: string; currency?: string | null }) => {
       const response = await fetch("/api/founder/payouts/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -232,7 +248,11 @@ export function useCreatorPaymentCheckout() {
 
 export function useCreatorPaymentCharge() {
   return useMutation({
-    mutationFn: async (payload: { userId: string; paymentMethodId?: string }) => {
+    mutationFn: async (payload: {
+      userId: string;
+      paymentMethodId?: string;
+      currency?: string | null;
+    }) => {
       const response = await fetch("/api/founder/payouts/charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

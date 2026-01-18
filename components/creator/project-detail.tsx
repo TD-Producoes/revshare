@@ -77,6 +77,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Badge } from "../ui/badge";
 
 interface ProjectDetailProps {
   projectId: string;

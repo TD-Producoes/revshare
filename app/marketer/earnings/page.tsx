@@ -253,6 +253,19 @@ export default function EarningsPage() {
   const projectEarningsList = Array.from(projectEarnings.values()).sort(
     (a, b) => b.totalEarnings - a.totalEarnings,
   );
+  const earningsByCurrency = projectEarningsList.reduce((acc, entry) => {
+    const currency = (entry.currency ?? "USD").toUpperCase();
+    const list = acc.get(currency) ?? [];
+    list.push(entry);
+    acc.set(currency, list);
+    return acc;
+  }, new Map<string, typeof projectEarningsList>());
+  const earningsGroups = Array.from(earningsByCurrency.entries())
+    .map(([currency, entries]) => ({
+      currency,
+      entries,
+    }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
   const netEarnings = formatCurrencyList(netEarningsByCurrency);
   const netReady = formatCurrencyList(netReadyByCurrency);
 
@@ -379,71 +392,81 @@ export default function EarningsPage() {
               No earnings yet. Start promoting projects to earn commissions.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Project</TableHead>
-                  <TableHead className="text-right">Commission</TableHead>
-                  <TableHead className="text-right">Purchases</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">Total Earned</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Ready</TableHead>
-                  <TableHead className="text-right">Refund Window</TableHead>
-                  <TableHead className="text-right">Awaiting Founder</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projectEarningsList.map((item) => {
-                  return (
-                    <TableRow key={item.projectId}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{item.projectName}</p>
-                          {item.commissionPercent !== null ? (
-                            <Badge variant="secondary" className="text-xs mt-1">
-                              {item.commissionPercent}% commission
-                            </Badge>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.commissionPercent !== null
-                          ? `${item.commissionPercent}%`
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.purchaseCount}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(item.totalRevenue, item.currency ?? undefined)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(item.totalEarnings, item.currency ?? undefined)}
-                      </TableCell>
-                      <TableCell className="text-right text-green-600">
-                        {formatCurrency(item.paidEarnings, item.currency ?? undefined)}
-                      </TableCell>
-                      <TableCell className="text-right text-sky-400">
-                        {formatCurrency(item.readyEarnings, item.currency ?? undefined)}
-                      </TableCell>
-                      <TableCell className="text-right text-amber-500">
-                        {formatCurrency(
-                          item.awaitingRefundEarnings,
-                          item.currency ?? undefined,
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right text-yellow-600">
-                        {formatCurrency(
-                          item.awaitingCreatorEarnings,
-                          item.currency ?? undefined,
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="space-y-6">
+              {earningsGroups.map((group) => (
+                <div key={group.currency} className="space-y-3">
+                  {earningsGroups.length > 1 ? (
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">
+                        {group.currency.toUpperCase()} projects
+                      </p>
+                      <Badge variant="secondary" className="text-xs">
+                        {group.entries.length} projects
+                      </Badge>
+                    </div>
+                  ) : null}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Project</TableHead>
+                        <TableHead className="text-right">Commission</TableHead>
+                        <TableHead className="text-right">Purchases</TableHead>
+                        <TableHead className="text-right">Revenue</TableHead>
+                        <TableHead className="text-right">Total Earned</TableHead>
+                        <TableHead className="text-right">Received</TableHead>
+                        <TableHead className="text-right">Ready</TableHead>
+                        <TableHead className="text-right">Refund Window</TableHead>
+                        <TableHead className="text-right">Awaiting Founder</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.entries.map((item) => {
+                        return (
+                          <TableRow key={`${group.currency}-${item.projectId}`}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{item.projectName}</p>
+                                {item.commissionPercent !== null ? (
+                                  <Badge variant="secondary" className="text-xs mt-1">
+                                    {item.commissionPercent}% commission
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {item.commissionPercent !== null
+                                ? `${item.commissionPercent}%`
+                                : "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {item.purchaseCount}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(item.totalRevenue, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(item.totalEarnings, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-green-600">
+                              {formatCurrency(item.paidEarnings, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-sky-400">
+                              {formatCurrency(item.readyEarnings, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-amber-500">
+                              {formatCurrency(item.awaitingRefundEarnings, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-yellow-600">
+                              {formatCurrency(item.awaitingCreatorEarnings, group.currency)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

@@ -774,7 +774,7 @@ export function ProjectRewardsTab({
                     }))
                   }
                 />
-                <Label htmlFor="rewardConfirm" className="text-sm">
+                <Label htmlFor="rewardConfirm" className="text-xs">
                   I understand this reward becomes claimable once the milestone
                   is reached and refunds clear.
                 </Label>
