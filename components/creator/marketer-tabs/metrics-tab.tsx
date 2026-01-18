@@ -32,6 +32,7 @@ type MetricsTimeline = Array<{
   commissionOwed: number;
   purchasesCount: number;
   customersCount: number;
+  clicksCount?: number;
 }>;
 
 function sumField(data: MetricsTimeline, key: keyof MetricsTimeline[number]) {
@@ -130,6 +131,7 @@ export function MarketerMetricsTab({
   onSelectProject,
   isProjectLoading,
   showProjectFilter = true,
+  clicksTotal,
 }: {
   timeline: MetricsTimeline;
   currency: string;
@@ -138,6 +140,7 @@ export function MarketerMetricsTab({
   onSelectProject: (projectId: string | null) => void;
   isProjectLoading?: boolean;
   showProjectFilter?: boolean;
+  clicksTotal?: number;
 }) {
   const selectedProjectLabel =
     projects.find((project) => project.id === selectedProjectId)?.name ??
@@ -151,6 +154,10 @@ export function MarketerMetricsTab({
     date: entry.date,
     customers: entry.customersCount ?? 0,
   }));
+  const clicksChartData = timeline.map((entry) => ({
+    date: entry.date,
+    clicks: entry.clicksCount ?? 0,
+  }));
 
   const purchasesConfig = {
     purchases: {
@@ -163,6 +170,12 @@ export function MarketerMetricsTab({
     customers: {
       label: "Customers",
       color: "hsl(var(--chart-3))",
+    },
+  } satisfies ChartConfig;
+  const clicksConfig = {
+    clicks: {
+      label: "Clicks",
+      color: "hsl(var(--chart-4))",
     },
   } satisfies ChartConfig;
 
@@ -253,6 +266,15 @@ export function MarketerMetricsTab({
           config={customersConfig}
           valueFormatter={(value) => formatNumber(value)}
         />
+        <MetricAreaChart
+          title="Clicks (Last 30 Days)"
+          data={clicksChartData}
+          config={clicksConfig}
+          valueFormatter={(value) => formatNumber(value)}
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">30-Day Snapshot</CardTitle>
@@ -282,6 +304,25 @@ export function MarketerMetricsTab({
                 {formatNumber(sumField(timeline, "customersCount"))}
               </span>
             </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Clicks</span>
+              <span className="font-medium">
+                {formatNumber(sumField(timeline, "clicksCount"))}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Total Clicks</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-2xl font-semibold">
+              {formatNumber(clicksTotal ?? 0)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              All-time clicks for this marketer
+            </p>
           </CardContent>
         </Card>
       </div>

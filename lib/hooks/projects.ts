@@ -98,6 +98,8 @@ export type ProjectMetricsSnapshot = {
     affiliateCustomers: number;
     affiliatePurchases?: number;
     directPurchases?: number;
+    clicks?: number;
+    clicks30d?: number;
   };
   timeline: Array<{
     date: string;
@@ -111,6 +113,18 @@ export type ProjectMetricsSnapshot = {
     uniqueCustomers?: number;
     affiliateCustomers?: number;
   }>;
+};
+
+export type ProjectMarketer = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type ProjectAttributionClicks = {
+  total: number;
+  last30Days: number;
+  marketers: Array<{ marketerId: string; clicks: number }>;
 };
 
 export type PublicProjectStats = {
@@ -228,6 +242,8 @@ export function useProjectMetrics(id?: string | null, days = 30) {
             affiliateCustomers: 0,
             affiliatePurchases: 0,
             directPurchases: 0,
+            clicks: 0,
+            clicks30d: 0,
           },
           timeline: [],
         };
@@ -238,6 +254,40 @@ export function useProjectMetrics(id?: string | null, days = 30) {
         throw new Error(payload?.error ?? "Failed to fetch project metrics.");
       }
       return payload?.data as ProjectMetricsSnapshot;
+    },
+  });
+}
+
+export function useProjectMarketers(id?: string | null) {
+  return useQuery<ProjectMarketer[]>({
+    queryKey: ["project-marketers", id ?? "none"],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      if (!id) return [];
+      const response = await fetch(`/api/projects/${id}/marketers`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch marketers.");
+      }
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export function useProjectAttributionClicks(id?: string | null) {
+  return useQuery<ProjectAttributionClicks>({
+    queryKey: ["project-attribution-clicks", id ?? "none"],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      if (!id) {
+        return { total: 0, last30Days: 0, marketers: [] };
+      }
+      const response = await fetch(`/api/projects/${id}/attribution-clicks`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to fetch attribution clicks.");
+      }
+      return payload?.data as ProjectAttributionClicks;
     },
   });
 }

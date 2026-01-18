@@ -61,6 +61,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
     commissionOwed: 0,
     purchasesCount: 0,
     customersCount: 0,
+    clicksCount: 0,
   };
   const timeline = metrics?.timeline ?? [];
   const activeTabLabel = { overview: "Overview", metrics: "Metrics" }[
@@ -194,6 +195,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
             projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            clicksTotal={summary.clicksCount}
           />
         </TabsContent>
       </Tabs>

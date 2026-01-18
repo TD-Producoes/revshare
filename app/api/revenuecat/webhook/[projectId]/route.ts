@@ -17,11 +17,13 @@ type RevenueCatEvent = {
   project_id?: string;
   event_timestamp_ms?: number;
   purchase_date_ms?: number;
+  purchased_at_ms?: number;
   expiration_at_ms?: number | null;
   app_user_id?: string;
   original_app_user_id?: string;
   transaction_id?: string;
   price?: number | string;
+  price_in_purchased_currency?: number | string;
   currency?: string;
   subscriber_attributes?: Record<string, { value?: string }>;
   metadata?: Record<string, string>;
@@ -44,9 +46,13 @@ function extractMarketerId(event: RevenueCatEvent) {
   );
 }
 
-function toAmountInCents(price?: number | string) {
-  if (price === undefined || price === null) return 0;
-  const numeric = typeof price === "string" ? Number(price) : price;
+function toAmountInCents(
+  price?: number | string,
+  fallback?: number | string,
+) {
+  const candidate = price ?? fallback;
+  if (candidate === undefined || candidate === null) return 0;
+  const numeric = typeof candidate === "string" ? Number(candidate) : candidate;
   if (!Number.isFinite(numeric)) return 0;
   return Math.round(numeric * 100);
 }
@@ -155,14 +161,20 @@ export async function POST(
       ? Number(contract.commissionPercent)
       : Number(project.marketerCommissionPercent ?? 0);
 
-  const amount = toAmountInCents(event.price);
+  const amount = toAmountInCents(
+    event.price_in_purchased_currency,
+    event.price,
+  );
   const commissionAmount =
     marketerId && isContractApproved && amount > 0
       ? Math.round(amount * commissionPercent)
       : 0;
 
   const eventTimeMs =
-    event.purchase_date_ms ?? event.event_timestamp_ms ?? Date.now();
+    event.purchased_at_ms ??
+    event.purchase_date_ms ??
+    event.event_timestamp_ms ??
+    Date.now();
   const eventCreatedAt = new Date(eventTimeMs);
   const refundWindowDays =
     contract?.refundWindowDays ?? project.refundWindowDays ?? 30;

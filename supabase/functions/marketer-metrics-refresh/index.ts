@@ -11,11 +11,18 @@ type PurchaseRow = {
   coupon: { marketerId: string | null } | null;
 };
 
+type ClickRow = {
+  projectId: string;
+  marketerId: string;
+  createdAt: string;
+};
+
 type SnapshotTotals = {
   affiliateRevenueDay: number;
   commissionOwedDay: number;
   purchasesCountDay: number;
   customerEmailsDay: Set<string>;
+  clicksCountDay: number;
 };
 
 function createEmptySnapshotTotals(): SnapshotTotals {
@@ -24,6 +31,7 @@ function createEmptySnapshotTotals(): SnapshotTotals {
     commissionOwedDay: 0,
     purchasesCountDay: 0,
     customerEmailsDay: new Set<string>(),
+    clicksCountDay: 0,
   };
 }
 
@@ -119,8 +127,27 @@ Deno.serve(async (request) => {
     return new Response(error.message, { status: 500 });
   }
 
+  const { data: clickData, error: clickError } = await supabase
+    .from("AttributionClick")
+    .select("projectId,marketerId,createdAt")
+    .gte("createdAt", since.toISOString());
+
+  if (clickError) {
+    return new Response(clickError.message, { status: 500 });
+  }
+
   const rows = (data ?? []) as PurchaseRow[];
   const snapshotMap = new Map<string, SnapshotTotals>();
+
+  (clickData ?? []).forEach((row) => {
+    const click = row as ClickRow;
+    if (!click.projectId || !click.marketerId) return;
+    const dateKey = getDateKey(click.createdAt);
+    const key = `${click.projectId}:${click.marketerId}:${dateKey}`;
+    const existing = snapshotMap.get(key) ?? createEmptySnapshotTotals();
+    existing.clicksCountDay += 1;
+    snapshotMap.set(key, existing);
+  });
 
   rows.forEach((row) => {
     const marketerId = row.coupon?.marketerId;
@@ -154,6 +181,7 @@ Deno.serve(async (request) => {
       commissionOwedDay: totals.commissionOwedDay,
       purchasesCountDay: totals.purchasesCountDay,
       customersCountDay: totals.customerEmailsDay.size,
+      clicksCountDay: totals.clicksCountDay,
       updatedAt: now,
     };
   });

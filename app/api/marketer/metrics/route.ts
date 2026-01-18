@@ -61,6 +61,7 @@ export async function GET(request: Request) {
         commissionOwedDay: true,
         purchasesCountDay: true,
         customersCountDay: true,
+        clicksCountDay: true,
       },
     }),
     prisma.marketerMetricsSnapshot.aggregate({
@@ -71,6 +72,7 @@ export async function GET(request: Request) {
         commissionOwedDay: true,
         purchasesCountDay: true,
         customersCountDay: true,
+        clicksCountDay: true,
       },
     }),
   ]);
@@ -83,6 +85,7 @@ export async function GET(request: Request) {
         commissionOwed: totals._sum.commissionOwedDay ?? 0,
         purchasesCount: totals._sum.purchasesCountDay ?? 0,
         customersCount: totals._sum.customersCountDay ?? 0,
+        clicksCount: totals._sum.clicksCountDay ?? 0,
       },
       timeline: timeline.map((entry) => ({
         date: entry.date.toISOString(),
@@ -91,6 +94,7 @@ export async function GET(request: Request) {
         commissionOwed: entry.commissionOwedDay,
         purchasesCount: entry.purchasesCountDay,
         customersCount: entry.customersCountDay,
+        clicksCount: entry.clicksCountDay ?? 0,
       })),
     },
   });

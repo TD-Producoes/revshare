@@ -183,6 +183,7 @@ export type MarketerMetrics = {
     commissionOwed: number;
     purchasesCount: number;
     customersCount: number;
+    clicksCount: number;
   };
   timeline: Array<{
     date: string;
@@ -191,6 +192,7 @@ export type MarketerMetrics = {
     commissionOwed: number;
     purchasesCount: number;
     customersCount: number;
+    clicksCount: number;
   }>;
 };
 

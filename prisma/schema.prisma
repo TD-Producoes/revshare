@@ -56,6 +56,8 @@ model Project {
   refundWindowDays          Int                       @default(30)
   creatorStripeAccountId    String?
   integrations              ProjectIntegration[]
+  attributionAppKeys        AttributionAppKey[]
+  attributionClicks         AttributionClick[]
   onboardingStatus          String?
   onboardingData            Json?
   onboardingCompletedAt     DateTime?
@@ -119,6 +121,37 @@ model ProjectIntegration {
 
   @@unique([projectId, provider])
   @@index([projectId])
+}
+
+model AttributionAppKey {
+  id        String   @id @default(cuid())
+  projectId String
+  keyHash   String   @unique
+  keyCipherText String?
+  keyIv     String?
+  keyTag    String?
+  name      String?
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model AttributionClick {
+  id        String   @id @default(cuid())
+  projectId String
+  marketerId String
+  deviceId  String
+  url       String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, marketerId, deviceId])
+  @@index([projectId])
+  @@index([marketerId])
 }
 
 model Contract {
@@ -636,6 +669,7 @@ model MarketerMetricsSnapshot {
   commissionOwedDay   Int      @default(0)
   purchasesCountDay   Int      @default(0)
   customersCountDay   Int      @default(0)
+  clicksCountDay      Int      @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

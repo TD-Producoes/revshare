@@ -7,7 +7,7 @@ import { ProjectMetricsTab } from "@/components/creator/project-tabs/metrics-tab
 import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-tab";
 import { ProjectRewardsTab } from "@/components/creator/project-tabs/rewards-tab";
 import { ProjectSettingsTab } from "@/components/creator/project-tabs/settings-tab";
-import { Badge } from "@/components/ui/badge";
+import { AttributionKeysSetup } from "@/components/creator/attribution-keys-setup";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -52,7 +52,9 @@ import { useProjectCoupons, useProjectCouponTemplates } from "@/lib/hooks/coupon
 import {
   useProject,
   useProjectMetrics,
+  useProjectMarketers,
   useProjectPurchases,
+  useProjectAttributionClicks,
 } from "@/lib/hooks/projects";
 import { useUser } from "@/lib/hooks/users";
 import { cn } from "@/lib/utils";
@@ -91,6 +93,8 @@ function buildAffiliateRows(
     commissionAmount: number;
     coupon: { marketer: { id: string } } | null;
   }>,
+  approvedMarketers: Array<{ id: string; name: string }>,
+  marketerClicks: Map<string, number>,
 ) {
   const couponMap = new Map<
     string,
@@ -128,9 +132,15 @@ function buildAffiliateRows(
   });
 
   const marketerIds = new Set<string>([
+    ...approvedMarketers.map((marketer) => marketer.id),
     ...couponMap.keys(),
     ...purchaseMap.keys(),
+    ...marketerClicks.keys(),
   ]);
+
+  const marketerNameMap = new Map(
+    approvedMarketers.map((marketer) => [marketer.id, marketer.name]),
+  );
 
   return Array.from(marketerIds).map((marketerId) => {
     const couponInfo = couponMap.get(marketerId);
@@ -141,11 +151,15 @@ function buildAffiliateRows(
 
     return {
       marketerId,
-      marketerName: couponInfo?.marketerName ?? "Unknown",
+      marketerName:
+        couponInfo?.marketerName ??
+        marketerNameMap.get(marketerId) ??
+        "Unknown",
       referralCode: codeLabel,
       purchases: purchaseInfo?.purchases ?? 0,
       revenue: purchaseInfo?.revenue ?? 0,
       commission: purchaseInfo?.commission ?? 0,
+      clicks: marketerClicks.get(marketerId) ?? 0,
       refundWindowDays: couponInfo?.refundWindowDays ?? null,
     };
   });
@@ -210,6 +224,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     isLoading: isCouponsLoading,
     error: couponsError,
   } = useProjectCoupons(projectId);
+  const { data: projectMarketers = [], isLoading: isMarketersLoading } =
+    useProjectMarketers(projectId);
+  const { data: attributionClicks } = useProjectAttributionClicks(projectId);
   const {
     data: couponTemplates = [],
     isLoading: isTemplatesLoading,
@@ -234,6 +251,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     marketers: "Marketers",
     rewards: "Rewards",
     activity: "Activity",
+    attribution: "Attribution",
     settings: "Settings",
   }[activeTab] ?? "Overview";
   const searchParams = useSearchParams();
@@ -249,6 +267,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       "marketers",
       "rewards",
       "activity",
+      "attribution",
       "settings",
     ]);
     if (allowedTabs.has(tab)) {
@@ -408,6 +427,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     affiliateSubscribers: 0,
     customers: 0,
     affiliateCustomers: 0,
+    clicks: 0,
+    clicks30d: 0,
   };
   const revenueData =
     projectMetrics?.timeline?.map((entry) => ({
@@ -416,7 +437,18 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       affiliateRevenue: entry.affiliateRevenue / 100,
     })) ?? getRevenueTimeline(events, resolvedProject.id, undefined, 30);
 
-  const affiliateRows = buildAffiliateRows(projectCoupons, projectPurchases);
+  const clickMap = new Map<string, number>(
+    (attributionClicks?.marketers ?? []).map((row) => [
+      row.marketerId,
+      row.clicks,
+    ]),
+  );
+  const affiliateRows = buildAffiliateRows(
+    projectCoupons,
+    projectPurchases,
+    projectMarketers,
+    clickMap,
+  );
 
   // Calculate commission owed per marketer
   const getCommissionOwed = (earnings: number) => {
@@ -1061,6 +1093,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <TabsTrigger className="px-3 py-2 text-sm" value="activity">
               Activity
             </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="attribution">
+              Attribution
+            </TabsTrigger>
             <TabsTrigger className="px-3 py-2 text-sm" value="settings">
               Settings
             </TabsTrigger>
@@ -1107,7 +1142,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         <TabsContent value="marketers">
           <ProjectMarketersTab
             affiliateRows={affiliateRows}
-            isLoading={isPurchasesLoading || isCouponsLoading}
+            isLoading={isPurchasesLoading || isCouponsLoading || isMarketersLoading}
             error={(purchasesError as Error | null) ?? (couponsError as Error | null)}
           />
         </TabsContent>
@@ -1123,6 +1158,14 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
         <TabsContent value="activity">
           <ProjectActivityTab projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="attribution">
+          <AttributionKeysSetup
+            projectId={projectId}
+            title="Attribution keys"
+            description="Generate app keys to connect your product and track deep-link clicks."
+          />
         </TabsContent>
 
         <TabsContent value="settings">

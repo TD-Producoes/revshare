@@ -91,11 +91,20 @@ export async function GET(
           affiliateRevenue: 0,
           mrr: 0,
           activeSubscribers: 0,
+          clicks: 0,
+          clicks30d: 0,
         },
         timeline: [],
       },
     });
   }
+
+  const [totalClicks, clicks30d] = await Promise.all([
+    prisma.attributionClick.count({ where: { projectId } }),
+    prisma.attributionClick.count({
+      where: { projectId, createdAt: { gte: since } },
+    }),
+  ]);
 
   const latest = snapshots[snapshots.length - 1];
   const summary = {
@@ -111,6 +120,8 @@ export async function GET(
     affiliateSubscribers: 0,
     customers: latest?.uniqueCustomers ?? 0,
     affiliateCustomers: latest?.affiliateCustomers ?? 0,
+    clicks: totalClicks,
+    clicks30d,
   };
 
   summary.affiliateMrr = summary.totalRevenue

@@ -35,6 +35,7 @@ import { projectCategories } from "@/lib/data/categories";
 import { Info, Plus, Loader2, Sparkles, CheckCircle2, CreditCard } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { AttributionKeysSetup } from "@/components/creator/attribution-keys-setup";
 
 // Helper function to map scraped category to form category
 function mapCategoryToFormCategory(scrapedCategory: string | null): string {
@@ -209,6 +210,7 @@ export function CreateProjectForm({
   const [urlInput, setUrlInput] = useState("");
   const [error, setError] = useState("");
   const [isConnectingStripe, setIsConnectingStripe] = useState(false);
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const [tempProjectId] = useState(() => `temp-${Date.now()}`);
   const [userId, setUserId] = useState<string | null>(null);
@@ -274,6 +276,7 @@ export function CreateProjectForm({
       resetForm();
       setError("");
       setIsConnectingStripe(false);
+      setCreatedProjectId(null);
     }
   };
 
@@ -411,7 +414,9 @@ export function CreateProjectForm({
       return;
     }
 
-    await createProject.mutateAsync();
+    const result = await createProject.mutateAsync();
+    const projectId = result?.data?.id ?? null;
+    setCreatedProjectId(projectId);
   };
 
   const handleConnectStripe = async () => {
@@ -467,9 +472,15 @@ export function CreateProjectForm({
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className={`sm:max-w-[600px] flex flex-col p-0 overflow-hidden ${
-        step === 1 || step === "loading" || step === "success" ? "max-h-[400px]" : "h-[90vh]"
-      }`}>
+        <DialogContent
+          className={`sm:max-w-[600px] flex flex-col p-0 overflow-hidden ${
+            step === 1 || step === "loading"
+              ? "max-h-[400px]"
+              : step === "success"
+              ? "max-h-[600px]"
+              : "h-[90vh]"
+          }`}
+        >
         {/* Header - Fixed */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <DialogTitle>
@@ -493,8 +504,24 @@ export function CreateProjectForm({
         </DialogHeader>
 
         {/* Content - Scrollable */}
-        <div className={step === 1 || step === "loading" || step === "success" ? "max-h-[200px] overflow-hidden" : "flex-1 min-h-0 overflow-hidden"}>
-          <ScrollArea className={step === 1 || step === "loading" || step === "success" ? "max-h-[200px] px-6" : "h-full px-6"}>
+        <div
+          className={
+            step === 1 || step === "loading"
+              ? "max-h-[200px] overflow-hidden"
+              : step === "success"
+              ? "max-h-[380px] overflow-hidden"
+              : "flex-1 min-h-0 overflow-hidden"
+          }
+        >
+          <ScrollArea
+            className={
+              step === 1 || step === "loading"
+                ? "max-h-[200px] px-6"
+                : step === "success"
+                ? "max-h-[380px] px-6"
+                : "h-full px-6"
+            }
+          >
             <div className="py-4">
             {step === "loading" ? (
               // Loading Step: Scraping website
@@ -507,17 +534,22 @@ export function CreateProjectForm({
               </div>
             ) : step === "success" ? (
               // Success Step: Project created
-              <div className="flex flex-col items-center justify-center gap-4 py-8">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <CheckCircle2 className="h-6 w-6 text-primary" />
+              <div className="space-y-6 py-6">
+                <div className="flex flex-col items-center justify-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                    <CheckCircle2 className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium">Project created successfully!</p>
+                    <p className="text-xs text-muted-foreground">
+                      Connect your Stripe account to start receiving payments from marketers.
+                    </p>
+                  </div>
+                  {error && <p className="text-sm text-destructive mt-2">{error}</p>}
                 </div>
-                <div className="text-center space-y-1">
-                  <p className="text-sm font-medium">Project created successfully!</p>
-                  <p className="text-xs text-muted-foreground">
-                    Connect your Stripe account to start receiving payments from marketers.
-                  </p>
-                </div>
-                {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+                {createdProjectId ? (
+                  <AttributionKeysSetup projectId={createdProjectId} />
+                ) : null}
               </div>
             ) : step === 1 ? (
               // Step 1: URL Input
