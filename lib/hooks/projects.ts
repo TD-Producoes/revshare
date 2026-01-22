@@ -473,6 +473,7 @@ export type Reward = {
   description?: string | null;
   milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
   milestoneValue: number;
+  startsAt?: string | null;
   rewardType:
     | "DISCOUNT_COUPON"
     | "FREE_SUBSCRIPTION"

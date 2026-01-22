@@ -166,9 +166,10 @@ export async function GET(_request: Request) {
 
   const usePending = pendingMatchesCurrency();
 
-  const allPurchases = usePending
-    ? pendingPayment.purchases
-    : await prisma.purchase.findMany({
+  const allPurchases =
+    usePending && pendingPayment
+      ? pendingPayment.purchases
+      : await prisma.purchase.findMany({
         where: {
           creatorPaymentId: null,
           commissionAmount: { gt: 0 },

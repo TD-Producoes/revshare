@@ -49,7 +49,8 @@ export async function GET(
   }
   if (
     !contract ||
-    ![ContractStatus.APPROVED, ContractStatus.PAUSED].includes(contract.status)
+    (contract.status !== ContractStatus.APPROVED &&
+      contract.status !== ContractStatus.PAUSED)
   ) {
     return NextResponse.json(
       { error: "Contract not approved for this project" },

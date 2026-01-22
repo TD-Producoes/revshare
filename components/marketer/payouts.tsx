@@ -205,7 +205,7 @@ export function MarketerPayouts() {
               </TableHeader>
               <TableBody>
                 {transfers.map((transfer) => {
-                  const transferCurrency = transfer.currency ?? currency;
+                  const transferCurrency = transfer.currency ?? "USD";
                   const reference = transfer.stripeTransferId ?? "-";
                   return (
                     <TableRow key={transfer.id}>

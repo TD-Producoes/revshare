@@ -100,10 +100,11 @@ export async function fetchRewardPayoutRows(params: RewardPayoutParams) {
 }
 
 export async function createRewardTransfers(params: RewardTransferParams) {
-  const { rows, totalAmount, currency } = await fetchRewardPayoutRows(params);
+  const { rows, totalAmount } = await fetchRewardPayoutRows(params);
   if (rows.length === 0) {
     return { results: [], totalAmount, rewardCount: 0 };
   }
+  const transferCurrency = params.currency.toLowerCase();
 
   const grouped = new Map<
     string,
@@ -136,7 +137,7 @@ export async function createRewardTransfers(params: RewardTransferParams) {
     try {
       const transfer = await stripe.transfers.create({
         amount: group.amount,
-        currency: currency.toLowerCase(),
+        currency: transferCurrency,
         destination: group.accountId,
         metadata: {
           creatorId: params.creatorId,

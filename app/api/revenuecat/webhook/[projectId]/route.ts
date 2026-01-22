@@ -15,6 +15,7 @@ type RevenueCatEvent = {
   type?: string;
   app_id?: string;
   project_id?: string;
+  environment?: string;
   event_timestamp_ms?: number;
   purchase_date_ms?: number;
   purchased_at_ms?: number;
@@ -30,6 +31,8 @@ type RevenueCatEvent = {
   subscriber_attributes?: Record<string, { value?: string }>;
   metadata?: Record<string, string>;
 };
+
+type RevenueCatPayload = RevenueCatEvent | { event: RevenueCatEvent | null };
 
 function timingSafeEqual(a: string, b: string) {
   const aBuffer = Buffer.from(a);
@@ -78,22 +81,32 @@ export async function POST(
     request.headers.get("x-webhook-authorization");
 
   const raw = await request.text();
-  let payload: { event?: RevenueCatEvent } | RevenueCatEvent;
+  let payload: RevenueCatPayload;
   try {
     payload = JSON.parse(raw);
   } catch {
     return respond("invalid_payload", 400, { error: "Invalid payload" });
   }
 
-  const event: RevenueCatEvent =
-    "event" in payload ? payload.event ?? {} : payload;
+  let event: RevenueCatEvent;
+  if ("event" in payload) {
+    event = payload.event ?? {};
+  } else {
+    event = payload;
+  }
   const eventId = event.id;
   const eventType = event.type;
+  const eventEnvironment = event.environment?.toUpperCase();
+  const allowSandbox = process.env.REVENUECAT_WEBHOOK_ALLOW_SANDBOX === "true";
 
   if (!eventId || !eventType || !revenueCatProjectId) {
     return respond("missing_event_data", 400, {
       error: "Missing required event data",
     });
+  }
+
+  if (eventEnvironment && eventEnvironment !== "PRODUCTION" && !allowSandbox) {
+    return respond("sandbox_event_ignored");
   }
 
   const integration = await prisma.projectIntegration.findFirst({
