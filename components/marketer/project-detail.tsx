@@ -207,18 +207,18 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
   }
 
   if (!resolvedProjectId) {
-    return <div className="text-muted-foreground">Project not found.</div>;
+    return <div className="text-xs text-muted-foreground">Project not found.</div>;
   }
 
   if (!project) {
     return (
-      <div className="text-muted-foreground">Project not found.</div>
+      <div className="text-xs text-muted-foreground">Project not found.</div>
     );
   }
 
   if (statsError) {
     return (
-      <div className="text-muted-foreground">
+      <div className="text-xs text-muted-foreground">
         {statsError instanceof Error
           ? statsError.message
           : "Unable to load project stats."}
@@ -405,6 +405,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
             rewards={rewardItems}
             isLoading={isRewardsLoading}
             currency={projectCurrency}
+            marketerId={currentUser?.id}
             onClaimReward={handleClaimReward}
             isClaiming={isClaiming}
             claimError={claimError}

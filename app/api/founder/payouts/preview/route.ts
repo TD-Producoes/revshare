@@ -133,6 +133,9 @@ export async function GET(_request: Request) {
     return NextResponse.json({ error: "Founder not found" }, { status: 404 });
   }
 
+  const { searchParams } = new URL(_request.url);
+  const currencyParam = searchParams.get("currency")?.toLowerCase() ?? null;
+
   const pendingPayment = await prisma.creatorPayment.findFirst({
     where: { creatorId: creator.id, status: "PENDING" },
     include: {
@@ -149,14 +152,28 @@ export async function GET(_request: Request) {
   });
 
   const now = new Date();
-  const purchases =
-    pendingPayment?.purchases.length
+  const pendingMatchesCurrency = () => {
+    if (!pendingPayment?.purchases.length) return false;
+    if (!currencyParam) return true;
+    if (pendingPayment.currency) {
+      return pendingPayment.currency === currencyParam;
+    }
+    const currencies = new Set(
+      pendingPayment.purchases.map((purchase) => purchase.currency.toLowerCase()),
+    );
+    return currencies.size === 1 && currencies.has(currencyParam);
+  };
+
+  const usePending = pendingMatchesCurrency();
+
+  const allPurchases =
+    usePending && pendingPayment
       ? pendingPayment.purchases
       : await prisma.purchase.findMany({
-          where: {
-            creatorPaymentId: null,
-            commissionAmount: { gt: 0 },
-            project: { userId: creator.id },
+        where: {
+          creatorPaymentId: null,
+          commissionAmount: { gt: 0 },
+          project: { userId: creator.id },
             OR: [
               { commissionStatus: "PENDING_CREATOR_PAYMENT" },
               {
@@ -174,14 +191,25 @@ export async function GET(_request: Request) {
           orderBy: { createdAt: "desc" },
         });
 
+  const purchases = currencyParam
+    ? allPurchases.filter(
+        (purchase) => purchase.currency.toLowerCase() === currencyParam,
+      )
+    : allPurchases;
+
   const receipt = buildReceiptLines(purchases);
+  const availableCurrencies = Array.from(
+    new Set(allPurchases.map((purchase) => purchase.currency.toLowerCase())),
+  );
+  const paymentId = usePending ? pendingPayment?.id ?? null : null;
 
   return NextResponse.json({
     data: {
-      paymentId: pendingPayment?.id ?? null,
+      paymentId,
       purchases: receipt.lines,
       perMarketer: receipt.perMarketer,
       totals: receipt.totals,
+      availableCurrencies,
     },
   });
 }

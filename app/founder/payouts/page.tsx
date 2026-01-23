@@ -13,10 +13,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Clock, CheckCircle, Percent, Info } from "lucide-react";
+import {
+  DollarSign,
+  Clock,
+  CheckCircle,
+  Percent,
+  Info,
+  ListChecks,
+  Check,
+} from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import {
+  CreatorRewardPayoutGroup,
   useCreatorPayouts,
   useCreatorPaymentCharge,
   useCreatorPaymentCheckout,
@@ -24,6 +33,7 @@ import {
   useCreatorPayments,
   useCreatorPurchaseDetails,
   useCreatorAdjustments,
+  useCreatorRewardPayouts,
   useProcessMarketerTransfers,
 } from "@/lib/hooks/creator";
 import { usePaymentMethods } from "@/lib/hooks/payment-methods";
@@ -53,6 +63,8 @@ import {
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { RewardPayoutDialog } from "@/components/creator/reward-payout-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type HeaderInfoProps = {
   label: string;
@@ -125,8 +137,12 @@ export default function PayoutsPage() {
     currentUser?.id,
   );
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isRewardReceiptOpen, setIsRewardReceiptOpen] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [chargeError, setChargeError] = useState<string | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
+  const [selectedRewardGroup, setSelectedRewardGroup] =
+    useState<CreatorRewardPayoutGroup | null>(null);
   const [transferResults, setTransferResults] = useState<
     Array<{
       marketerId: string;
@@ -140,13 +156,17 @@ export default function PayoutsPage() {
     data: preview,
     isLoading: isPreviewLoading,
     error: previewError,
-  } = useCreatorPaymentPreview(currentUser?.id, isReceiptOpen);
+  } = useCreatorPaymentPreview(currentUser?.id, isReceiptOpen, selectedCurrency);
   const { data: payments = [], isLoading: isPaymentsLoading } =
     useCreatorPayments(currentUser?.id);
   const { data: purchases = [], isLoading: isPurchasesLoading } =
     useCreatorPurchaseDetails(currentUser?.id);
   const { data: adjustments = [], isLoading: isAdjustmentsLoading } =
     useCreatorAdjustments(currentUser?.id);
+  const {
+    data: rewardPayouts,
+    isLoading: isRewardPayoutsLoading,
+  } = useCreatorRewardPayouts(currentUser?.id);
   const { data: paymentMethods = [] } = usePaymentMethods(currentUser?.id);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<
     string | null
@@ -162,6 +182,8 @@ export default function PayoutsPage() {
   const searchParams = useSearchParams();
   const now = new Date();
   const defaultPaymentMethod = paymentMethods.find((method) => method.isDefault);
+  const availableCurrencies = preview?.availableCurrencies ?? [];
+  const showCurrencySelector = availableCurrencies.length > 1;
 
   useEffect(() => {
     if (!selectedPaymentMethodId && paymentMethods.length > 0) {
@@ -179,13 +201,44 @@ export default function PayoutsPage() {
     }
   }, [router, searchParams]);
 
+  useEffect(() => {
+    const status = searchParams.get("reward");
+    if (status === "success") {
+      toast.success("Reward payment received. Transfers are processing.");
+      if (currentUser?.id) {
+        void queryClient.invalidateQueries({
+          queryKey: ["creator-reward-payouts", currentUser.id],
+        });
+      }
+      router.replace("/founder/payouts");
+    }
+  }, [currentUser?.id, queryClient, router, searchParams]);
+
+  useEffect(() => {
+    if (!isReceiptOpen) {
+      return;
+    }
+    if (availableCurrencies.length === 1 && !selectedCurrency) {
+      setSelectedCurrency(availableCurrencies[0]);
+      return;
+    }
+    if (
+      selectedCurrency &&
+      availableCurrencies.length > 0 &&
+      !availableCurrencies.includes(selectedCurrency)
+    ) {
+      setSelectedCurrency(availableCurrencies[0]);
+    }
+  }, [availableCurrencies, isReceiptOpen, selectedCurrency]);
+
   if (
     isAuthLoading ||
     isUserLoading ||
     isPayoutsLoading ||
     isPaymentsLoading ||
     isPurchasesLoading ||
-    isAdjustmentsLoading
+    isAdjustmentsLoading ||
+    isRewardPayoutsLoading
   ) {
     return (
       <div className="flex h-40 items-center justify-center text-muted-foreground">
@@ -203,6 +256,46 @@ export default function PayoutsPage() {
   }
 
   const payouts = data?.payouts ?? [];
+  const payoutGroups = data?.payoutsByCurrency?.length
+    ? data.payoutsByCurrency
+    : [
+        {
+          currency: "USD",
+          payouts,
+        },
+      ];
+  const rewardGroups = rewardPayouts?.groups ?? [];
+  const paidRewardTotalsByCurrency = payments.reduce(
+    (acc, payment) => {
+      if (payment.type !== "reward" || payment.status !== "paid") {
+        return acc;
+      }
+      const currency = (payment.currency ?? "USD").toUpperCase();
+      acc.set(currency, (acc.get(currency) ?? 0) + payment.amountTotal);
+      return acc;
+    },
+    new Map<string, number>(),
+  );
+  const rewardTotalsLabel =
+    rewardGroups.length > 0
+      ? rewardGroups
+          .map((group) => formatCurrency(group.totalAmount, group.currency))
+          .join(" · ")
+      : formatCurrency(0);
+  const rewardPaidLabel =
+    paidRewardTotalsByCurrency.size > 0
+      ? Array.from(paidRewardTotalsByCurrency.entries())
+          .map(([currency, amount]) => formatCurrency(amount, currency))
+          .join(" · ")
+      : formatCurrency(0);
+  const rewardCount = rewardGroups.reduce(
+    (sum, group) => sum + group.rewardCount,
+    0,
+  );
+  const rewardCurrenciesLabel =
+    rewardGroups.length > 0
+      ? rewardGroups.map((group) => group.currency.toUpperCase()).join(" · ")
+      : "—";
   const totals = data?.totals ?? {
     totalCommissions: 0,
     paidCommissions: 0,
@@ -241,6 +334,7 @@ export default function PayoutsPage() {
       const result = await charge.mutateAsync({
         userId: currentUser.id,
         paymentMethodId: selectedPaymentMethodId ?? undefined,
+        currency: selectedCurrency ?? undefined,
       });
       if (result.status !== "succeeded") {
         throw new Error("Payment requires additional verification.");
@@ -269,7 +363,10 @@ export default function PayoutsPage() {
   const handleCreateCheckout = async () => {
     if (!currentUser) return;
     try {
-      const result = await checkout.mutateAsync({ userId: currentUser.id });
+      const result = await checkout.mutateAsync({
+        userId: currentUser.id,
+        currency: selectedCurrency ?? undefined,
+      });
       if (result?.url) {
         window.location.href = result.url;
         return;
@@ -317,6 +414,18 @@ export default function PayoutsPage() {
     }
   };
 
+  const handleOpenRewardReceipt = (group: CreatorRewardPayoutGroup) => {
+    setSelectedRewardGroup(group);
+    setIsRewardReceiptOpen(true);
+  };
+
+  const handleRewardPaid = async () => {
+    if (!currentUser) return;
+    await queryClient.invalidateQueries({
+      queryKey: ["creator-reward-payouts", currentUser.id],
+    });
+  };
+
   const getEffectiveCommissionStatus = (purchase: {
     commissionStatus: string;
     refundEligibleAt?: string | Date | null;
@@ -331,6 +440,8 @@ export default function PayoutsPage() {
       ? "pending_creator_payment"
       : "awaiting_refund_window";
   };
+
+  const payDisabled = showCurrencySelector && !selectedCurrency;
 
   return (
     <div className="space-y-6">
@@ -402,8 +513,21 @@ export default function PayoutsPage() {
         </Card>
       ) : null}
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Tabs defaultValue="commissions" className="space-y-6">
+        <div className="border-b">
+          <TabsList variant="line" className="h-auto bg-transparent p-0">
+            <TabsTrigger className="px-3 py-2 text-sm" value="commissions">
+              Commissions
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="rewards">
+              Rewards
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="commissions" className="space-y-6">
+          {/* Stats */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Commissions"
           value={formatCurrency(totals.totalCommissions)}
@@ -445,152 +569,167 @@ export default function PayoutsPage() {
               No affiliate earnings to pay out yet.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Marketer</TableHead>
-                  <TableHead className="text-right">Projects</TableHead>
-                  <TableHead className="text-right">
-                    <HeaderWithInfo
-                      label="Total Earned"
-                      help="All commissions generated by this marketer."
-                    />
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <HeaderWithInfo
-                      label="Paid"
-                      help="Commissions already paid out to the marketer."
-                    />
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <HeaderWithInfo
-                      label="To Pay"
-                      help="Commissions awaiting founder payment."
-                    />
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <HeaderWithInfo
-                      label="Ready"
-                      help="Founder has paid; platform can transfer now."
-                    />
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <HeaderWithInfo
-                      label="Net Ready"
-                      help="Ready minus adjustments."
-                    />
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <HeaderWithInfo
-                      label="Refund window"
-                      help="Awaiting refund window before payout is ready."
-                    />
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <HeaderWithInfo
-                      label="Failed"
-                      help="Transfer attempts that failed."
-                    />
-                  </TableHead>
-                  <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payouts.map((payout) => {
-                  const paid = payout.paidEarnings;
-                  const awaitingCreator = payout.awaitingCreatorEarnings;
-                  const awaitingRefund = payout.awaitingRefundEarnings;
-                  const failed = payout.failedEarnings;
-                  const ready = payout.readyEarnings;
-                  const netReady = payout.netReadyEarnings ?? payout.readyEarnings;
+            <div className="space-y-6">
+              {payoutGroups.map((group) => (
+                <div key={group.currency} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      {group.currency.toUpperCase()} payouts
+                    </p>
+                    <Badge variant="secondary" className="text-xs">
+                      {group.payouts.length} marketers
+                    </Badge>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Marketer</TableHead>
+                        <TableHead className="text-right">Projects</TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Total Earned"
+                            help="All commissions generated by this marketer."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Paid"
+                            help="Commissions already paid out to the marketer."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="To Pay"
+                            help="Commissions awaiting founder payment."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Ready"
+                            help="Founder has paid; platform can transfer now."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Net Ready"
+                            help="Ready minus adjustments."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Refund window"
+                            help="Awaiting refund window before payout is ready."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Failed"
+                            help="Transfer attempts that failed."
+                          />
+                        </TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.payouts.map((payout) => {
+                        const paid = payout.paidEarnings;
+                        const awaitingCreator = payout.awaitingCreatorEarnings;
+                        const awaitingRefund = payout.awaitingRefundEarnings;
+                        const failed = payout.failedEarnings;
+                        const ready = payout.readyEarnings;
+                        const netReady =
+                          payout.netReadyEarnings ?? payout.readyEarnings;
 
-                  return (
-                    <TableRow key={payout.marketerId}>
-                      <TableCell className="font-medium">
-                        {payout.marketerName}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {payout.projectCount}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(payout.totalEarnings)}
-                      </TableCell>
-                      <TableCell className="text-right text-green-600">
-                        {formatCurrency(paid)}
-                      </TableCell>
-                      <TableCell className="text-right text-yellow-600">
-                        {formatCurrency(awaitingCreator)}
-                      </TableCell>
-                      <TableCell className="text-right text-sky-400">
-                        {formatCurrency(ready)}
-                      </TableCell>
-                      <TableCell className="text-right text-sky-400">
-                        {formatCurrency(netReady)}
-                      </TableCell>
-                      <TableCell className="text-right text-amber-500">
-                        {formatCurrency(awaitingRefund)}
-                      </TableCell>
-                      <TableCell className="text-right text-red-600">
-                        {formatCurrency(failed)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col items-start gap-1">
-                          {awaitingCreator > 0 ? (
-                            <Badge variant="outline" className="gap-1">
-                              <Clock className="h-3 w-3" />
-                              Pending
-                            </Badge>
-                          ) : awaitingRefund > 0 ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="outline" className="gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Refund window
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" align="start">
-                                <div className="max-w-xs text-xs leading-relaxed">
-                                  Commissions are held until the refund window
-                                  expires.
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : failed > 0 ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="destructive" className="gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Failed
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" align="start">
-                                <div className="max-w-xs text-xs leading-relaxed">
-                                  {payout.failureReason ??
-                                    "Transfer failed. Check Stripe for details."}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : ready > 0 ? (
-                            <Badge variant="outline" className="gap-1">
-                              <CheckCircle className="h-3 w-3" />
-                              Ready
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="default"
-                              className="gap-1 bg-green-600 text-white"
-                            >
-                              <CheckCircle className="h-3 w-3" />
-                              Paid
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        return (
+                          <TableRow key={`${group.currency}-${payout.marketerId}`}>
+                            <TableCell className="font-medium">
+                              {payout.marketerName}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {payout.projectCount}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(payout.totalEarnings, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-green-600">
+                              {formatCurrency(paid, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-yellow-600">
+                              {formatCurrency(awaitingCreator, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-sky-400">
+                              {formatCurrency(ready, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-sky-400">
+                              {formatCurrency(netReady, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-amber-500">
+                              {formatCurrency(awaitingRefund, group.currency)}
+                            </TableCell>
+                            <TableCell className="text-right text-red-600">
+                              {formatCurrency(failed, group.currency)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col items-start gap-1">
+                                {awaitingCreator > 0 ? (
+                                  <Badge variant="outline" className="gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Pending
+                                  </Badge>
+                                ) : awaitingRefund > 0 ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge variant="outline" className="gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        Refund window
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" align="start">
+                                      <div className="max-w-xs text-xs leading-relaxed">
+                                        Commissions are held until the refund
+                                        window expires.
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : failed > 0 ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge variant="destructive" className="gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        Failed
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" align="start">
+                                      <div className="max-w-xs text-xs leading-relaxed">
+                                        {payout.failureReason ??
+                                          "Transfer failed. Check Stripe for details."}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : ready > 0 ? (
+                                  <Badge variant="outline" className="gap-1">
+                                    <CheckCircle className="h-3 w-3" />
+                                    Ready
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="default"
+                                    className="gap-1 bg-green-600 text-white"
+                                  >
+                                    <CheckCircle className="h-3 w-3" />
+                                    Paid
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -633,100 +772,109 @@ export default function PayoutsPage() {
                       {payout.marketerEmail ?? "Marketer"}
                     </Badge>
                   </div>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Project</TableHead>
-                          <TableHead>Coupon</TableHead>
-                          <TableHead className="text-right">
-                            <HeaderWithInfo
-                              label="Amount"
-                              help="Customer payment total."
-                            />
-                          </TableHead>
-                          <TableHead className="text-right">
-                            <HeaderWithInfo
-                              label="Commission"
-                              help="Amount owed to the marketer."
-                            />
-                          </TableHead>
-                          <TableHead className="text-right">
-                            <HeaderWithInfo
-                              label="Platform"
-                              help="Platform fee based on the commission."
-                            />
-                          </TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Refund Ends</TableHead>
-                          <TableHead className="text-right">Date</TableHead>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Coupon</TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Amount"
+                            help="Customer payment total."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Commission"
+                            help="Amount owed to the marketer."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Platform"
+                            help="Platform fee based on the commission."
+                          />
+                        </TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Refund Ends</TableHead>
+                        <TableHead className="text-right">Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {marketerPurchases.map((purchase) => (
+                        <TableRow key={purchase.id}>
+                          <TableCell className="font-medium">
+                            {purchase.projectName}
+                          </TableCell>
+                          <TableCell>
+                            {purchase.couponCode ? (
+                              <Badge variant="secondary">
+                                {purchase.couponCode}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(purchase.amount, purchase.currency)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(
+                              purchase.commissionAmount,
+                              purchase.currency,
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(
+                              purchase.platformFee,
+                              purchase.currency,
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {getEffectiveCommissionStatus(purchase) ===
+                            "ready_for_payout" ? (
+                              <Badge variant="outline">Ready</Badge>
+                            ) : getEffectiveCommissionStatus(purchase) ===
+                              "awaiting_refund_window" ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline">Refund window</Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" align="start">
+                                  <div className="max-w-xs text-xs leading-relaxed">
+                                    Waiting for the refund window to pass
+                                    before commission becomes payable.
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : getEffectiveCommissionStatus(purchase) ===
+                              "pending_creator_payment" ? (
+                              <Badge variant="warning">Awaiting Founder</Badge>
+                            ) : getEffectiveCommissionStatus(purchase) ===
+                              "refunded" ? (
+                              <Badge variant="destructive">Refunded</Badge>
+                            ) : getEffectiveCommissionStatus(purchase) ===
+                              "chargeback" ? (
+                              <Badge variant="destructive">Chargeback</Badge>
+                            ) : (
+                              <Badge variant="success">
+                                <Check className="size-3 text-emerald-600" />
+                                Paid
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {renderDateTime(purchase.refundEligibleAt, "right")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {renderDateTime(purchase.createdAt, "right")}
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {marketerPurchases.map((purchase) => (
-                          <TableRow key={purchase.id}>
-                            <TableCell className="font-medium">
-                              {purchase.projectName}
-                            </TableCell>
-                            <TableCell>
-                              {purchase.couponCode ? (
-                                <Badge variant="secondary">
-                                  {purchase.couponCode}
-                                </Badge>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(purchase.amount)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(purchase.commissionAmount)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(purchase.platformFee)}
-                            </TableCell>
-                            <TableCell>
-                              {getEffectiveCommissionStatus(purchase) ===
-                              "ready_for_payout" ? (
-                                <Badge variant="outline">Ready</Badge>
-                              ) : getEffectiveCommissionStatus(purchase) ===
-                                "awaiting_refund_window" ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="outline">Refund window</Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom" align="start">
-                                    <div className="max-w-xs text-xs leading-relaxed">
-                                      Waiting for the refund window to pass
-                                      before commission becomes payable.
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : getEffectiveCommissionStatus(purchase) ===
-                                "pending_creator_payment" ? (
-                                <Badge variant="secondary">Awaiting Founder</Badge>
-                              ) : getEffectiveCommissionStatus(purchase) ===
-                                "refunded" ? (
-                                <Badge variant="destructive">Refunded</Badge>
-                              ) : getEffectiveCommissionStatus(purchase) ===
-                                "chargeback" ? (
-                                <Badge variant="destructive">Chargeback</Badge>
-                              ) : (
-                                <Badge className="bg-green-600 text-white">Paid</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {renderDateTime(purchase.refundEligibleAt, "right")}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {renderDateTime(purchase.createdAt, "right")}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                      ))}
+                    </TableBody>
+                  </Table>
+
                 </div>
               );
             })
@@ -748,49 +896,47 @@ export default function PayoutsPage() {
               <p className="text-sm text-muted-foreground">
                 Net adjustments: {formatCurrency(totalAdjustments)}
               </p>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Marketer</TableHead>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Marketer</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adjustments.map((adjustment) => (
+                    <TableRow key={adjustment.id}>
+                      <TableCell>
+                        {renderDateTime(adjustment.createdAt)}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {adjustment.marketerName}
+                        {adjustment.marketerEmail ? (
+                          <p className="text-xs text-muted-foreground">
+                            {adjustment.marketerEmail}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>{adjustment.projectName}</TableCell>
+                      <TableCell className="capitalize">
+                        {adjustment.reason.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600">
+                        {formatCurrency(adjustment.amount, adjustment.currency)}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">
+                          {adjustment.status.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {adjustments.map((adjustment) => (
-                      <TableRow key={adjustment.id}>
-                        <TableCell>
-                          {renderDateTime(adjustment.createdAt)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {adjustment.marketerName}
-                          {adjustment.marketerEmail ? (
-                            <p className="text-xs text-muted-foreground">
-                              {adjustment.marketerEmail}
-                            </p>
-                          ) : null}
-                        </TableCell>
-                        <TableCell>{adjustment.projectName}</TableCell>
-                        <TableCell className="capitalize">
-                          {adjustment.reason.replace(/_/g, " ")}
-                        </TableCell>
-                        <TableCell className="text-right text-red-600">
-                          {formatCurrency(adjustment.amount, adjustment.currency)}
-                        </TableCell>
-                        <TableCell className="capitalize">
-                          <Badge variant="outline">
-                            {adjustment.status.replace(/_/g, " ")}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
@@ -817,47 +963,196 @@ export default function PayoutsPage() {
               No payments recorded yet.
             </p>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Purchases</TableHead>
-                    <TableHead className="text-right">Marketer</TableHead>
-                    <TableHead className="text-right">Platform</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>{renderDateTime(payment.createdAt)}</TableCell>
-                      <TableCell className="text-right">
-                        {payment.purchaseCount}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(payment.marketerTotal)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(payment.platformFeeTotal)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(payment.amountTotal)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {payment.status}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Purchases</TableHead>
+                  <TableHead className="text-right">Marketer</TableHead>
+                  <TableHead className="text-right">Platform</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell>{renderDateTime(payment.createdAt)}</TableCell>
+                    <TableCell>
+                      {payment.type === "reward" ? "Reward payout" : "Commission"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {payment.purchaseCount}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(
+                        payment.marketerTotal,
+                        payment.currency ?? undefined,
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(
+                        payment.platformFeeTotal,
+                        payment.currency ?? undefined,
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(
+                        payment.amountTotal,
+                        payment.currency ?? undefined,
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {payment.status === "paid" ? (
+                        <Badge variant="success">
+                          <Check className="size-3 text-emerald-600" />
+                          Paid
                         </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      ) : payment.status === "failed" ? (
+                        <Badge variant="destructive" className="capitalize">
+                          Failed
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="capitalize">
+                          Pending
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
+
+        </TabsContent>
+
+        <TabsContent value="rewards" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Ready to pay"
+              value={rewardTotalsLabel}
+              description="Cash rewards"
+              icon={DollarSign}
+            />
+            <StatCard
+              title="Rewards count"
+              value={String(rewardCount)}
+              description="Eligible payouts"
+              icon={ListChecks}
+            />
+            <StatCard
+              title="Paid rewards"
+              value={rewardPaidLabel}
+              description="Transferred"
+              icon={CheckCircle}
+            />
+            <StatCard
+              title="Currencies"
+              value={rewardCurrenciesLabel}
+              description="Grouped payouts"
+              icon={CheckCircle}
+            />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Reward Payouts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {rewardGroups.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  No cash rewards ready to pay.
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {rewardGroups.map((group) => (
+                    <div key={group.currency} className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {group.currency.toUpperCase()} rewards
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {group.rewardCount} rewards ·{" "}
+                            {formatCurrency(group.totalAmount, group.currency)}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleOpenRewardReceipt(group)}
+                        >
+                          Pay all
+                        </Button>
+                      </div>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Marketer</TableHead>
+                              <TableHead>Project</TableHead>
+                              <TableHead>Reward</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Earned</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.items.map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">
+                                  {item.marketerName}
+                                  {item.marketerEmail ? (
+                                    <p className="text-xs text-muted-foreground">
+                                      {item.marketerEmail}
+                                    </p>
+                                  ) : null}
+                                </TableCell>
+                                <TableCell>{item.projectName}</TableCell>
+                                <TableCell>{item.rewardName}</TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.amount, item.currency)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={item.status === "PAID" ? "success" : "outline"}
+                                  >
+                                    {item.status === "PAID" ? (
+                                      <>
+                                        <Check className="size-3 text-emerald-600" />
+                                        Paid
+                                      </>
+                                    ) : (
+                                      "Ready"
+                                    )}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {renderDateTime(item.earnedAt, "right")}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <RewardPayoutDialog
+        open={isRewardReceiptOpen}
+        onOpenChange={setIsRewardReceiptOpen}
+        group={selectedRewardGroup}
+        paymentMethods={paymentMethods}
+        defaultPaymentMethodId={defaultPaymentMethod?.id ?? null}
+        onPaid={handleRewardPaid}
+      />
 
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
         <DialogContent className="sm:max-w-[720px]">
@@ -877,130 +1172,183 @@ export default function PayoutsPage() {
             </p>
           ) : preview && preview.purchases.length > 0 ? (
             <div className="space-y-4">
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>Reduce processing fees</AlertTitle>
-                <AlertDescription>
-                  Add a payment method and enable auto-charge so platform
-                  payments can be collected automatically without the processing
-                  fee.{" "}
-                  <Link
-                    href="/founder/settings"
-                    className="underline underline-offset-4 text-foreground"
+              {showCurrencySelector ? (
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-sm font-medium">Choose a currency to pay</p>
+                  <Select
+                    value={selectedCurrency ?? undefined}
+                    onValueChange={(value) => setSelectedCurrency(value)}
                   >
-                    Update payment methods
-                  </Link>
-                  .
-                </AlertDescription>
-              </Alert>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Marketer</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Marketer</TableHead>
-                      <TableHead className="text-right">Platform</TableHead>
-                      <TableHead className="text-right">Merchant</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {preview.purchases.map((purchase) => (
-                      <TableRow key={purchase.id}>
-                        <TableCell className="font-medium">
-                          {purchase.projectName}
-                          {purchase.customerEmail ? (
-                            <p className="text-xs text-muted-foreground">
-                              {purchase.customerEmail}
-                            </p>
-                          ) : null}
-                        </TableCell>
-                        <TableCell>{purchase.marketerName}</TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(purchase.amount, purchase.currency)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(
-                            purchase.marketerCommission,
-                            purchase.currency,
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(purchase.platformFee, purchase.currency)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(purchase.merchantNet, purchase.currency)}
-                        </TableCell>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCurrencies.map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {currency.toUpperCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!selectedCurrency ? (
+                    <p className="text-xs text-muted-foreground">
+                      Multiple currencies are pending. Select one to review and
+                      pay.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {paymentMethods.length === 0 ? (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Reduce processing fees</AlertTitle>
+                  <AlertDescription>
+                    Add a payment method and enable auto-charge so platform
+                    payments can be collected automatically without the processing
+                    fee.{" "}
+                    <Link
+                      href="/founder/settings"
+                      className="underline underline-offset-4 text-foreground"
+                    >
+                      Update payment methods
+                    </Link>
+                    .
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {!payDisabled ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Marketer</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Marketer</TableHead>
+                        <TableHead className="text-right">Platform</TableHead>
+                        <TableHead className="text-right">Merchant</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {preview.purchases.map((purchase) => (
+                        <TableRow key={purchase.id}>
+                          <TableCell className="font-medium">
+                            {purchase.projectName}
+                            {purchase.customerEmail ? (
+                              <p className="text-xs text-muted-foreground">
+                                {purchase.customerEmail}
+                              </p>
+                            ) : null}
+                          </TableCell>
+                          <TableCell>{purchase.marketerName}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(purchase.amount, purchase.currency)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(
+                              purchase.marketerCommission,
+                              purchase.currency,
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(
+                              purchase.platformFee,
+                              purchase.currency,
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(purchase.merchantNet, purchase.currency)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Select a currency to review purchase details.
+                </p>
+              )}
 
               <div className="rounded-md border bg-muted/30 p-4">
                 <p className="text-sm font-medium mb-3">Summary by marketer</p>
-                <div className="space-y-2">
-                  {preview.perMarketer.map((entry) => (
-                    <div key={entry.marketerId ?? "direct"} className="flex justify-between text-sm">
-                      <span>{entry.marketerName}</span>
-                      <span>
-                        {entry.currency
-                          ? `${formatCurrency(entry.marketerTotal, entry.currency)} + ${formatCurrency(
-                              entry.platformTotal,
-                              entry.currency,
-                            )}`
-                          : "Multiple currencies"}
-                      </span>
+              {!payDisabled ? (
+                <>
+                    <div className="space-y-2">
+                      {preview.perMarketer.map((entry) => (
+                        <div
+                          key={entry.marketerId ?? "direct"}
+                          className="flex justify-between text-sm"
+                        >
+                          <span>{entry.marketerName}</span>
+                          <span>
+                            {entry.currency
+                              ? `${formatCurrency(
+                                  entry.marketerTotal,
+                                  entry.currency,
+                                )} + ${formatCurrency(
+                                  entry.platformTotal,
+                                  entry.currency,
+                                )}`
+                              : "Multiple currencies"}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 border-t pt-3 text-sm">
-                  <div className="flex justify-between">
-                    <span>Marketer commissions</span>
-                    <span>
-                      {preview.totals.currency
-                        ? formatCurrency(
-                            preview.totals.marketerTotal,
-                            preview.totals.currency,
-                          )
-                        : "Multiple currencies"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Platform commissions</span>
-                    <span>
-                      {preview.totals.currency
-                        ? formatCurrency(
-                            preview.totals.platformTotal,
-                            preview.totals.currency,
-                          )
-                        : "Multiple currencies"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Processing fee</span>
-                    <span>
-                      {preview.totals.currency
-                        ? formatCurrency(
-                            preview.totals.processingFee,
-                            preview.totals.currency,
-                          )
-                        : "Multiple currencies"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between font-medium">
-                    <span>Total due</span>
-                    <span>
-                      {preview.totals.currency
-                        ? formatCurrency(
-                            preview.totals.totalWithFee,
-                            preview.totals.currency,
-                          )
-                        : "Multiple currencies"}
-                    </span>
-                  </div>
-                </div>
+                    <div className="mt-4 border-t pt-3 text-sm">
+                      <div className="flex justify-between">
+                        <span>Marketer commissions</span>
+                        <span>
+                          {preview.totals.currency
+                            ? formatCurrency(
+                                preview.totals.marketerTotal,
+                                preview.totals.currency,
+                              )
+                            : "Multiple currencies"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Platform commissions</span>
+                        <span>
+                          {preview.totals.currency
+                            ? formatCurrency(
+                                preview.totals.platformTotal,
+                                preview.totals.currency,
+                              )
+                            : "Multiple currencies"}
+                        </span>
+                      </div>
+                      {paymentMethods.length === 0 ? (
+                        <div className="flex justify-between">
+                          <span>Processing fee</span>
+                          <span>
+                            {preview.totals.currency
+                              ? formatCurrency(
+                                  preview.totals.processingFee,
+                                  preview.totals.currency,
+                                )
+                              : "Multiple currencies"}
+                          </span>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between font-medium">
+                        <span>Total due</span>
+                        <span>
+                          {preview.totals.currency
+                            ? formatCurrency(
+                                preview.totals.totalWithFee,
+                                preview.totals.currency,
+                              )
+                            : "Multiple currencies"}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Select a currency to see totals.
+                  </p>
+                )}
               </div>
             </div>
           ) : (
@@ -1045,27 +1393,30 @@ export default function PayoutsPage() {
             </Button>
             {paymentMethods.length > 0 ? (
               <Button
-                variant="secondary"
                 onClick={handleChargePaymentMethod}
                 disabled={
                   charge.isPending ||
                   checkout.isPending ||
-                  !selectedPaymentMethodId
+                  !selectedPaymentMethodId ||
+                  payDisabled
                 }
               >
                 {charge.isPending ? "Charging..." : "Pay with saved method"}
               </Button>
             ) : null}
-            <Button
-              onClick={handleCreateCheckout}
-              disabled={
-                checkout.isPending ||
-                charge.isPending ||
-                !preview?.totals.grandTotal
-              }
-            >
-              {checkout.isPending ? "Creating checkout..." : "Proceed to pay"}
-            </Button>
+            {paymentMethods.length === 0 ? (
+              <Button
+                onClick={handleCreateCheckout}
+                disabled={
+                  checkout.isPending ||
+                  charge.isPending ||
+                  !preview?.totals.grandTotal ||
+                  payDisabled
+                }
+              >
+                {checkout.isPending ? "Creating checkout..." : "Proceed to pay"}
+              </Button>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -52,6 +52,8 @@ type MetricsSummary = {
   customers?: number;
   affiliateCustomers?: number;
   affiliatePurchases?: number;
+  clicks?: number;
+  clicks30d?: number;
 };
 
 type MetricsTimeline = Array<{
@@ -72,6 +74,7 @@ type AffiliateRow = {
   purchases: number;
   revenue: number;
   commission: number;
+  clicks: number;
 };
 
 function sumField(data: MetricsTimeline, key: keyof MetricsTimeline[number]) {
@@ -251,7 +254,7 @@ export function ProjectMetricsTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
           title="Affiliate Share"
           value={`${affiliateShare}%`}
@@ -278,6 +281,12 @@ export function ProjectMetricsTab({
             currency,
           )}`}
           icon={Coins}
+        />
+        <StatCard
+          title="Clicks"
+          value={formatNumber(metrics.clicks ?? 0)}
+          description={`Last 30 days: ${formatNumber(metrics.clicks30d ?? 0)}`}
+          icon={ChartLine}
         />
       </div>
 
@@ -400,6 +409,7 @@ export function ProjectMetricsTab({
                   <TableHead>Marketer</TableHead>
                   <TableHead>Promo Codes</TableHead>
                   <TableHead className="text-right">Purchases</TableHead>
+                  <TableHead className="text-right">Clicks</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Commission</TableHead>
                 </TableRow>
@@ -417,6 +427,9 @@ export function ProjectMetricsTab({
                     </TableCell>
                     <TableCell className="text-right">
                       {formatNumber(row.purchases)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatNumber(row.clicks)}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(row.revenue, currency)}

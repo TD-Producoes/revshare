@@ -114,6 +114,7 @@ export async function GET(request: Request) {
           marketer: { select: { id: true, name: true, email: true } },
         },
       },
+      marketer: { select: { id: true, name: true, email: true } },
     },
   });
 
@@ -132,6 +133,7 @@ export async function GET(request: Request) {
     select: {
       marketerId: true,
       amount: true,
+      currency: true,
     },
   });
 
@@ -162,9 +164,31 @@ export async function GET(request: Request) {
       adjustmentsTotal: number;
     }
   >();
+  const marketerByCurrency = new Map<
+    string,
+    Map<
+      string,
+      {
+        marketerId: string;
+        marketerName: string;
+        marketerEmail: string | null;
+        projectIds: Set<string>;
+        totalEarnings: number;
+        paidEarnings: number;
+        pendingEarnings: number;
+        awaitingCreatorEarnings: number;
+        awaitingRefundEarnings: number;
+        failedEarnings: number;
+        readyEarnings: number;
+        adjustmentsTotal: number;
+        currency: string;
+      }
+    >
+  >();
 
   for (const purchase of purchases) {
-    if (!purchase.coupon?.marketerId) {
+    const marketerId = purchase.coupon?.marketerId ?? purchase.marketerId;
+    if (!marketerId) {
       continue;
     }
     if (
@@ -173,8 +197,8 @@ export async function GET(request: Request) {
     ) {
       continue;
     }
-    const marketerId = purchase.coupon.marketerId;
-    const marketer = purchase.coupon.marketer;
+    const marketer = purchase.coupon?.marketer ?? purchase.marketer;
+    const currency = (purchase.currency ?? "usd").toUpperCase();
     const existing =
       marketerMap.get(marketerId) ??
       {
@@ -223,6 +247,46 @@ export async function GET(request: Request) {
     }
 
     marketerMap.set(marketerId, existing);
+
+    const currencyMap = marketerByCurrency.get(currency) ?? new Map();
+    const currencyEntry =
+      currencyMap.get(marketerId) ??
+      {
+        marketerId,
+        marketerName: marketer?.name ?? "Unknown",
+        marketerEmail: marketer?.email ?? null,
+        projectIds: new Set<string>(),
+        totalEarnings: 0,
+        paidEarnings: 0,
+        pendingEarnings: 0,
+        awaitingCreatorEarnings: 0,
+        awaitingRefundEarnings: 0,
+        failedEarnings: 0,
+        readyEarnings: 0,
+        adjustmentsTotal: 0,
+        currency,
+      };
+
+    currencyEntry.projectIds.add(purchase.projectId);
+    currencyEntry.totalEarnings += purchase.commissionAmount;
+    if (purchase.commissionStatus === "PAID") {
+      currencyEntry.paidEarnings += purchase.commissionAmount;
+    } else if (purchase.commissionStatus === "PENDING_CREATOR_PAYMENT") {
+      currencyEntry.pendingEarnings += purchase.commissionAmount;
+      currencyEntry.awaitingCreatorEarnings += purchase.commissionAmount;
+    } else if (purchase.commissionStatus === "AWAITING_REFUND_WINDOW") {
+      currencyEntry.pendingEarnings += purchase.commissionAmount;
+      currencyEntry.awaitingRefundEarnings += purchase.commissionAmount;
+    } else if (purchase.commissionStatus === "READY_FOR_PAYOUT") {
+      currencyEntry.pendingEarnings += purchase.commissionAmount;
+      currencyEntry.readyEarnings += purchase.commissionAmount;
+      if (purchase.status === "FAILED") {
+        currencyEntry.failedEarnings += purchase.commissionAmount;
+      }
+    }
+
+    currencyMap.set(marketerId, currencyEntry);
+    marketerByCurrency.set(currency, currencyMap);
   }
 
   for (const adjustment of adjustments) {
@@ -233,6 +297,19 @@ export async function GET(request: Request) {
     existing.adjustmentsTotal += adjustment.amount;
     adjustmentsTotal += adjustment.amount;
     marketerMap.set(adjustment.marketerId, existing);
+
+    const currency = adjustment.currency.toUpperCase();
+    const currencyMap = marketerByCurrency.get(currency);
+    if (!currencyMap) {
+      continue;
+    }
+    const currencyEntry = currencyMap.get(adjustment.marketerId);
+    if (!currencyEntry) {
+      continue;
+    }
+    currencyEntry.adjustmentsTotal += adjustment.amount;
+    currencyMap.set(adjustment.marketerId, currencyEntry);
+    marketerByCurrency.set(currency, currencyMap);
   }
 
   const payouts = Array.from(marketerMap.values())
@@ -262,6 +339,38 @@ export async function GET(request: Request) {
     })
     .sort((a, b) => b.totalEarnings - a.totalEarnings);
 
+  const payoutsByCurrency = Array.from(marketerByCurrency.entries())
+    .map(([currency, entries]) => ({
+      currency,
+      payouts: Array.from(entries.values())
+        .map((entry) => {
+          const latestFailure = transfers.find(
+            (transfer) =>
+              transfer.marketerId === entry.marketerId &&
+              transfer.status === "FAILED",
+          );
+          return {
+            marketerId: entry.marketerId,
+            marketerName: entry.marketerName,
+            marketerEmail: entry.marketerEmail,
+            projectCount: entry.projectIds.size,
+            totalEarnings: entry.totalEarnings,
+            paidEarnings: entry.paidEarnings,
+            pendingEarnings: entry.pendingEarnings,
+            awaitingCreatorEarnings: entry.awaitingCreatorEarnings,
+            awaitingRefundEarnings: entry.awaitingRefundEarnings,
+            failedEarnings: entry.failedEarnings,
+            readyEarnings: entry.readyEarnings,
+            adjustmentsTotal: entry.adjustmentsTotal,
+            netReadyEarnings: entry.readyEarnings + entry.adjustmentsTotal,
+            failureReason: latestFailure?.failureReason ?? null,
+            currency,
+          };
+        })
+        .sort((a, b) => b.totalEarnings - a.totalEarnings),
+    }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+
   return NextResponse.json({
     data: {
       totals: {
@@ -277,6 +386,7 @@ export async function GET(request: Request) {
         adjustmentsTotal,
       },
       payouts,
+      payoutsByCurrency,
     },
   });
 }

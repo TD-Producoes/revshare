@@ -63,6 +63,7 @@ export function CreatorDashboard() {
       };
     }) ?? [];
 
+
   return (
     <div className="space-y-6">
       <div>
@@ -86,7 +87,7 @@ export function CreatorDashboard() {
           }
         />
         <StatCard
-          title="Monthly Recurring Revenue"
+          title="MRR"
           value={formatCurrency(totals.mrr)}
           description="Current MRR"
           icon={TrendingUp}

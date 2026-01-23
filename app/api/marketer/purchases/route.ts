@@ -26,10 +26,15 @@ export async function GET(request: Request) {
   }
 
   const purchases = await prisma.purchase.findMany({
-    where: { coupon: { marketerId: userId } },
+    where: {
+      OR: [
+        { coupon: { marketerId: userId } },
+        { marketerId: userId },
+      ],
+    },
     orderBy: { createdAt: "desc" },
     include: {
-      project: { select: { id: true, name: true } },
+      project: { select: { id: true, name: true, currency: true } },
       coupon: { select: { id: true, code: true, percentOff: true } },
     },
   });
@@ -38,6 +43,7 @@ export async function GET(request: Request) {
     id: purchase.id,
     projectId: purchase.projectId,
     projectName: purchase.project.name,
+    projectCurrency: purchase.project.currency ?? null,
     couponCode: purchase.coupon?.code ?? null,
     percentOff: purchase.coupon?.percentOff ?? null,
     amount: purchase.amount,

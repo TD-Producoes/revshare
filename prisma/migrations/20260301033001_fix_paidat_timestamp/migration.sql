@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "RewardEarned" ALTER COLUMN "paidAt" SET DATA TYPE TIMESTAMP(3);

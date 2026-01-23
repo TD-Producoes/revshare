@@ -49,6 +49,13 @@ export async function GET(
           },
         },
       },
+      marketer: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 

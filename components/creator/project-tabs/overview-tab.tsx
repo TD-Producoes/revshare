@@ -11,6 +11,9 @@ type ProjectSummary = {
   price: number;
   revSharePercent: number;
   cookieWindowDays: number;
+  autoApproveApplications: boolean;
+  autoApproveMatchTerms: boolean;
+  autoApproveVerifiedOnly: boolean;
 };
 
 export function ProjectOverviewTab({
@@ -46,17 +49,6 @@ export function ProjectOverviewTab({
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Pricing Model</p>
-              <p className="font-medium capitalize">{project.pricingModel}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Price</p>
-              <p className="font-medium">
-                {formatCurrency(project.price)}
-                {project.pricingModel === "subscription" && "/mo"}
-              </p>
-            </div>
-            <div>
               <p className="text-sm text-muted-foreground">Revenue Share</p>
               <p className="font-medium">{project.revSharePercent}%</p>
             </div>
@@ -64,6 +56,26 @@ export function ProjectOverviewTab({
               <p className="text-sm text-muted-foreground">Refund Window</p>
               <p className="font-medium">{project.cookieWindowDays} days</p>
             </div>
+          </div>
+          <div className="mt-4 border-t pt-4">
+            <p className="text-sm text-muted-foreground">Applications</p>
+            <p className="font-medium">
+              {project.autoApproveApplications ? "Auto-approve" : "Manual review"}
+            </p>
+            {project.autoApproveApplications && (
+              <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                {project.autoApproveMatchTerms && (
+                  <p>Matches project requirements (commission and refund window).</p>
+                )}
+                {project.autoApproveVerifiedOnly && (
+                  <p>Marketer is verified (Stripe connected).</p>
+                )}
+                {!project.autoApproveMatchTerms &&
+                  !project.autoApproveVerifiedOnly && (
+                    <p>No conditions selected. Applications auto-approve immediately.</p>
+                  )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

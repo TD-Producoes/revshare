@@ -69,7 +69,13 @@ export async function GET(
 
   const [rewards, earnedRows, purchases] = await Promise.all([
     prisma.reward.findMany({
-      where: { projectId, status: "ACTIVE" },
+      where: {
+        projectId,
+        OR: [
+          { status: "ACTIVE" },
+          { earned: { some: { marketerId } } },
+        ],
+      },
       orderBy: { milestoneValue: "asc" },
     }),
     prisma.rewardEarned.findMany({
@@ -80,8 +86,11 @@ export async function GET(
     prisma.purchase.findMany({
       where: {
         projectId,
-        coupon: { marketerId },
         commissionStatus: { notIn: ["REFUNDED", "CHARGEBACK"] },
+        OR: [
+          { coupon: { marketerId } },
+          { marketerId },
+        ],
       },
       select: {
         amount: true,
@@ -99,9 +108,18 @@ export async function GET(
     earnedByReward.set(row.rewardId, existing);
   });
 
+  const filteredRewards = rewards.filter((reward) => {
+    const allowed = Array.isArray(reward.allowedMarketerIds)
+      ? reward.allowedMarketerIds
+      : [];
+    if (allowed.length === 0) return true;
+    if (allowed.includes(marketerId)) return true;
+    return (earnedByReward.get(reward.id) ?? []).length > 0;
+  });
+
   const now = new Date();
 
-  const rewardItems = rewards.map((reward) => {
+  const rewardItems = filteredRewards.map((reward) => {
     const rewardStart = reward.startsAt ?? reward.createdAt;
     const relevant = purchases.filter((row) => row.createdAt >= rewardStart);
     const eligible = relevant.filter(
@@ -136,12 +154,16 @@ export async function GET(
     const nextTarget =
       reward.earnLimit === "ONCE_PER_MARKETER"
         ? milestoneValue
-        : milestoneValue * (earnedCount + 1);
+        : milestoneValue;
 
-    let status: "IN_PROGRESS" | "PENDING_REFUND" | "UNLOCKED" | "CLAIMED" =
+    let status: "IN_PROGRESS" | "PENDING_REFUND" | "UNLOCKED" | "CLAIMED" | "PAID" =
       "IN_PROGRESS";
 
-    if (latestEarned?.status === "CLAIMED") {
+    if (reward.earnLimit === "MULTIPLE" && achievedEligible > earnedCount) {
+      status = "UNLOCKED";
+    } else if (latestEarned?.status === "PAID") {
+      status = "PAID";
+    } else if (latestEarned?.status === "CLAIMED") {
       status = "CLAIMED";
     } else if (latestEarned?.status === "UNLOCKED") {
       status = "UNLOCKED";
@@ -150,25 +172,28 @@ export async function GET(
       achievedEligible >= 1
     ) {
       status = "UNLOCKED";
-    } else if (
-      reward.earnLimit === "MULTIPLE" &&
-      achievedEligible > earnedCount
-    ) {
-      status = "UNLOCKED";
     } else if (achievedTotal > achievedEligible) {
       status = "PENDING_REFUND";
     }
 
-    const progressValue = Math.min(metricEligible, nextTarget);
+    const progressValue =
+      reward.earnLimit === "MULTIPLE"
+        ? Math.max(0, metricEligible - earnedCount * milestoneValue)
+        : Math.min(metricEligible, nextTarget);
+    const progressTotal =
+      reward.earnLimit === "MULTIPLE"
+        ? Math.max(0, metricTotal - earnedCount * milestoneValue)
+        : metricTotal;
     const progressPercent =
       nextTarget > 0 ? Math.min((progressValue / nextTarget) * 100, 100) : 0;
 
     return {
       reward,
       earned: latestEarned,
+      earnedList: earned,
       progress: {
-        current: metricEligible,
-        total: metricTotal,
+        current: progressValue,
+        total: progressTotal,
         goal: nextTarget,
         percent: progressPercent,
       },

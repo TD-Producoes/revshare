@@ -27,6 +27,7 @@ model User {
   projects                 Project[]
   coupons                  Coupon[]
   contracts                Contract[]
+  purchases                Purchase[]
   paymentMethods           PaymentMethod[]
   creatorTransfers         Transfer[]                @relation("CreatorTransfers")
   marketerTransfers        Transfer[]                @relation("MarketerTransfers")
@@ -55,6 +56,9 @@ model Project {
   category                  String?                   @default("Other")
   refundWindowDays          Int                       @default(30)
   creatorStripeAccountId    String?
+  integrations              ProjectIntegration[]
+  attributionAppKeys        AttributionAppKey[]
+  attributionClicks         AttributionClick[]
   onboardingStatus          String?
   onboardingData            Json?
   onboardingCompletedAt     DateTime?
@@ -94,6 +98,61 @@ model Project {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+enum IntegrationProvider {
+  REVENUECAT
+}
+
+model ProjectIntegration {
+  id             String              @id @default(cuid())
+  projectId      String
+  provider       IntegrationProvider
+  externalId     String?
+  apiKeyCipherText String
+  apiKeyIv       String
+  apiKeyTag      String
+  webhookSecretCipherText String
+  webhookSecretIv String
+  webhookSecretTag String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, provider])
+  @@index([projectId])
+}
+
+model AttributionAppKey {
+  id        String   @id @default(cuid())
+  projectId String
+  keyHash   String   @unique
+  keyCipherText String?
+  keyIv     String?
+  keyTag    String?
+  name      String?
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model AttributionClick {
+  id        String   @id @default(cuid())
+  projectId String
+  marketerId String
+  deviceId  String
+  url       String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, marketerId, deviceId])
+  @@index([projectId])
+  @@index([marketerId])
 }
 
 model Contract {
@@ -176,6 +235,9 @@ model Reward {
   rewardLabel       String?
   rewardPercentOff  Int?
   rewardDurationMonths Int?
+  rewardAmount      Int?
+  rewardCurrency    String?
+  allowedMarketerIds Json?
   fulfillmentType   RewardFulfillment   @default(AUTO_COUPON)
   earnLimit         RewardEarnLimit     @default(ONCE_PER_MARKETER)
   availabilityType  RewardAvailability  @default(UNLIMITED)
@@ -203,6 +265,10 @@ model RewardEarned {
   earnedAt   DateTime           @default(now())
   unlockedAt DateTime?
   claimedAt  DateTime?
+  rewardAmount    Int?
+  rewardCurrency  String?
+  rewardTransferId String?
+  paidAt          DateTime?
 
   reward   Reward  @relation(fields: [rewardId], references: [id], onDelete: Cascade)
   project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -241,10 +307,13 @@ model Purchase {
   id                       String           @id @default(cuid())
   projectId                String
   couponId                 String?
-  stripeEventId            String           @unique
+  marketerId               String?
+  stripeEventId            String?          @unique
   stripeChargeId           String?
   stripeInvoiceId          String?
   stripePaymentIntentId    String?
+  revenueCatEventId        String?          @unique
+  revenueCatTransactionId  String?          @unique
   amount                   Int
   currency                 String
   customerEmail            String?
@@ -266,12 +335,14 @@ model Purchase {
 
   project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
   coupon                Coupon?                @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  marketer              User?                  @relation(fields: [marketerId], references: [id], onDelete: SetNull)
   transferRecord        Transfer?              @relation(fields: [transferRecordId], references: [id], onDelete: SetNull)
   creatorPayment        CreatorPayment?        @relation(fields: [creatorPaymentId], references: [id], onDelete: SetNull)
   commissionAdjustments CommissionAdjustment[]
 
   @@index([projectId])
   @@index([couponId])
+  @@index([marketerId])
   @@index([transferRecordId])
   @@index([creatorPaymentId])
 }
@@ -365,6 +436,7 @@ enum RewardType {
   FREE_SUBSCRIPTION
   PLAN_UPGRADE
   ACCESS_PERK
+  MONEY
 }
 
 enum RewardFulfillment {
@@ -391,6 +463,7 @@ enum RewardEarnedStatus {
   PENDING_REFUND
   UNLOCKED
   CLAIMED
+  PAID
 }
 
 enum EventType {
@@ -403,6 +476,7 @@ enum EventType {
   REWARD_STATUS_CHANGED
   REWARD_EARNED
   REWARD_CLAIMED
+  REWARD_PAID
   COUPON_TEMPLATE_CREATED
   COUPON_TEMPLATE_UPDATED
   COUPON_CLAIMED
@@ -487,6 +561,7 @@ model CreatorPayment {
   amountTotal             Int
   marketerTotal           Int
   platformFeeTotal        Int
+  currency                String?
   status                  PaymentStatus @default(PENDING)
   stripeCheckoutSessionId String?
   stripePaymentIntentId   String?
@@ -609,6 +684,7 @@ model MarketerMetricsSnapshot {
   commissionOwedDay   Int      @default(0)
   purchasesCountDay   Int      @default(0)
   customersCountDay   Int      @default(0)
+  clicksCountDay      Int      @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

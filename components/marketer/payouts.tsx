@@ -22,12 +22,18 @@ import {
   CalendarDays,
   ListChecks,
   BarChart3,
+  Check,
 } from "lucide-react";
 
 const statusBadge = (status: string) => {
   const normalized = status.toLowerCase();
   if (normalized === "paid") {
-    return <Badge className="bg-emerald-500 text-white">Paid</Badge>;
+    return (
+      <Badge variant="success">
+        <Check className="size-3 text-emerald-600" />
+        Paid
+      </Badge>
+    );
   }
   if (normalized === "failed") {
     return <Badge variant="destructive">Failed</Badge>;
@@ -57,9 +63,60 @@ export function MarketerPayouts() {
     );
   }
 
-  const totals = transfersPayload?.totals ?? { paid: 0, pending: 0, failed: 0 };
-  const currency = transfersPayload?.currency ?? "USD";
   const transfers = transfersPayload?.transfers ?? [];
+  const totalsByCurrency = transfers.reduce(
+    (acc, transfer) => {
+      const currency = transfer.currency?.toUpperCase() ?? "USD";
+      const existing = acc.get(currency) ?? {
+        paid: 0,
+        pending: 0,
+        failed: 0,
+        paidCount: 0,
+      };
+      if (transfer.status === "PAID") {
+        existing.paid += transfer.amount;
+        existing.paidCount += 1;
+      } else if (transfer.status === "PENDING") {
+        existing.pending += transfer.amount;
+      } else if (transfer.status === "FAILED") {
+        existing.failed += transfer.amount;
+      }
+      acc.set(currency, existing);
+      return acc;
+    },
+    new Map<
+      string,
+      { paid: number; pending: number; failed: number; paidCount: number }
+    >(),
+  );
+  const formatCurrencyList = (entries: Array<[string, number]>) => {
+    if (entries.length === 0) {
+      return formatCurrency(0);
+    }
+    if (entries.length === 1) {
+      const [currency, amount] = entries[0];
+      return formatCurrency(amount, currency);
+    }
+    return entries
+      .map(([currency, amount]) => formatCurrency(amount, currency))
+      .join(" · ");
+  };
+  const paidTotals = Array.from(totalsByCurrency.entries()).map(
+    ([currency, totals]) => [currency, totals.paid] as [string, number],
+  );
+  const pendingTotals = Array.from(totalsByCurrency.entries()).map(
+    ([currency, totals]) => [currency, totals.pending] as [string, number],
+  );
+  const failedTotals = Array.from(totalsByCurrency.entries()).map(
+    ([currency, totals]) => [currency, totals.failed] as [string, number],
+  );
+  const averagePaidTotals = Array.from(totalsByCurrency.entries())
+    .map(([currency, totals]) => {
+      const average =
+        totals.paidCount > 0 ? Math.round(totals.paid / totals.paidCount) : 0;
+      return [currency, average] as [string, number];
+    })
+    .filter(([, amount]) => amount > 0);
   const paidTransfers = transfers.filter(
     (transfer) => transfer.status.toLowerCase() === "paid",
   );
@@ -71,10 +128,10 @@ export function MarketerPayouts() {
       ? transfer
       : latest;
   }, null);
-  const averagePaidAmount =
-    paidTransfers.length > 0
-      ? Math.round(totals.paid / paidTransfers.length)
-      : 0;
+  const averagePaidAmount = formatCurrencyList(averagePaidTotals);
+  const paidTotalLabel = formatCurrencyList(paidTotals);
+  const pendingTotalLabel = formatCurrencyList(pendingTotals);
+  const failedTotalLabel = formatCurrencyList(failedTotals);
 
   return (
     <div className="space-y-6">
@@ -88,19 +145,19 @@ export function MarketerPayouts() {
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title="Paid out"
-          value={formatCurrency(totals.paid, currency)}
+          value={paidTotalLabel}
           description="Transfers completed"
           icon={CheckCircle}
         />
         <StatCard
           title="Pending"
-          value={formatCurrency(totals.pending, currency)}
+          value={pendingTotalLabel}
           description="In progress"
           icon={Clock}
         />
         <StatCard
           title="Failed"
-          value={formatCurrency(totals.failed, currency)}
+          value={failedTotalLabel}
           description="Requires attention"
           icon={AlertTriangle}
         />
@@ -125,7 +182,7 @@ export function MarketerPayouts() {
         />
         <StatCard
           title="Average payout"
-          value={formatCurrency(averagePaidAmount, currency)}
+          value={averagePaidAmount}
           description="Per paid transfer"
           icon={BarChart3}
         />
@@ -145,6 +202,7 @@ export function MarketerPayouts() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Projects</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Status</TableHead>
@@ -153,12 +211,15 @@ export function MarketerPayouts() {
               </TableHeader>
               <TableBody>
                 {transfers.map((transfer) => {
-                  const transferCurrency = transfer.currency ?? currency;
+                  const transferCurrency = transfer.currency ?? "USD";
                   const reference = transfer.stripeTransferId ?? "-";
                   return (
                     <TableRow key={transfer.id}>
                       <TableCell>
                         {new Date(transfer.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {transfer.type === "reward" ? "Reward payout" : "Commission"}
                       </TableCell>
                       <TableCell>
                         {transfer.projects.length > 0

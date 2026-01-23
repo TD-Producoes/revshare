@@ -27,7 +27,7 @@ const getAIModel = () => {
   const modelName = process.env.OPENAI_MODEL;
   if (!modelName) throw new Error("OPENAI_MODEL must be configured");
   const provider = getAIProvider();
-  return provider(modelName);
+  return provider.chat(modelName);
 };
 
 /**
@@ -281,7 +281,7 @@ Return ONLY valid JSON with this exact structure:
   "shortDescription": "Brief description under 200 characters or null",
   "foundedAt": "YYYY or YYYY-MM-DD or null",
   "keyFeatures": ["feature1", "feature2", "feature3"],
-  "about": "Comprehensive description with as much information as possible from the website or null"
+  "about": "Comprehensive description with as much information as possible from the website or null (use paragraphs separated by blank lines)"
 }
 
 Important:
@@ -289,6 +289,7 @@ Important:
 - category MUST be exactly one of the valid categories listed above, or Other if truly unknown or not found
 - keyFeatures should always be an array (even if empty)
 - about should contain as much detail as possible from the website content
+- format about in 2-4 paragraphs separated by a blank line (use \\n\\n)
 - Be accurate and only extract information that is actually present in the content`,
         },
         {

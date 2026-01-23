@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { CommissionStatus } from "@prisma/client";
+import { CommissionStatus, ContractStatus } from "@prisma/client";
 import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 export async function GET(
@@ -47,7 +47,11 @@ export async function GET(
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-  if (!contract || contract.status !== "APPROVED") {
+  if (
+    !contract ||
+    (contract.status !== ContractStatus.APPROVED &&
+      contract.status !== ContractStatus.PAUSED)
+  ) {
     return NextResponse.json(
       { error: "Contract not approved for this project" },
       { status: 403 },

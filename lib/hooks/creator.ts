@@ -30,6 +30,7 @@ export type CreatorPayout = {
   adjustmentsTotal?: number;
   netReadyEarnings?: number;
   failureReason?: string | null;
+  currency?: string;
 };
 
 export type CreatorDashboardTotals = {
@@ -100,6 +101,7 @@ export type CreatorPaymentPreview = {
     totalWithFee: number;
     currency: string | null;
   };
+  availableCurrencies: string[];
 };
 
 export type CreatorPaymentHistory = {
@@ -107,10 +109,38 @@ export type CreatorPaymentHistory = {
   amountTotal: number;
   marketerTotal: number;
   platformFeeTotal: number;
+  currency: string | null;
   status: string;
   createdAt: string | Date;
   purchaseCount: number;
   stripeCheckoutSessionId: string | null;
+  type: "commission" | "reward";
+};
+
+export type CreatorRewardPayoutItem = {
+  id: string;
+  rewardId: string;
+  rewardName: string;
+  projectId: string;
+  projectName: string;
+  marketerId: string;
+  marketerName: string;
+  marketerEmail: string | null;
+  amount: number;
+  currency: string;
+  earnedAt: string | Date;
+  status: "UNLOCKED" | "PAID" | "CLAIMED" | "PENDING_REFUND";
+};
+
+export type CreatorRewardPayoutGroup = {
+  currency: string;
+  totalAmount: number;
+  rewardCount: number;
+  items: CreatorRewardPayoutItem[];
+};
+
+export type CreatorRewardPayoutsResponse = {
+  groups: CreatorRewardPayoutGroup[];
 };
 
 export type CreatorMarketerMetrics = {
@@ -131,6 +161,7 @@ export type CreatorMarketerMetrics = {
     commissionOwed: number;
     purchasesCount: number;
     customersCount: number;
+    clicksCount: number;
   };
   timeline: Array<{
     date: string;
@@ -139,6 +170,7 @@ export type CreatorMarketerMetrics = {
     commissionOwed: number;
     purchasesCount: number;
     customersCount: number;
+    clicksCount: number;
   }>;
 };
 
@@ -163,6 +195,7 @@ export type CreatorPurchase = {
   projectName: string;
   customerEmail: string | null;
   amount: number;
+  currency: string;
   commissionAmount: number;
   platformFee: number;
   commissionStatus: string;
@@ -178,7 +211,11 @@ export type CreatorPurchase = {
 };
 
 export function useCreatorPayouts(userId?: string | null) {
-  return useQuery<{ totals: CreatorPayoutTotals; payouts: CreatorPayout[] }>({
+  return useQuery<{
+    totals: CreatorPayoutTotals;
+    payouts: CreatorPayout[];
+    payoutsByCurrency?: Array<{ currency: string; payouts: CreatorPayout[] }>;
+  }>({
     queryKey: ["creator-payouts", userId ?? "none"],
     enabled: Boolean(userId),
     queryFn: async () => {
@@ -191,17 +228,26 @@ export function useCreatorPayouts(userId?: string | null) {
       return payload?.data as {
         totals: CreatorPayoutTotals;
         payouts: CreatorPayout[];
+        payoutsByCurrency?: Array<{ currency: string; payouts: CreatorPayout[] }>;
       };
     },
   });
 }
 
-export function useCreatorPaymentPreview(userId?: string | null, enabled = true) {
+export function useCreatorPaymentPreview(
+  userId?: string | null,
+  enabled = true,
+  currency?: string | null,
+) {
   return useQuery<CreatorPaymentPreview>({
-    queryKey: ["creator-payment-preview", userId ?? "none"],
+    queryKey: ["creator-payment-preview", userId ?? "none", currency ?? "all"],
     enabled: Boolean(userId) && enabled,
     queryFn: async () => {
-      const response = await fetch(`/api/founder/payouts/preview?userId=${userId}`);
+      const params = new URLSearchParams({ userId: userId ?? "" });
+      if (currency) {
+        params.set("currency", currency);
+      }
+      const response = await fetch(`/api/founder/payouts/preview?${params}`);
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to load payout preview.");
@@ -214,7 +260,7 @@ export function useCreatorPaymentPreview(userId?: string | null, enabled = true)
 
 export function useCreatorPaymentCheckout() {
   return useMutation({
-    mutationFn: async (payload: { userId: string }) => {
+    mutationFn: async (payload: { userId: string; currency?: string | null }) => {
       const response = await fetch("/api/founder/payouts/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -231,7 +277,11 @@ export function useCreatorPaymentCheckout() {
 
 export function useCreatorPaymentCharge() {
   return useMutation({
-    mutationFn: async (payload: { userId: string; paymentMethodId?: string }) => {
+    mutationFn: async (payload: {
+      userId: string;
+      paymentMethodId?: string;
+      currency?: string | null;
+    }) => {
       const response = await fetch("/api/founder/payouts/charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -274,6 +324,75 @@ export function useCreatorPayments(userId?: string | null) {
       }
       const payload = await response.json();
       return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export function useCreatorRewardPayouts(userId?: string | null) {
+  return useQuery<CreatorRewardPayoutsResponse>({
+    queryKey: ["creator-reward-payouts", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/founder/rewards/payouts?userId=${userId}`,
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch reward payouts.");
+      }
+      const payload = await response.json();
+      return payload?.data as CreatorRewardPayoutsResponse;
+    },
+  });
+}
+
+export function usePayCreatorRewardPayouts() {
+  return useMutation({
+    mutationFn: async (payload: { currency: string }) => {
+      const response = await fetch("/api/founder/rewards/payouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to pay rewards.");
+      }
+      return data?.data ?? null;
+    },
+  });
+}
+
+export function useCreatorRewardPayoutCharge() {
+  return useMutation({
+    mutationFn: async (payload: { currency: string; paymentMethodId?: string }) => {
+      const response = await fetch("/api/founder/rewards/payouts/charge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to charge reward payout.");
+      }
+      return data?.data ?? null;
+    },
+  });
+}
+
+export function useCreatorRewardPayoutCheckout() {
+  return useMutation({
+    mutationFn: async (payload: { currency: string }) => {
+      const response = await fetch("/api/founder/rewards/payouts/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error ?? "Failed to create reward checkout.");
+      }
+      return data?.data ?? null;
     },
   });
 }

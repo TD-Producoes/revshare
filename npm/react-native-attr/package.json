@@ -1,0 +1,18 @@
+{
+  "name": "@marketplace/attribution",
+  "version": "0.1.0",
+  "description": "React Native attribution helper for Marketplace deep links",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "react": ">=17",
+    "react-native": ">=0.70",
+    "@react-native-async-storage/async-storage": ">=1.17"
+  }
+}

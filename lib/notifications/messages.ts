@@ -97,4 +97,23 @@ export const notificationMessages = {
     title: "Reward claimed",
     message: `${marketerName} claimed ${rewardName} for ${projectName}.`,
   }),
+  rewardPaidMarketer: (
+    rewardName: string,
+    projectName: string,
+    amount: number,
+    currency: string,
+  ) => ({
+    title: "Reward paid",
+    message: `You received ${Math.round(amount) / 100} ${currency.toUpperCase()} for ${rewardName} (${projectName}).`,
+  }),
+  rewardPaidCreator: (
+    marketerName: string,
+    rewardName: string,
+    projectName: string,
+    amount: number,
+    currency: string,
+  ) => ({
+    title: "Reward paid",
+    message: `${marketerName} was paid ${Math.round(amount) / 100} ${currency.toUpperCase()} for ${rewardName} (${projectName}).`,
+  }),
 };

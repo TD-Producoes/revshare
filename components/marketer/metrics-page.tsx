@@ -78,6 +78,7 @@ export function MarketerMetricsPage() {
     commissionOwed: 0,
     purchasesCount: 0,
     customersCount: 0,
+    clicksCount: 0,
   };
   const affiliateShare =
     summary.projectRevenue > 0
@@ -186,6 +187,7 @@ export function MarketerMetricsPage() {
         onSelectProject={setSelectedProjectId}
         isProjectLoading={isContractsLoading}
         showProjectFilter={false}
+        clicksTotal={summary.clicksCount}
       />
     </div>
   );

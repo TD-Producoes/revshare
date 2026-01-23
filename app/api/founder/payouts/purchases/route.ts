@@ -83,6 +83,7 @@ export async function GET(request: Request) {
           marketer: { select: { id: true, name: true, email: true } },
         },
       },
+      marketer: { select: { id: true, name: true, email: true } },
     },
   });
 
@@ -92,6 +93,7 @@ export async function GET(request: Request) {
     projectName: purchase.project.name,
     customerEmail: purchase.customerEmail,
     amount: purchase.amount,
+    currency: purchase.currency,
     commissionAmount: purchase.commissionAmount,
     platformFee: Math.round(
       purchase.commissionAmount *
@@ -102,11 +104,11 @@ export async function GET(request: Request) {
     createdAt: purchase.createdAt,
     refundEligibleAt: purchase.refundEligibleAt,
     couponCode: purchase.coupon?.code ?? null,
-    marketer: purchase.coupon?.marketer
+    marketer: (purchase.coupon?.marketer ?? purchase.marketer)
       ? {
-          id: purchase.coupon.marketer.id,
-          name: purchase.coupon.marketer.name,
-          email: purchase.coupon.marketer.email,
+          id: (purchase.coupon?.marketer ?? purchase.marketer)!.id,
+          name: (purchase.coupon?.marketer ?? purchase.marketer)!.name,
+          email: (purchase.coupon?.marketer ?? purchase.marketer)!.email,
         }
       : null,
   }));

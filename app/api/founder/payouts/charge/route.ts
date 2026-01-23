@@ -7,6 +7,7 @@ import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 
 const chargeInput = z.object({
   paymentMethodId: z.string().min(1).optional(),
+  currency: z.string().min(1).optional(),
 });
 
 function calculateProcessingFee(amountOwed: number) {
@@ -16,7 +17,11 @@ function calculateProcessingFee(amountOwed: number) {
   return Math.max(0, Math.round(fee));
 }
 
-async function buildReceiptPurchases(creatorId: string, paymentId?: string | null) {
+async function buildReceiptPurchases(
+  creatorId: string,
+  paymentId?: string | null,
+  currency?: string | null,
+) {
   if (paymentId) {
     const payment = await prisma.creatorPayment.findUnique({
       where: { id: paymentId },
@@ -31,6 +36,17 @@ async function buildReceiptPurchases(creatorId: string, paymentId?: string | nul
     if (!payment) {
       return { purchases: [], payment };
     }
+    if (currency && payment.currency && payment.currency !== currency) {
+      return { purchases: [], payment };
+    }
+    if (currency && !payment.currency) {
+      const currencies = new Set(
+        payment.purchases.map((purchase) => purchase.currency.toLowerCase()),
+      );
+      if (currencies.size !== 1 || !currencies.has(currency)) {
+        return { purchases: [], payment };
+      }
+    }
     return { purchases: payment.purchases, payment };
   }
 
@@ -40,6 +56,7 @@ async function buildReceiptPurchases(creatorId: string, paymentId?: string | nul
       creatorPaymentId: null,
       commissionAmount: { gt: 0 },
       project: { userId: creatorId },
+      ...(currency ? { currency } : {}),
       OR: [
         { commissionStatus: "PENDING_CREATOR_PAYMENT" },
         {
@@ -74,6 +91,7 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
+  const currencyParam = payload.currency?.toLowerCase() ?? null;
   const creator = await prisma.user.findUnique({
     where: { id: authUser.id },
     select: { id: true, role: true, stripeCustomerId: true },
@@ -106,13 +124,18 @@ export async function POST(request: Request) {
   }
 
   const existingPayment = await prisma.creatorPayment.findFirst({
-    where: { creatorId: creator.id, status: "PENDING" },
+    where: {
+      creatorId: creator.id,
+      status: "PENDING",
+      ...(currencyParam ? { currency: currencyParam } : {}),
+    },
     orderBy: { createdAt: "desc" },
   });
 
   const { purchases, payment } = await buildReceiptPurchases(
     creator.id,
     existingPayment?.id ?? null,
+    currencyParam,
   );
 
   if (purchases.length === 0) {
@@ -121,6 +144,16 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+
+  const currencies = new Set(purchases.map((purchase) => purchase.currency));
+  if (!currencyParam && currencies.size > 1) {
+    return NextResponse.json(
+      { error: "Multiple currencies detected. Select a currency to pay." },
+      { status: 400 },
+    );
+  }
+
+  const currency = (currencyParam ?? Array.from(currencies)[0] ?? "usd").toLowerCase();
 
   const totals = purchases.reduce(
     (acc, purchase) => {
@@ -145,9 +178,17 @@ export async function POST(request: Request) {
         amountTotal: totalWithFee,
         marketerTotal: totals.marketerTotal,
         platformFeeTotal: totals.platformTotal,
+        currency,
         status: "PENDING",
       },
     }));
+
+  if (payment && !payment.currency) {
+    await prisma.creatorPayment.update({
+      where: { id: payment.id },
+      data: { currency },
+    });
+  }
 
   if (!payment) {
     await prisma.purchase.updateMany({
@@ -176,7 +217,7 @@ export async function POST(request: Request) {
   try {
     const intent = await stripe.paymentIntents.create({
       amount: totalWithFee,
-      currency: "usd",
+      currency,
       customer: creator.stripeCustomerId,
       payment_method: chosenMethod.stripePaymentMethodId,
       off_session: true,

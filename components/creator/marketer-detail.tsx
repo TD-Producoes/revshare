@@ -61,6 +61,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
     commissionOwed: 0,
     purchasesCount: 0,
     customersCount: 0,
+    clicksCount: 0,
   };
   const timeline = metrics?.timeline ?? [];
   const activeTabLabel = { overview: "Overview", metrics: "Metrics" }[
@@ -104,7 +105,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
+        <div className="space-y-7">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -127,20 +128,22 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/founder/affiliates">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <h1 className="text-2xl font-bold">
-              {marketer?.name ?? "Affiliate"}
-            </h1>
-            <Badge variant="secondary">Affiliate</Badge>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/founder/affiliates">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+              <h1 className="text-2xl font-semibold">
+                {marketer?.name ?? "Affiliate"}
+              </h1>
+              <Badge variant="secondary">Affiliate</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {marketer?.email ?? "No email on file"}
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {marketer?.email ?? "No email on file"}
-          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -194,6 +197,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
             projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            clicksTotal={summary.clicksCount}
           />
         </TabsContent>
       </Tabs>

@@ -15,14 +15,17 @@ const rewardInput = z.object({
     "FREE_SUBSCRIPTION",
     "PLAN_UPGRADE",
     "ACCESS_PERK",
+    "MONEY",
   ]),
   rewardPercentOff: z.number().int().min(1).max(100).optional(),
   rewardDurationMonths: z.number().int().min(1).max(12).optional(),
+  rewardAmount: z.number().int().min(1).optional(),
   fulfillmentType: z.enum(["AUTO_COUPON", "MANUAL"]),
   earnLimit: z.enum(["ONCE_PER_MARKETER", "MULTIPLE"]),
   availabilityType: z.enum(["UNLIMITED", "FIRST_N"]),
   availabilityLimit: z.number().int().min(1).optional(),
   visibility: z.enum(["PUBLIC", "PRIVATE"]),
+  allowedMarketerIds: z.array(z.string().min(1)).optional(),
 });
 
 const rewardUpdateInput = rewardInput.extend({
@@ -45,6 +48,10 @@ const buildRewardLabel = (payload: z.infer<typeof rewardInput>) => {
   }
   if (payload.rewardType === "PLAN_UPGRADE") {
     return "Plan upgrade";
+  }
+  if (payload.rewardType === "MONEY") {
+    const amount = payload.rewardAmount ?? 0;
+    return `Cash reward ${Math.round(amount) / 100}`;
   }
   return "Access / perk";
 };
@@ -85,7 +92,7 @@ export async function POST(
   const payload = parsed.data;
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, currency: true },
   });
 
   if (!project) {
@@ -127,6 +134,13 @@ export async function POST(
     );
   }
 
+  if (payload.rewardType === "MONEY" && (!payload.rewardAmount || payload.rewardAmount < 1)) {
+    return NextResponse.json(
+      { error: "rewardAmount is required for cash rewards" },
+      { status: 400 }
+    );
+  }
+
   const { date: startsAtInput, valid: startsAtValid } = parseOptionalDate(
     payload.startsAt
   );
@@ -156,7 +170,12 @@ export async function POST(
         payload.rewardType === "FREE_SUBSCRIPTION"
           ? payload.rewardDurationMonths
           : null,
-      fulfillmentType: payload.fulfillmentType,
+      rewardAmount: payload.rewardType === "MONEY" ? payload.rewardAmount : null,
+      rewardCurrency:
+        payload.rewardType === "MONEY" ? (project.currency ?? "USD") : null,
+      allowedMarketerIds: payload.allowedMarketerIds ?? [],
+      fulfillmentType:
+        payload.rewardType === "MONEY" ? "MANUAL" : payload.fulfillmentType,
       earnLimit: payload.earnLimit,
       availabilityType: payload.availabilityType,
       availabilityLimit:
@@ -234,7 +253,14 @@ export async function GET(
     orderBy: { milestoneValue: "asc" },
   });
 
-  return NextResponse.json({ data: rewards });
+  const visibleRewards = rewards.filter((reward) => {
+    const allowed = Array.isArray(reward.allowedMarketerIds)
+      ? reward.allowedMarketerIds
+      : [];
+    return allowed.length === 0;
+  });
+
+  return NextResponse.json({ data: visibleRewards });
 }
 
 export async function PATCH(
@@ -270,7 +296,7 @@ export async function PATCH(
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, currency: true },
   });
 
   if (!project) {
@@ -288,9 +314,21 @@ export async function PATCH(
   }
 
   if ("status" in payload && !("name" in payload)) {
+    const now = new Date();
+    const shouldResetStart =
+      payload.status === "ACTIVE" &&
+      existing.status !== "ACTIVE" &&
+      (!existing.startsAt ||
+        (existing.createdAt &&
+          Math.abs(existing.startsAt.getTime() - existing.createdAt.getTime()) <
+            60_000));
+
     const updated = await prisma.reward.update({
       where: { id: existing.id },
-      data: { status: payload.status },
+      data: {
+        status: payload.status,
+        ...(shouldResetStart ? { startsAt: now } : {}),
+      },
     });
 
     await prisma.event.create({
@@ -348,6 +386,16 @@ export async function PATCH(
     );
   }
 
+  if (
+    fullPayload.rewardType === "MONEY" &&
+    (!fullPayload.rewardAmount || fullPayload.rewardAmount < 1)
+  ) {
+    return NextResponse.json(
+      { error: "rewardAmount is required for cash rewards" },
+      { status: 400 }
+    );
+  }
+
   const { date: updateStartsAt, valid: updateStartsAtValid } =
     parseOptionalDate(fullPayload.startsAt);
   if (!updateStartsAtValid) {
@@ -375,7 +423,18 @@ export async function PATCH(
         fullPayload.rewardType === "FREE_SUBSCRIPTION"
           ? fullPayload.rewardDurationMonths
           : null,
-      fulfillmentType: fullPayload.fulfillmentType,
+      rewardAmount:
+        fullPayload.rewardType === "MONEY" ? fullPayload.rewardAmount : null,
+      rewardCurrency:
+        fullPayload.rewardType === "MONEY"
+          ? (project.currency ?? "USD")
+          : null,
+      allowedMarketerIds:
+        fullPayload.allowedMarketerIds ?? existing.allowedMarketerIds ?? [],
+      fulfillmentType:
+        fullPayload.rewardType === "MONEY"
+          ? "MANUAL"
+          : fullPayload.fulfillmentType,
       earnLimit: fullPayload.earnLimit,
       availabilityType: fullPayload.availabilityType,
       availabilityLimit:

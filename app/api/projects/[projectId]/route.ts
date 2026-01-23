@@ -140,6 +140,28 @@ export async function GET(
 
   // Marketers with contracts should see full project details (like owners)
   const redacted = redactProjectData(project, hasAccess);
+  if (!redacted) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  if (isOwner) {
+    const revenueCatIntegration = await prisma.projectIntegration.findUnique({
+      where: {
+        projectId_provider: {
+          projectId,
+          provider: "REVENUECAT",
+        },
+      },
+      select: { externalId: true },
+    });
+    return NextResponse.json({
+      data: {
+        ...redacted,
+        revenueCatProjectId: revenueCatIntegration?.externalId ?? null,
+        revenueCatConnected: Boolean(revenueCatIntegration),
+      },
+    });
+  }
 
   return NextResponse.json({ data: redacted });
 }
