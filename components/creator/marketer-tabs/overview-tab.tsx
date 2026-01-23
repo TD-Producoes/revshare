@@ -3,7 +3,6 @@
 import Link from "next/link";
 
 import { StatCard } from "@/components/shared/stat-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -68,46 +67,42 @@ export function MarketerOverviewTab({
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Active Projects</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {projects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No active projects yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Status</TableHead>
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold">Active Projects</h3>
+        {projects.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No active projects yet.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Project</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projects.map((project) => (
+                <TableRow key={project.id}>
+                  <TableCell className="font-medium">
+                    <Link
+                      className="hover:underline"
+                      href={`/founder/projects/${project.id}`}
+                    >
+                      {project.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {project.status?.toLowerCase() === "paused"
+                      ? "Paused"
+                      : "Active"}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projects.map((project) => (
-                  <TableRow key={project.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        className="hover:underline"
-                        href={`/founder/projects/${project.id}`}
-                      >
-                        {project.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {project.status?.toLowerCase() === "paused"
-                        ? "Paused"
-                        : "Active"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

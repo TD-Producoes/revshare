@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -322,98 +322,78 @@ export function OffersManagement() {
         </TabsList>
 
         <TabsContent value="pending">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Pending Applications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContractsTable
-                contractsList={pendingContracts}
-                showActions={true}
-                onReview={setReviewContractId}
-                onOpenTestimonial={handleOpenTestimonial}
-                onPause={handlePause}
-                onResume={handleResume}
-                getStatusBadge={getStatusBadge}
-              />
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold">Pending Applications</h3>
+            <ContractsTable
+              contractsList={pendingContracts}
+              showActions={true}
+              onReview={setReviewContractId}
+              onOpenTestimonial={handleOpenTestimonial}
+              onPause={handlePause}
+              onResume={handleResume}
+              getStatusBadge={getStatusBadge}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="approved">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Approved Affiliates</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContractsTable
-                contractsList={approvedContracts}
-                showActions={false}
-                onReview={setReviewContractId}
-                onOpenTestimonial={handleOpenTestimonial}
-                onPause={handlePause}
-                onResume={handleResume}
-                getStatusBadge={getStatusBadge}
-              />
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold">Approved Affiliates</h3>
+            <ContractsTable
+              contractsList={approvedContracts}
+              showActions={false}
+              onReview={setReviewContractId}
+              onOpenTestimonial={handleOpenTestimonial}
+              onPause={handlePause}
+              onResume={handleResume}
+              getStatusBadge={getStatusBadge}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="rejected">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Rejected Applications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContractsTable
-                contractsList={rejectedContracts}
-                showActions={false}
-                onReview={setReviewContractId}
-                onOpenTestimonial={handleOpenTestimonial}
-                onPause={handlePause}
-                onResume={handleResume}
-                getStatusBadge={getStatusBadge}
-              />
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold">Rejected Applications</h3>
+            <ContractsTable
+              contractsList={rejectedContracts}
+              showActions={false}
+              onReview={setReviewContractId}
+              onOpenTestimonial={handleOpenTestimonial}
+              onPause={handlePause}
+              onResume={handleResume}
+              getStatusBadge={getStatusBadge}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="paused">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Paused Applications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContractsTable
-                contractsList={pausedContracts}
-                showActions={false}
-                onReview={setReviewContractId}
-                onOpenTestimonial={handleOpenTestimonial}
-                onPause={handlePause}
-                onResume={handleResume}
-                getStatusBadge={getStatusBadge}
-              />
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold">Paused Applications</h3>
+            <ContractsTable
+              contractsList={pausedContracts}
+              showActions={false}
+              onReview={setReviewContractId}
+              onOpenTestimonial={handleOpenTestimonial}
+              onPause={handlePause}
+              onResume={handleResume}
+              getStatusBadge={getStatusBadge}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="all">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">All Applications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContractsTable
-                contractsList={contracts}
-                showActions={false}
-                onReview={setReviewContractId}
-                onOpenTestimonial={handleOpenTestimonial}
-                onPause={handlePause}
-                onResume={handleResume}
-                getStatusBadge={getStatusBadge}
-              />
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold">All Applications</h3>
+            <ContractsTable
+              contractsList={contracts}
+              showActions={false}
+              onReview={setReviewContractId}
+              onOpenTestimonial={handleOpenTestimonial}
+              onPause={handlePause}
+              onResume={handleResume}
+              getStatusBadge={getStatusBadge}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 

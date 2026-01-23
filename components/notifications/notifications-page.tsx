@@ -10,7 +10,6 @@ import {
 } from "@/lib/hooks/notifications";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -129,133 +128,127 @@ export function NotificationsPage({ expectedRole }: NotificationsPageProps) {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="space-y-3">
-          <CardTitle className="text-base">Inbox</CardTitle>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Tabs value={filter} onValueChange={(value) => setFilter(value as NotificationFilter)}>
-              <TabsList>
-                {filters.map((item) => (
-                  <TabsTrigger key={item.value} value={item.value}>
-                    {item.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-            <Select
-              value={String(pageSize)}
-              onValueChange={(value) => setPageSize(Number(value))}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Page size" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10 per page</SelectItem>
-                <SelectItem value="20">20 per page</SelectItem>
-                <SelectItem value="50">50 per page</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Separator />
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading notifications...</p>
-          ) : notifications.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No notifications found for this filter.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Message</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Received</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {notifications.map((notification) => (
-                  <TableRow key={notification.id}>
-                    <TableCell className="font-medium">
-                      {notification.type}
-                    </TableCell>
-                    <TableCell>{notification.title}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {notification.message ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          notification.status === "UNREAD"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className="capitalize"
-                      >
-                        {notification.status.toLowerCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {notification.status === "UNREAD" ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            markRead.mutate({
-                              notificationId: notification.id,
-                              userId: user.id,
-                            })
-                          }
-                        >
-                          Mark read
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          —
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Tabs
+            value={filter}
+            onValueChange={(value) => setFilter(value as NotificationFilter)}
+          >
+            <TabsList>
+              {filters.map((item) => (
+                <TabsTrigger key={item.value} value={item.value}>
+                  {item.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => setPageSize(Number(value))}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Page size" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10 per page</SelectItem>
+              <SelectItem value="20">20 per page</SelectItem>
+              <SelectItem value="50">50 per page</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              Showing {pageRange.start}-{pageRange.end} of {totalCount}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                disabled={page <= 1}
-              >
-                Previous
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={page >= totalPages}
-              >
-                Next
-              </Button>
-            </div>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading notifications...</p>
+        ) : notifications.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No notifications found for this filter.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Message</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Received</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {notifications.map((notification) => (
+                <TableRow key={notification.id}>
+                  <TableCell className="font-medium">
+                    {notification.type}
+                  </TableCell>
+                  <TableCell>{notification.title}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {notification.message ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        notification.status === "UNREAD" ? "default" : "secondary"
+                      }
+                      className="capitalize"
+                    >
+                      {notification.status.toLowerCase()}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(notification.createdAt).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {notification.status === "UNREAD" ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          markRead.mutate({
+                            notificationId: notification.id,
+                            userId: user.id,
+                          })
+                        }
+                      >
+                        Mark read
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            Showing {pageRange.start}-{pageRange.end} of {totalCount}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              disabled={page <= 1}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={page >= totalPages}
+            >
+              Next
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

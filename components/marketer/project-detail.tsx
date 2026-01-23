@@ -7,7 +7,6 @@ import { ArrowLeft, Tag } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/shared/stat-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -328,51 +327,45 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Commission Adjustments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {projectAdjustments.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No adjustments recorded yet.
-            </p>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projectAdjustments.map((adjustment) => (
-                    <TableRow key={adjustment.id}>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(adjustment.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {adjustment.reason.replace(/_/g, " ")}
-                      </TableCell>
-                      <TableCell className="text-right text-red-600">
-                        {formatCurrency(adjustment.amount, adjustment.currency)}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        <Badge variant="outline">
-                          {adjustment.status.replace(/_/g, " ")}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold">Commission Adjustments</h3>
+        {projectAdjustments.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No adjustments recorded yet.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projectAdjustments.map((adjustment) => (
+                <TableRow key={adjustment.id}>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(adjustment.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="capitalize">
+                    {adjustment.reason.replace(/_/g, " ")}
+                  </TableCell>
+                  <TableCell className="text-right text-red-600">
+                    {formatCurrency(adjustment.amount, adjustment.currency)}
+                  </TableCell>
+                  <TableCell className="capitalize">
+                    <Badge variant="outline">
+                      {adjustment.status.replace(/_/g, " ")}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
         </TabsContent>
 
         <TabsContent value="purchases">

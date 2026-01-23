@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/shared/stat-card";
 import {
   Table,
@@ -188,67 +187,63 @@ export function MarketerPayouts() {
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Transfers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {transfers.length === 0 ? (
-            <p className="text-muted-foreground">
-              No transfers yet. Once payouts are processed, they will appear here.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Projects</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Reference</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transfers.map((transfer) => {
-                  const transferCurrency = transfer.currency ?? "USD";
-                  const reference = transfer.stripeTransferId ?? "-";
-                  return (
-                    <TableRow key={transfer.id}>
-                      <TableCell>
-                        {new Date(transfer.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        {transfer.type === "reward" ? "Reward payout" : "Commission"}
-                      </TableCell>
-                      <TableCell>
-                        {transfer.projects.length > 0
-                          ? transfer.projects.join(", ")
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(transfer.amount, transferCurrency)}
-                      </TableCell>
-                      <TableCell className="space-y-1">
-                        {statusBadge(transfer.status)}
-                        {transfer.status.toLowerCase() === "failed" &&
-                        transfer.failureReason ? (
-                          <p className="text-xs text-muted-foreground">
-                            {transfer.failureReason}
-                          </p>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {reference}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold">Transfers</h3>
+        {transfers.length === 0 ? (
+          <p className="text-muted-foreground">
+            No transfers yet. Once payouts are processed, they will appear here.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Projects</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Reference</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transfers.map((transfer) => {
+                const transferCurrency = transfer.currency ?? "USD";
+                const reference = transfer.stripeTransferId ?? "-";
+                return (
+                  <TableRow key={transfer.id}>
+                    <TableCell>
+                      {new Date(transfer.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {transfer.type === "reward" ? "Reward payout" : "Commission"}
+                    </TableCell>
+                    <TableCell>
+                      {transfer.projects.length > 0
+                        ? transfer.projects.join(", ")
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(transfer.amount, transferCurrency)}
+                    </TableCell>
+                    <TableCell className="space-y-1">
+                      {statusBadge(transfer.status)}
+                      {transfer.status.toLowerCase() === "failed" &&
+                      transfer.failureReason ? (
+                        <p className="text-xs text-muted-foreground">
+                          {transfer.failureReason}
+                        </p>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {reference}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

@@ -332,118 +332,114 @@ export function ProjectMetricsTab({
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base">Marketer Performance</CardTitle>
-            <Popover open={marketerFilterOpen} onOpenChange={setMarketerFilterOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={marketerFilterOpen}
-                  className="w-full justify-between sm:w-[240px]"
-                >
-                  {selectedMarketerLabel}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search marketers..." />
-                  <CommandList>
-                    <CommandEmpty>No marketers found.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        value="all"
-                        onSelect={() => {
-                          setSelectedMarketerId(null);
-                          setMarketerFilterOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "ml-2 mr-2 h-4 w-4",
-                            selectedMarketerId ? "opacity-0" : "opacity-100",
-                          )}
-                        />
-                        All marketers
-                      </CommandItem>
-                      {marketerOptions.map((marketer) => {
-                        const isSelected = selectedMarketerId === marketer.id;
-                        return (
-                          <CommandItem
-                            key={marketer.id}
-                            value={marketer.label}
-                            onSelect={() => {
-                              setSelectedMarketerId(marketer.id);
-                              setMarketerFilterOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "ml-2 mr-2 h-4 w-4",
-                                isSelected ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            {marketer.label}
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredRows.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No marketer activity yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Marketer</TableHead>
-                  <TableHead>Promo Codes</TableHead>
-                  <TableHead className="text-right">Purchases</TableHead>
-                  <TableHead className="text-right">Clicks</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">Commission</TableHead>
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-base font-semibold">Marketer Performance</h3>
+          <Popover open={marketerFilterOpen} onOpenChange={setMarketerFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={marketerFilterOpen}
+                className="w-full justify-between sm:w-[240px]"
+              >
+                {selectedMarketerLabel}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search marketers..." />
+                <CommandList>
+                  <CommandEmpty>No marketers found.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="all"
+                      onSelect={() => {
+                        setSelectedMarketerId(null);
+                        setMarketerFilterOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "ml-2 mr-2 h-4 w-4",
+                          selectedMarketerId ? "opacity-0" : "opacity-100",
+                        )}
+                      />
+                      All marketers
+                    </CommandItem>
+                    {marketerOptions.map((marketer) => {
+                      const isSelected = selectedMarketerId === marketer.id;
+                      return (
+                        <CommandItem
+                          key={marketer.id}
+                          value={marketer.label}
+                          onSelect={() => {
+                            setSelectedMarketerId(marketer.id);
+                            setMarketerFilterOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "ml-2 mr-2 h-4 w-4",
+                              isSelected ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          {marketer.label}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+        {filteredRows.length === 0 ? (
+          <p className="text-muted-foreground text-center py-8">
+            No marketer activity yet.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Marketer</TableHead>
+                <TableHead>Promo Codes</TableHead>
+                <TableHead className="text-right">Purchases</TableHead>
+                <TableHead className="text-right">Clicks</TableHead>
+                <TableHead className="text-right">Revenue</TableHead>
+                <TableHead className="text-right">Commission</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredRows.map((row) => (
+                <TableRow key={row.marketerId}>
+                  <TableCell className="font-medium">
+                    {row.marketerName}
+                  </TableCell>
+                  <TableCell>
+                    <code className="bg-muted px-2 py-1 rounded text-xs">
+                      {row.referralCode}
+                    </code>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.purchases)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.clicks)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.revenue, currency)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(row.commission, currency)}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRows.map((row) => (
-                  <TableRow key={row.marketerId}>
-                    <TableCell className="font-medium">
-                      {row.marketerName}
-                    </TableCell>
-                    <TableCell>
-                      <code className="bg-muted px-2 py-1 rounded text-xs">
-                        {row.referralCode}
-                      </code>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(row.purchases)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(row.clicks)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(row.revenue, currency)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(row.commission, currency)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

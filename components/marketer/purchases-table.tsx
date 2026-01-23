@@ -47,53 +47,51 @@ export function PurchasesTable({ purchases, limit }: PurchasesTableProps) {
   };
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Project</TableHead>
-            <TableHead>Coupon</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
-            <TableHead className="text-right">Commission</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Refund Ends</TableHead>
-            <TableHead className="text-right">Date</TableHead>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Project</TableHead>
+          <TableHead>Coupon</TableHead>
+          <TableHead className="text-right">Amount</TableHead>
+          <TableHead className="text-right">Commission</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Refund Ends</TableHead>
+          <TableHead className="text-right">Date</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {displayPurchases.map((purchase) => (
+          <TableRow key={purchase.id}>
+            <TableCell className="font-medium">
+              {purchase.projectName}
+            </TableCell>
+            <TableCell>
+              {purchase.couponCode ? (
+                <Badge variant="secondary">{purchase.couponCode}</Badge>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </TableCell>
+            <TableCell className="text-right">
+              {formatCurrency(purchase.amount)}
+            </TableCell>
+            <TableCell className="text-right">
+              {formatCurrency(purchase.commissionAmount)}
+            </TableCell>
+            <TableCell>
+              {getStatusBadge(purchase)}
+            </TableCell>
+            <TableCell className="text-right text-muted-foreground">
+              {purchase.refundEligibleAt
+                ? new Date(purchase.refundEligibleAt).toLocaleDateString()
+                : "-"}
+            </TableCell>
+            <TableCell className="text-right text-muted-foreground">
+              {new Date(purchase.createdAt).toLocaleDateString()}
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {displayPurchases.map((purchase) => (
-            <TableRow key={purchase.id}>
-              <TableCell className="font-medium">
-                {purchase.projectName}
-              </TableCell>
-              <TableCell>
-                {purchase.couponCode ? (
-                  <Badge variant="secondary">{purchase.couponCode}</Badge>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell className="text-right">
-                {formatCurrency(purchase.amount)}
-              </TableCell>
-              <TableCell className="text-right">
-                {formatCurrency(purchase.commissionAmount)}
-              </TableCell>
-              <TableCell>
-                {getStatusBadge(purchase)}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {purchase.refundEligibleAt
-                  ? new Date(purchase.refundEligibleAt).toLocaleDateString()
-                  : "-"}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {new Date(purchase.createdAt).toLocaleDateString()}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

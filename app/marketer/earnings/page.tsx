@@ -1,7 +1,7 @@
 "use client";
 
 import { formatCurrency } from "@/lib/data/metrics";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -430,94 +430,90 @@ export default function EarningsPage() {
             />
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Earnings by Project</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {projectEarningsList.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No earnings yet. Start promoting projects to earn commissions.
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  {earningsGroups.map((group) => (
-                    <div key={group.currency} className="space-y-3">
-                      {earningsGroups.length > 1 ? (
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">
-                            {group.currency.toUpperCase()} projects
-                          </p>
-                          <Badge variant="secondary" className="text-xs">
-                            {group.entries.length} projects
-                          </Badge>
-                        </div>
-                      ) : null}
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Project</TableHead>
-                            <TableHead className="text-right">Commission</TableHead>
-                            <TableHead className="text-right">Purchases</TableHead>
-                            <TableHead className="text-right">Revenue</TableHead>
-                            <TableHead className="text-right">Total Earned</TableHead>
-                            <TableHead className="text-right">Received</TableHead>
-                            <TableHead className="text-right">Ready</TableHead>
-                            <TableHead className="text-right">Refund Window</TableHead>
-                            <TableHead className="text-right">Awaiting Founder</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {group.entries.map((item) => {
-                            return (
-                              <TableRow key={`${group.currency}-${item.projectId}`}>
-                                <TableCell>
-                                  <div>
-                                    <p className="font-medium">{item.projectName}</p>
-                                    {item.commissionPercent !== null ? (
-                                      <Badge variant="secondary" className="text-xs mt-1">
-                                        {item.commissionPercent}% commission
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {item.commissionPercent !== null
-                                    ? `${item.commissionPercent}%`
-                                    : "-"}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {item.purchaseCount}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {formatCurrency(item.totalRevenue, group.currency)}
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
-                                  {formatCurrency(item.totalEarnings, group.currency)}
-                                </TableCell>
-                                <TableCell className="text-right text-green-600">
-                                  {formatCurrency(item.paidEarnings, group.currency)}
-                                </TableCell>
-                                <TableCell className="text-right text-sky-400">
-                                  {formatCurrency(item.readyEarnings, group.currency)}
-                                </TableCell>
-                                <TableCell className="text-right text-amber-500">
-                                  {formatCurrency(item.awaitingRefundEarnings, group.currency)}
-                                </TableCell>
-                                <TableCell className="text-right text-yellow-600">
-                                  {formatCurrency(item.awaitingCreatorEarnings, group.currency)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold">Earnings by Project</h3>
+            {projectEarningsList.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No earnings yet. Start promoting projects to earn commissions.
+              </p>
+            ) : (
+              <div className="space-y-6">
+                {earningsGroups.map((group) => (
+                  <div key={group.currency} className="space-y-3">
+                    {earningsGroups.length > 1 ? (
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">
+                          {group.currency.toUpperCase()} projects
+                        </p>
+                        <Badge variant="secondary" className="text-xs">
+                          {group.entries.length} projects
+                        </Badge>
+                      </div>
+                    ) : null}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Project</TableHead>
+                          <TableHead className="text-right">Commission</TableHead>
+                          <TableHead className="text-right">Purchases</TableHead>
+                          <TableHead className="text-right">Revenue</TableHead>
+                          <TableHead className="text-right">Total Earned</TableHead>
+                          <TableHead className="text-right">Received</TableHead>
+                          <TableHead className="text-right">Ready</TableHead>
+                          <TableHead className="text-right">Refund Window</TableHead>
+                          <TableHead className="text-right">Awaiting Founder</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.entries.map((item) => {
+                          return (
+                            <TableRow key={`${group.currency}-${item.projectId}`}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{item.projectName}</p>
+                                  {item.commissionPercent !== null ? (
+                                    <Badge variant="secondary" className="text-xs mt-1">
+                                      {item.commissionPercent}% commission
+                                    </Badge>
+                                  ) : null}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {item.commissionPercent !== null
+                                  ? `${item.commissionPercent}%`
+                                  : "-"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {item.purchaseCount}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.totalRevenue, group.currency)}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency(item.totalEarnings, group.currency)}
+                              </TableCell>
+                              <TableCell className="text-right text-green-600">
+                                {formatCurrency(item.paidEarnings, group.currency)}
+                              </TableCell>
+                              <TableCell className="text-right text-sky-400">
+                                {formatCurrency(item.readyEarnings, group.currency)}
+                              </TableCell>
+                              <TableCell className="text-right text-amber-500">
+                                {formatCurrency(item.awaitingRefundEarnings, group.currency)}
+                              </TableCell>
+                              <TableCell className="text-right text-yellow-600">
+                                {formatCurrency(item.awaitingCreatorEarnings, group.currency)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <Card>
             <CardContent className="py-4">
@@ -536,55 +532,49 @@ export default function EarningsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Commission Adjustments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {adjustments.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No adjustments recorded yet.
-                </p>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Project</TableHead>
-                        <TableHead>Reason</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {adjustments.map((adjustment) => (
-                        <TableRow key={adjustment.id}>
-                          <TableCell className="text-muted-foreground">
-                            {new Date(adjustment.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {adjustment.projectName}
-                          </TableCell>
-                          <TableCell className="capitalize">
-                            {adjustment.reason.replace(/_/g, " ")}
-                          </TableCell>
-                          <TableCell className="text-right text-red-600">
-                            {formatCurrency(adjustment.amount, adjustment.currency)}
-                          </TableCell>
-                          <TableCell className="capitalize">
-                            <Badge variant="outline">
-                              {adjustment.status.replace(/_/g, " ")}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold">Commission Adjustments</h3>
+            {adjustments.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No adjustments recorded yet.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adjustments.map((adjustment) => (
+                    <TableRow key={adjustment.id}>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(adjustment.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {adjustment.projectName}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {adjustment.reason.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600">
+                        {formatCurrency(adjustment.amount, adjustment.currency)}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">
+                          {adjustment.status.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="rewards" className="space-y-6">
@@ -614,60 +604,56 @@ export default function EarningsPage() {
               No cash rewards earned yet.
             </p>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Rewards by Project</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Reward</TableHead>
-                      <TableHead>Project</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Earned</TableHead>
-                      <TableHead className="text-right">Paid</TableHead>
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold">Rewards by Project</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reward</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Earned</TableHead>
+                    <TableHead className="text-right">Paid</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rewardEarnings.map((reward) => (
+                    <TableRow key={reward.id}>
+                      <TableCell className="font-medium">
+                        {reward.rewardName}
+                      </TableCell>
+                      <TableCell>{reward.projectName}</TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(reward.amount, reward.currency)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={reward.status === "PAID" ? "success" : "outline"}
+                        >
+                          {reward.status === "PAID" ? (
+                            <>
+                              <Check className="size-3 text-emerald-600" />
+                              Paid
+                            </>
+                          ) : (
+                            "Ready"
+                          )}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {new Date(reward.earnedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {reward.paidAt
+                          ? new Date(reward.paidAt).toLocaleDateString()
+                          : "-"}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rewardEarnings.map((reward) => (
-                      <TableRow key={reward.id}>
-                        <TableCell className="font-medium">
-                          {reward.rewardName}
-                        </TableCell>
-                        <TableCell>{reward.projectName}</TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(reward.amount, reward.currency)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={reward.status === "PAID" ? "success" : "outline"}
-                          >
-                            {reward.status === "PAID" ? (
-                              <>
-                                <Check className="size-3 text-emerald-600" />
-                                Paid
-                              </>
-                            ) : (
-                              "Ready"
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {new Date(reward.earnedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {reward.paidAt
-                            ? new Date(reward.paidAt).toLocaleDateString()
-                            : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </TabsContent>
       </Tabs>

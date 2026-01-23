@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Copy, ExternalLink } from "lucide-react";
+import { Check, Clock, Copy, ExternalLink, Pause, XCircle } from "lucide-react";
 import { Offer } from "@/lib/data/types";
 import { Contract } from "@/lib/hooks/contracts";
 import {
@@ -100,6 +100,45 @@ export function MyOffersTable({
 
   const getCreator = (creatorId: string) => {
     return users.find((u) => u.id === creatorId);
+  };
+
+  const renderContractStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return (
+          <Badge variant="success" className="gap-1">
+            <Check className="size-3 text-emerald-600" />
+            Approved
+          </Badge>
+        );
+      case "pending":
+        return (
+          <Badge variant="outline" className="gap-1">
+            <Clock className="size-3 text-muted-foreground" />
+            Pending
+          </Badge>
+        );
+      case "rejected":
+        return (
+          <Badge variant="destructive" className="gap-1">
+            <XCircle className="size-3" />
+            Rejected
+          </Badge>
+        );
+      case "paused":
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <Pause className="size-3" />
+            Paused
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary" className="capitalize">
+            {status}
+          </Badge>
+        );
+    }
   };
 
   const handleCopy = (text: string) => {
@@ -279,135 +318,132 @@ export function MyOffersTable({
         {couponError ? (
           <p className="text-sm text-destructive">{couponError}</p>
         ) : null}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Project</TableHead>
-                <TableHead className="text-right">Commission</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Referral Link</TableHead>
-                <TableHead>Coupon</TableHead>
-                <TableHead className="text-right">Test Checkout</TableHead>
-                <TableHead className="text-right">Applied</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {displayContracts.map((contract) => {
-                const commissionPercent =
-                  contract.commissionPercent > 1
-                    ? Math.round(contract.commissionPercent)
-                    : Math.round(contract.commissionPercent * 100);
-                const coupon = getCouponForProject(contract.projectId);
-                const referralLink =
-                  coupon?.code
-                    ? buildReferralLink(contract.projectId, coupon.code)
-                    : null;
-                const isClaiming =
-                  claimCoupon.isPending &&
-                  claimCoupon.variables?.projectId === contract.projectId;
 
-                // Route to offer detail page if approved, otherwise to project directory
-                const projectHref =
-                  contract.status === "approved"
-                    ? `/marketer/applications/${contract.projectId}`
-                    : `/marketer/projects/${contract.projectId}`;
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Project</TableHead>
+              <TableHead className="text-right">Commission</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Referral Link</TableHead>
+              <TableHead>Coupon</TableHead>
+              <TableHead className="text-right">Test Checkout</TableHead>
+              <TableHead className="text-right">Applied</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {displayContracts.map((contract) => {
+              const commissionPercent =
+                contract.commissionPercent > 1
+                  ? Math.round(contract.commissionPercent)
+                  : Math.round(contract.commissionPercent * 100);
+              const coupon = getCouponForProject(contract.projectId);
+              const referralLink =
+                coupon?.code
+                  ? buildReferralLink(contract.projectId, coupon.code)
+                  : null;
+              const isClaiming =
+                claimCoupon.isPending &&
+                claimCoupon.variables?.projectId === contract.projectId;
 
-                return (
-                  <TableRow key={contract.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={projectHref}
-                        className="hover:underline"
-                      >
-                        {contract.projectName}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {commissionPercent}%
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="capitalize">
-                        {contract.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {referralLink ? (
-                        <div className="flex items-center gap-2">
-                          <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-[160px]">
-                            {referralLink}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => handleCopy(referralLink)}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {coupon ? (
-                        <div className="flex items-center gap-2">
-                          <div className="space-y-1">
-                            <code className="bg-muted px-2 py-1 rounded text-xs">
-                              {coupon.code}
-                            </code>
-                            {coupon.template?.name ? (
-                              <p className="text-xs text-muted-foreground">
-                                {coupon.template.name}
-                              </p>
-                            ) : null}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => handleCopy(coupon.code)}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : contract.status === "approved" ? (
+              // Route to offer detail page if approved, otherwise to project directory
+              const projectHref =
+                contract.status === "approved"
+                  ? `/marketer/applications/${contract.projectId}`
+                  : `/marketer/projects/${contract.projectId}`;
+
+              return (
+                <TableRow key={contract.id}>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={projectHref}
+                      className="hover:underline"
+                    >
+                      {contract.projectName}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {commissionPercent}%
+                  </TableCell>
+                  <TableCell>
+                    {renderContractStatusBadge(contract.status)}
+                  </TableCell>
+                  <TableCell>
+                    {referralLink ? (
+                      <div className="flex items-center gap-2">
+                        <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-[160px]">
+                          {referralLink}
+                        </code>
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenTemplateDialog(contract.projectId)}
-                          disabled={isClaiming}
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleCopy(referralLink)}
                         >
-                          {isClaiming ? "Generating..." : "Generate coupon"}
+                          <Copy className="h-3 w-3" />
                         </Button>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {coupon ? (
+                      <div className="flex items-center gap-2">
+                        <div className="space-y-1">
+                          <code className="bg-muted px-2 py-1 rounded text-xs">
+                            {coupon.code}
+                          </code>
+                          {coupon.template?.name ? (
+                            <p className="text-xs text-muted-foreground">
+                              {coupon.template.name}
+                            </p>
+                          ) : null}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleCopy(coupon.code)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : contract.status === "approved" ? (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        onClick={() =>
-                          handleOpenCheckout(
-                            contract.projectId,
-                            coupon?.code ?? null,
-                          )
-                        }
+                        onClick={() => handleOpenTemplateDialog(contract.projectId)}
+                        disabled={isClaiming}
                       >
-                        Test checkout
+                        {isClaiming ? "Generating..." : "Generate coupon"}
                       </Button>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {new Date(contract.createdAt).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleOpenCheckout(
+                          contract.projectId,
+                          coupon?.code ?? null,
+                        )
+                      }
+                    >
+                      Test checkout
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {new Date(contract.createdAt).toLocaleDateString()}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
 
         {limit && contracts.length > limit && (
           <div className="text-center">
@@ -637,113 +673,111 @@ export function MyOffersTable({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Project</TableHead>
-              <TableHead>Founder</TableHead>
-              <TableHead className="text-right">Rev Share</TableHead>
-              <TableHead>Referral Link</TableHead>
-              <TableHead>Coupon</TableHead>
-              <TableHead className="text-right">Clicks</TableHead>
-              <TableHead className="text-right">Conversions</TableHead>
-              <TableHead className="text-right">MRR</TableHead>
-              <TableHead className="text-right">Earnings</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {displayOffers.map((offer) => {
-              const project = getProject(offer.projectId);
-              const creator = getCreator(offer.creatorId);
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Project</TableHead>
+            <TableHead>Founder</TableHead>
+            <TableHead className="text-right">Rev Share</TableHead>
+            <TableHead>Referral Link</TableHead>
+            <TableHead>Coupon</TableHead>
+            <TableHead className="text-right">Clicks</TableHead>
+            <TableHead className="text-right">Conversions</TableHead>
+            <TableHead className="text-right">MRR</TableHead>
+            <TableHead className="text-right">Earnings</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {displayOffers.map((offer) => {
+            const project = getProject(offer.projectId);
+            const creator = getCreator(offer.creatorId);
 
-              if (!project) return null;
+            if (!project) return null;
 
-              // Find corresponding contract for this offer
-              const contract = contracts.find(
-                (c) => c.projectId === offer.projectId
-              );
-              // Route to offer detail page if contract is approved, otherwise to project directory
-              const projectHref =
-                contract?.status === "approved"
-                  ? `/marketer/applications/${project.id}`
-                  : `/marketer/projects/${project.id}`;
+            // Find corresponding contract for this offer
+            const contract = contracts.find(
+              (c) => c.projectId === offer.projectId
+            );
+            // Route to offer detail page if contract is approved, otherwise to project directory
+            const projectHref =
+              contract?.status === "approved"
+                ? `/marketer/applications/${project.id}`
+                : `/marketer/projects/${project.id}`;
 
-              const metrics = getMarketerProjectMetrics(
-                events,
-                project,
-                userId
-              );
+            const metrics = getMarketerProjectMetrics(
+              events,
+              project,
+              userId
+            );
 
-              return (
-                <TableRow key={offer.id}>
-                  <TableCell>
-                    <div>
-                      <Link
-                        href={projectHref}
-                        className="font-medium hover:underline"
-                      >
-                        {project.name}
-                      </Link>
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        {project.category}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {creator?.name || "Unknown"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {project.revSharePercent}%
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-[150px]">
-                        {offer.referralLink}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleCopy(offer.referralLink)}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-muted px-2 py-1 rounded text-xs">
-                        {offer.referralCode}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleCopy(offer.referralCode)}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(metrics.clicks)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(metrics.paidCustomers)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(metrics.mrr)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(metrics.earnings)}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+            return (
+              <TableRow key={offer.id}>
+                <TableCell>
+                  <div>
+                    <Link
+                      href={projectHref}
+                      className="font-medium hover:underline"
+                    >
+                      {project.name}
+                    </Link>
+                    <Badge variant="secondary" className="text-xs mt-1">
+                      {project.category}
+                    </Badge>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {creator?.name || "Unknown"}
+                </TableCell>
+                <TableCell className="text-right">
+                  {project.revSharePercent}%
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-[150px]">
+                      {offer.referralLink}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => handleCopy(offer.referralLink)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-muted px-2 py-1 rounded text-xs">
+                      {offer.referralCode}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => handleCopy(offer.referralCode)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(metrics.clicks)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(metrics.paidCustomers)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatCurrency(metrics.mrr)}
+                </TableCell>
+                <TableCell className="text-right font-medium">
+                  {formatCurrency(metrics.earnings)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
 
       {limit && offers.length > limit && (
         <div className="text-center">
