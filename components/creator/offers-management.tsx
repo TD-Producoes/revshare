@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, CheckCircle, XCircle, MoreVertical, Star, Pause, Play } from "lucide-react";
+import { Clock, Check, XCircle, MoreVertical, Star, Pause, Play } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import {
   Contract,
@@ -135,18 +135,18 @@ function ContractsTable({
                           onClick={() => onOpenTestimonial(contract.id)}
                           disabled={!isApproved}
                         >
-                          <Star className="mr-2 h-4 w-4" />
+                          <Star className="h-4 w-4" />
                           Write testimonial
                         </DropdownMenuItem>
                         {isApproved && (
                           <DropdownMenuItem onClick={() => onPause(contract.id)}>
-                            <Pause className="mr-2 h-4 w-4" />
+                            <Pause className="h-4 w-4" />
                             Pause application
                           </DropdownMenuItem>
                         )}
                         {isPaused && (
                           <DropdownMenuItem onClick={() => onResume(contract.id)}>
-                            <Play className="mr-2 h-4 w-4" />
+                            <Play className="h-4 w-4" />
                             Resume application
                           </DropdownMenuItem>
                         )}
@@ -169,10 +169,17 @@ export function OffersManagement() {
   const updateStatus = useUpdateContractStatus();
   const [reviewContractId, setReviewContractId] = useState<string | null>(null);
   const [testimonialContractId, setTestimonialContractId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    contractId: string;
+    action: "pause" | "resume";
+  } | null>(null);
   const selectedContract =
     contracts.find((contract) => contract.id === reviewContractId) ?? null;
   const testimonialContract =
     contracts.find((contract) => contract.id === testimonialContractId) ?? null;
+  const confirmContract = confirmAction
+    ? contracts.find((contract) => contract.id === confirmAction.contractId) ?? null
+    : null;
   const { data: marketerStats, isLoading: isStatsLoading } = useMarketerStats(
     selectedContract?.userId,
   );
@@ -215,21 +222,11 @@ export function OffersManagement() {
   };
 
   const handlePause = (contractId: string) => {
-    if (!creatorId) return;
-    updateStatus.mutate({
-      contractId,
-      creatorId,
-      status: "paused",
-    });
+    setConfirmAction({ contractId, action: "pause" });
   };
 
   const handleResume = (contractId: string) => {
-    if (!creatorId) return;
-    updateStatus.mutate({
-      contractId,
-      creatorId,
-      status: "approved",
-    });
+    setConfirmAction({ contractId, action: "resume" });
   };
 
   const getStatusBadge = (status: ContractStatus) => {
@@ -243,8 +240,8 @@ export function OffersManagement() {
         );
       case "approved":
         return (
-          <Badge variant="default" className="gap-1 bg-green-600 text-white">
-            <CheckCircle className="h-3 w-3" />
+          <Badge variant="success" className="gap-1">
+            <Check className="h-3 w-3" />
             Approved
           </Badge>
         );
@@ -554,6 +551,60 @@ export function OffersManagement() {
               </Button>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(confirmAction)} onOpenChange={() => setConfirmAction(null)}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction?.action === "pause"
+                ? "Pause this application?"
+                : "Resume this application?"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction?.action === "pause"
+                ? "The marketer will no longer receive new commissions until this is resumed."
+                : "This will re-activate the application and allow commissions to be attributed again."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            {confirmContract
+              ? `${confirmContract.userName} · ${confirmContract.projectName}`
+              : null}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmAction(null)}
+              disabled={updateStatus.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant={confirmAction?.action === "pause" ? "destructive" : "default"}
+              onClick={() => {
+                if (!confirmAction || !creatorId) return;
+                updateStatus.mutate({
+                  contractId: confirmAction.contractId,
+                  creatorId,
+                  status: confirmAction.action === "pause" ? "paused" : "approved",
+                });
+                setConfirmAction(null);
+              }}
+              disabled={updateStatus.isPending}
+            >
+              {updateStatus.isPending
+                ? confirmAction?.action === "pause"
+                  ? "Pausing..."
+                  : "Resuming..."
+                : confirmAction?.action === "pause"
+                  ? "Pause application"
+                  : "Resume application"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

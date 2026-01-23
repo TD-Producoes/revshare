@@ -178,6 +178,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+  const [isDeletingTemplateId, setIsDeletingTemplateId] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isLoadingMarketers, setIsLoadingMarketers] = useState(false);
@@ -201,6 +202,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [isSavingRevenueCat, setIsSavingRevenueCat] = useState(false);
   const [isDisconnectDialogOpen, setIsDisconnectDialogOpen] = useState(false);
   const [isDisconnectingRevenueCat, setIsDisconnectingRevenueCat] = useState(false);
+  const [isStripeDisconnectDialogOpen, setIsStripeDisconnectDialogOpen] = useState(false);
+  const [isDisconnectingStripe, setIsDisconnectingStripe] = useState(false);
   const [isCreatingRevenueCatWebhook, setIsCreatingRevenueCatWebhook] = useState(false);
   const [templateForm, setTemplateForm] = useState({
     name: "",
@@ -540,6 +543,28 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     }
   };
 
+  const handleDisconnectStripe = async () => {
+    if (!projectId) return;
+    setConnectError("");
+    setIsDisconnectingStripe(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/stripe`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Unable to disconnect Stripe.");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+    } catch (error) {
+      setConnectError(
+        error instanceof Error ? error.message : "Unable to disconnect Stripe.",
+      );
+    } finally {
+      setIsDisconnectingStripe(false);
+    }
+  };
+
   const formatDateInput = (value: string | Date | null | undefined) => {
     if (!value) return "";
     const date = typeof value === "string" ? new Date(value) : value;
@@ -588,6 +613,35 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       allowedMarketerIds: (template.allowedMarketerIds as string[]) ?? [],
     });
     setIsTemplateOpen(true);
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!projectId) return;
+    setTemplateError(null);
+    setIsDeletingTemplateId(templateId);
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/coupon-templates`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ templateId }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to delete template.");
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["coupon-templates", projectId, true],
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete template.";
+      setTemplateError(message);
+    } finally {
+      setIsDeletingTemplateId(null);
+    }
   };
 
   const handleSaveTemplate = async () => {
@@ -678,7 +732,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-7">
@@ -713,9 +767,37 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
         <div className="flex flex-col items-end gap-2 self-end">
           {isStripeConnected ? (
-            <Badge className="self-end" variant="secondary">
-              Stripe connected
-            </Badge>
+            <div className="inline-flex items-center">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-r-none border-r-0 text-xs font-medium"
+              >
+                Stripe connected
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="rounded-l-none"
+                    aria-label="Stripe actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setIsStripeDisconnectDialogOpen(true)}
+                    disabled={isDisconnectingStripe}
+                  >
+                    {isDisconnectingStripe ? "Disconnecting..." : "Disconnect Stripe"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : null}
 
           {isRevenueCatConnected ? (
@@ -1035,6 +1117,42 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       </Dialog>
 
       <Dialog
+        open={isStripeDisconnectDialogOpen}
+        onOpenChange={setIsStripeDisconnectDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Disconnect Stripe?</DialogTitle>
+            <DialogDescription>
+              Stripe payments will stop syncing and your project will no longer
+              accept Stripe-based purchases.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsStripeDisconnectDialogOpen(false)}
+              disabled={isDisconnectingStripe}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                void handleDisconnectStripe();
+                setIsStripeDisconnectDialogOpen(false);
+              }}
+              disabled={isDisconnectingStripe}
+            >
+              {isDisconnectingStripe ? "Disconnecting..." : "Disconnect Stripe"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={isDisconnectDialogOpen}
         onOpenChange={setIsDisconnectDialogOpen}
       >
@@ -1139,6 +1257,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             canEdit={currentUser?.role === "founder"}
             onCreateTemplate={openCreateTemplate}
             onEditTemplate={openEditTemplate}
+            onDeleteTemplate={handleDeleteTemplate}
+            deletingTemplateId={isDeletingTemplateId}
           />
         </TabsContent>
 

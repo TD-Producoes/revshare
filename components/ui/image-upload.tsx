@@ -99,7 +99,7 @@ export function ImageUpload({
             src={value}
             alt="Uploaded"
             className={cn(
-              "rounded-lg border object-cover",
+              "rounded-lg object-cover",
               type === "logo" ? "h-24 w-24" : "h-32 w-full"
             )}
           />

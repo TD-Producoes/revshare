@@ -33,6 +33,10 @@ const templateUpdateInput = z.object({
   allowedMarketerIds: z.array(z.string().min(1)).optional(),
 });
 
+const templateDeleteInput = z.object({
+  templateId: z.string().min(1),
+});
+
 const normalizeIds = (ids: string[] | null | undefined) =>
   (ids ?? []).filter(Boolean).sort();
 
@@ -452,4 +456,64 @@ export async function PATCH(
   });
 
   return NextResponse.json({ data: updatedTemplate });
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  const { projectId } = await params;
+
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
+  const parsed = templateDeleteInput.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      { status: 400 },
+    );
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, userId: true, creatorStripeAccountId: true },
+  });
+
+  if (!project) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+  if (project.userId !== authUser.id) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
+  const template = await prisma.couponTemplate.findFirst({
+    where: { id: parsed.data.templateId, projectId },
+    select: { id: true, stripeCouponId: true },
+  });
+
+  if (!template) {
+    return NextResponse.json({ error: "Template not found" }, { status: 404 });
+  }
+
+  if (project.creatorStripeAccountId) {
+    const stripe = platformStripe();
+    try {
+      await stripe.coupons.del(template.stripeCouponId, {
+        stripeAccount: project.creatorStripeAccountId,
+      });
+    } catch (error) {
+      console.warn("Failed to delete Stripe coupon", error);
+    }
+  }
+
+  await prisma.couponTemplate.delete({
+    where: { id: template.id },
+  });
+
+  return NextResponse.json({ data: { deleted: true } });
 }

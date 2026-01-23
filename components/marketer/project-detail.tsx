@@ -330,7 +330,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
       <div className="space-y-3">
         <h3 className="text-base font-semibold">Commission Adjustments</h3>
         {projectAdjustments.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-xs">
             No adjustments recorded yet.
           </p>
         ) : (

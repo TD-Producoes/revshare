@@ -11,6 +11,14 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -132,6 +140,11 @@ export function ProjectSettingsTab({
   const [keyError, setKeyError] = useState<string | null>(null);
   const [revealedKeys, setRevealedKeys] = useState<Record<string, string>>({});
   const [revealingKeyId, setRevealingKeyId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string | null;
+  } | null>(null);
+  const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
 
   useEffect(() => {
     setForm({
@@ -269,6 +282,42 @@ export function ProjectSettingsTab({
       );
     } finally {
       setRevealingKeyId(null);
+    }
+  };
+
+  const handleDeleteKey = async (keyId: string) => {
+    setKeyError(null);
+    setDeletingKeyId(keyId);
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/attribution-keys/${keyId}`,
+        { method: "DELETE" },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to delete key.");
+      }
+      const record = payload?.data;
+      setAttributionKeys((prev) =>
+        prev.map((item) =>
+          item.id === keyId
+            ? {
+                ...item,
+                revokedAt: record?.revokedAt ?? new Date().toISOString(),
+              }
+            : item,
+        ),
+      );
+      setRevealedKeys((prev) => {
+        if (!prev[keyId]) return prev;
+        const next = { ...prev };
+        delete next[keyId];
+        return next;
+      });
+    } catch (err) {
+      setKeyError(err instanceof Error ? err.message : "Failed to delete key.");
+    } finally {
+      setDeletingKeyId(null);
     }
   };
 
@@ -669,132 +718,6 @@ export function ProjectSettingsTab({
                 )}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base">Attribution keys</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="attribution-key-label">App key label</Label>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Input
-                id="attribution-key-label"
-                value={keyLabel}
-                onChange={(event) => setKeyLabel(event.target.value)}
-                placeholder="e.g. iOS app"
-              />
-              <Button
-                type="button"
-                onClick={handleCreateKey}
-                disabled={isCreatingKey}
-              >
-                {isCreatingKey ? "Generating..." : "Generate key"}
-              </Button>
-            </div>
-          </div>
-
-          {createdKey ? (
-            <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-semibold text-foreground">
-                  New app key
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(createdKey);
-                  }}
-                >
-                  Copy
-                </Button>
-              </div>
-              <p className="break-all text-foreground">{createdKey}</p>
-              <p className="text-[11px] text-muted-foreground">
-                Save this key now. It won&apos;t be shown again.
-              </p>
-            </div>
-          ) : null}
-
-          {keyError ? (
-            <p className="text-sm text-destructive">{keyError}</p>
-          ) : null}
-
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Active keys let your app send attribution clicks to this project.
-            </p>
-            {isLoadingKeys ? (
-              <p className="text-sm text-muted-foreground">Loading keys...</p>
-            ) : attributionKeys.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No keys created yet.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {attributionKeys.map((key) => (
-                  <div
-                    key={key.id}
-                    className="flex flex-col gap-2 rounded-lg border px-3 py-2 text-sm"
-                  >
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="space-y-1">
-                        <p className="font-medium text-foreground">
-                          {key.name || "Untitled key"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Created {new Date(key.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {key.revokedAt ? "Revoked" : "Active"}
-                      </span>
-                    </div>
-                    {revealedKeys[key.id] ? (
-                      <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-semibold text-foreground">
-                            App key
-                          </span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2"
-                            onClick={() => {
-                              navigator.clipboard.writeText(
-                                revealedKeys[key.id],
-                              );
-                            }}
-                          >
-                            Copy
-                          </Button>
-                        </div>
-                        <p className="break-all text-foreground">
-                          {revealedKeys[key.id]}
-                        </p>
-                      </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRevealKey(key.id)}
-                        disabled={Boolean(revealingKeyId)}
-                      >
-                        {revealingKeyId === key.id ? "Revealing..." : "Show key"}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
