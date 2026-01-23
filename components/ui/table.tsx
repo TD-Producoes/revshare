@@ -6,7 +6,10 @@ import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    <div
+      data-slot="table-container"
+      className="relative w-full overflow-x-auto rounded-2xl border border-border/60 bg-background"
+    >
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-xs", className)}
@@ -20,7 +23,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      className={cn("bg-muted/30 text-muted-foreground [&_tr]:border-b", className)}
       {...props}
     />
   )
@@ -50,7 +53,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
-      className={cn("hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors", className)}
+      className={cn("hover:bg-muted/40 data-[state=selected]:bg-muted border-b border-border/60 transition-colors", className)}
       {...props}
     />
   )
@@ -60,7 +63,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
-      className={cn("text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0", className)}
+      className={cn("text-foreground h-10 px-4 text-left align-middle text-xs font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0", className)}
       {...props}
     />
   )
@@ -70,7 +73,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
-      className={cn("p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0", className)}
+      className={cn("px-4 py-2 align-middle text-xs whitespace-nowrap [&:has([role=checkbox])]:pr-0", className)}
       {...props}
     />
   )

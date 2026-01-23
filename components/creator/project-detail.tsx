@@ -681,7 +681,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div className="space-y-1">
+        <div className="space-y-7">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>

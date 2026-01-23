@@ -28,81 +28,74 @@ interface ProjectsTableProps {
 
 export function ProjectsTable({ projects }: ProjectsTableProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">All Projects</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="text-right">Rev Share</TableHead>
-              <TableHead className="text-right">MRR</TableHead>
-              <TableHead className="text-right">Customers</TableHead>
-              <TableHead className="text-right">Affiliate Revenue</TableHead>
-              <TableHead className="text-right">Marketers</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {projects.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  No projects yet. Create your first project to get started.
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead className="text-right">Rev Share</TableHead>
+          <TableHead className="text-right">MRR</TableHead>
+          <TableHead className="text-right">Customers</TableHead>
+          <TableHead className="text-right">Affiliate Revenue</TableHead>
+          <TableHead className="text-right">Marketers</TableHead>
+          <TableHead></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {projects.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+              No projects yet. Create your first project to get started.
+            </TableCell>
+          </TableRow>
+        ) : (
+          projects.map((project) => {
+            const hasRevShare =
+              typeof project.revSharePercent === "number" &&
+              Number.isFinite(project.revSharePercent);
+            const hasMetrics = Boolean(project.metrics);
+            const hasMarketers = typeof project.marketerCount === "number";
+
+            return (
+              <TableRow key={project.id}>
+                <TableCell className="font-medium">
+                  <Link
+                    href={`/founder/projects/${project.id}`}
+                    className="hover:underline"
+                  >
+                    {project.name}
+                  </Link>
+                </TableCell>
+                <TableCell className="text-right">
+                  {hasRevShare ? `${project.revSharePercent}%` : "-"}
+                </TableCell>
+                <TableCell className="text-right">
+                  {hasMetrics ? formatCurrency(project.metrics!.mrr) : "-"}
+                </TableCell>
+                <TableCell className="text-right">
+                  {hasMetrics
+                    ? formatNumber(project.metrics!.activeSubscribers)
+                    : "-"}
+                </TableCell>
+                <TableCell className="text-right">
+                  {hasMetrics
+                    ? formatCurrency(project.metrics!.affiliateRevenue)
+                    : "-"}
+                </TableCell>
+                <TableCell className="text-right">
+                  {hasMarketers ? project.marketerCount : "-"}
+                </TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link href={`/founder/projects/${project.id}`}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </Button>
                 </TableCell>
               </TableRow>
-            ) : (
-              projects.map((project) => {
-                const hasRevShare =
-                  typeof project.revSharePercent === "number" &&
-                  Number.isFinite(project.revSharePercent);
-                const hasMetrics = Boolean(project.metrics);
-                const hasMarketers = typeof project.marketerCount === "number";
-
-                return (
-                  <TableRow key={project.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/founder/projects/${project.id}`}
-                        className="hover:underline"
-                      >
-                        {project.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasRevShare ? `${project.revSharePercent}%` : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasMetrics ? formatCurrency(project.metrics!.mrr) : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasMetrics
-                        ? formatNumber(project.metrics!.activeSubscribers)
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasMetrics
-                        ? formatCurrency(project.metrics!.affiliateRevenue)
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {hasMarketers ? project.marketerCount : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/founder/projects/${project.id}`}>
-                          <ExternalLink className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            );
+          })
+        )}
+      </TableBody>
+    </Table>
   );
 }

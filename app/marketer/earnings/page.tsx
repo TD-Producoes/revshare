@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Clock, CheckCircle, TrendingUp, Timer, Info } from "lucide-react";
+import { DollarSign, Clock, CheckCircle, TrendingUp, Timer, Info, Check } from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useContractsForMarketer } from "@/lib/hooks/contracts";
@@ -642,9 +642,16 @@ export default function EarningsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge
-                            variant={reward.status === "PAID" ? "secondary" : "outline"}
+                            variant={reward.status === "PAID" ? "success" : "outline"}
                           >
-                            {reward.status === "PAID" ? "Paid" : "Ready"}
+                            {reward.status === "PAID" ? (
+                              <>
+                                <Check className="size-3 text-emerald-600" />
+                                Paid
+                              </>
+                            ) : (
+                              "Ready"
+                            )}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">

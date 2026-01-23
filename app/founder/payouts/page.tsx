@@ -13,7 +13,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/shared/stat-card";
-import { DollarSign, Clock, CheckCircle, Percent, Info, ListChecks } from "lucide-react";
+import {
+  DollarSign,
+  Clock,
+  CheckCircle,
+  Percent,
+  Info,
+  ListChecks,
+  Check,
+} from "lucide-react";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import {
@@ -764,106 +772,109 @@ export default function PayoutsPage() {
                       {payout.marketerEmail ?? "Marketer"}
                     </Badge>
                   </div>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Project</TableHead>
-                          <TableHead>Coupon</TableHead>
-                          <TableHead className="text-right">
-                            <HeaderWithInfo
-                              label="Amount"
-                              help="Customer payment total."
-                            />
-                          </TableHead>
-                          <TableHead className="text-right">
-                            <HeaderWithInfo
-                              label="Commission"
-                              help="Amount owed to the marketer."
-                            />
-                          </TableHead>
-                          <TableHead className="text-right">
-                            <HeaderWithInfo
-                              label="Platform"
-                              help="Platform fee based on the commission."
-                            />
-                          </TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Refund Ends</TableHead>
-                          <TableHead className="text-right">Date</TableHead>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Coupon</TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Amount"
+                            help="Customer payment total."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Commission"
+                            help="Amount owed to the marketer."
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <HeaderWithInfo
+                            label="Platform"
+                            help="Platform fee based on the commission."
+                          />
+                        </TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Refund Ends</TableHead>
+                        <TableHead className="text-right">Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {marketerPurchases.map((purchase) => (
+                        <TableRow key={purchase.id}>
+                          <TableCell className="font-medium">
+                            {purchase.projectName}
+                          </TableCell>
+                          <TableCell>
+                            {purchase.couponCode ? (
+                              <Badge variant="secondary">
+                                {purchase.couponCode}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(purchase.amount, purchase.currency)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(
+                              purchase.commissionAmount,
+                              purchase.currency,
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(
+                              purchase.platformFee,
+                              purchase.currency,
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {getEffectiveCommissionStatus(purchase) ===
+                            "ready_for_payout" ? (
+                              <Badge variant="outline">Ready</Badge>
+                            ) : getEffectiveCommissionStatus(purchase) ===
+                              "awaiting_refund_window" ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline">Refund window</Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" align="start">
+                                  <div className="max-w-xs text-xs leading-relaxed">
+                                    Waiting for the refund window to pass
+                                    before commission becomes payable.
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : getEffectiveCommissionStatus(purchase) ===
+                              "pending_creator_payment" ? (
+                              <Badge variant="warning">Awaiting Founder</Badge>
+                            ) : getEffectiveCommissionStatus(purchase) ===
+                              "refunded" ? (
+                              <Badge variant="destructive">Refunded</Badge>
+                            ) : getEffectiveCommissionStatus(purchase) ===
+                              "chargeback" ? (
+                              <Badge variant="destructive">Chargeback</Badge>
+                            ) : (
+                              <Badge variant="success">
+                                <Check className="size-3 text-emerald-600" />
+                                Paid
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {renderDateTime(purchase.refundEligibleAt, "right")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {renderDateTime(purchase.createdAt, "right")}
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {marketerPurchases.map((purchase) => (
-                          <TableRow key={purchase.id}>
-                            <TableCell className="font-medium">
-                              {purchase.projectName}
-                            </TableCell>
-                            <TableCell>
-                              {purchase.couponCode ? (
-                                <Badge variant="secondary">
-                                  {purchase.couponCode}
-                                </Badge>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(purchase.amount, purchase.currency)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(
-                                purchase.commissionAmount,
-                                purchase.currency,
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(
-                                purchase.platformFee,
-                                purchase.currency,
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {getEffectiveCommissionStatus(purchase) ===
-                              "ready_for_payout" ? (
-                                <Badge variant="outline">Ready</Badge>
-                              ) : getEffectiveCommissionStatus(purchase) ===
-                                "awaiting_refund_window" ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Badge variant="outline">Refund window</Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom" align="start">
-                                    <div className="max-w-xs text-xs leading-relaxed">
-                                      Waiting for the refund window to pass
-                                      before commission becomes payable.
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : getEffectiveCommissionStatus(purchase) ===
-                                "pending_creator_payment" ? (
-                                <Badge variant="secondary">Awaiting Founder</Badge>
-                              ) : getEffectiveCommissionStatus(purchase) ===
-                                "refunded" ? (
-                                <Badge variant="destructive">Refunded</Badge>
-                              ) : getEffectiveCommissionStatus(purchase) ===
-                                "chargeback" ? (
-                                <Badge variant="destructive">Chargeback</Badge>
-                              ) : (
-                                <Badge className="bg-green-600 text-white">Paid</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {renderDateTime(purchase.refundEligibleAt, "right")}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {renderDateTime(purchase.createdAt, "right")}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                      ))}
+                    </TableBody>
+                  </Table>
+
                 </div>
               );
             })
@@ -885,49 +896,47 @@ export default function PayoutsPage() {
               <p className="text-sm text-muted-foreground">
                 Net adjustments: {formatCurrency(totalAdjustments)}
               </p>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Marketer</TableHead>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Marketer</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adjustments.map((adjustment) => (
+                    <TableRow key={adjustment.id}>
+                      <TableCell>
+                        {renderDateTime(adjustment.createdAt)}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {adjustment.marketerName}
+                        {adjustment.marketerEmail ? (
+                          <p className="text-xs text-muted-foreground">
+                            {adjustment.marketerEmail}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>{adjustment.projectName}</TableCell>
+                      <TableCell className="capitalize">
+                        {adjustment.reason.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600">
+                        {formatCurrency(adjustment.amount, adjustment.currency)}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">
+                          {adjustment.status.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {adjustments.map((adjustment) => (
-                      <TableRow key={adjustment.id}>
-                        <TableCell>
-                          {renderDateTime(adjustment.createdAt)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {adjustment.marketerName}
-                          {adjustment.marketerEmail ? (
-                            <p className="text-xs text-muted-foreground">
-                              {adjustment.marketerEmail}
-                            </p>
-                          ) : null}
-                        </TableCell>
-                        <TableCell>{adjustment.projectName}</TableCell>
-                        <TableCell className="capitalize">
-                          {adjustment.reason.replace(/_/g, " ")}
-                        </TableCell>
-                        <TableCell className="text-right text-red-600">
-                          {formatCurrency(adjustment.amount, adjustment.currency)}
-                        </TableCell>
-                        <TableCell className="capitalize">
-                          <Badge variant="outline">
-                            {adjustment.status.replace(/_/g, " ")}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
@@ -954,57 +963,66 @@ export default function PayoutsPage() {
               No payments recorded yet.
             </p>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Purchases</TableHead>
-                    <TableHead className="text-right">Marketer</TableHead>
-                    <TableHead className="text-right">Platform</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>{renderDateTime(payment.createdAt)}</TableCell>
-                      <TableCell>
-                        {payment.type === "reward" ? "Reward payout" : "Commission"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {payment.purchaseCount}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(
-                          payment.marketerTotal,
-                          payment.currency ?? undefined,
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(
-                          payment.platformFeeTotal,
-                          payment.currency ?? undefined,
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(
-                          payment.amountTotal,
-                          payment.currency ?? undefined,
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {payment.status}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Purchases</TableHead>
+                  <TableHead className="text-right">Marketer</TableHead>
+                  <TableHead className="text-right">Platform</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell>{renderDateTime(payment.createdAt)}</TableCell>
+                    <TableCell>
+                      {payment.type === "reward" ? "Reward payout" : "Commission"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {payment.purchaseCount}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(
+                        payment.marketerTotal,
+                        payment.currency ?? undefined,
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(
+                        payment.platformFeeTotal,
+                        payment.currency ?? undefined,
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(
+                        payment.amountTotal,
+                        payment.currency ?? undefined,
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {payment.status === "paid" ? (
+                        <Badge variant="success">
+                          <Check className="size-3 text-emerald-600" />
+                          Paid
                         </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      ) : payment.status === "failed" ? (
+                        <Badge variant="destructive" className="capitalize">
+                          Failed
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="capitalize">
+                          Pending
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
@@ -1098,11 +1116,16 @@ export default function PayoutsPage() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge
-                                    variant={
-                                      item.status === "PAID" ? "secondary" : "outline"
-                                    }
+                                    variant={item.status === "PAID" ? "success" : "outline"}
                                   >
-                                    {item.status === "PAID" ? "Paid" : "Ready"}
+                                    {item.status === "PAID" ? (
+                                      <>
+                                        <Check className="size-3 text-emerald-600" />
+                                        Paid
+                                      </>
+                                    ) : (
+                                      "Ready"
+                                    )}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">

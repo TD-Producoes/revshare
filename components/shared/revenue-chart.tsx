@@ -97,13 +97,42 @@ export function RevenueChart({
     maximumFractionDigits: 2,
   });
 
-  // Format date for display
-  const formattedData = data.map((item) => ({
-    ...item,
-    dateLabel: new Date(item.date).toLocaleDateString("en-US", {
-      day: "2-digit",
-    }),
-  }));
+  const toDateKey = (value: Date) =>
+    `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(
+      value.getDate(),
+    ).padStart(2, "0")}`;
+
+  const dataByDay = new Map(
+    data
+      .map((item) => {
+        const parsed = new Date(item.date);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return [
+          toDateKey(parsed),
+          { revenue: item.revenue, affiliateRevenue: item.affiliateRevenue },
+        ] as const;
+      })
+      .filter(Boolean) as Array<
+      readonly [string, { revenue: number; affiliateRevenue: number }]
+    >,
+  );
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const formattedData = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (29 - index));
+    const dateKey = toDateKey(date);
+    const values = dataByDay.get(dateKey) ?? {
+      revenue: 0,
+      affiliateRevenue: 0,
+    };
+    return {
+      date: dateKey,
+      ...values,
+      dateLabel: date.toLocaleDateString("en-US", { day: "2-digit" }),
+    };
+  });
 
   return (
     <Card className="border-none shadow-none">

@@ -60,7 +60,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Sidebar />
         <main
           className={cn(
-            "pt-12 transition-all duration-200",
+            "pt-3 transition-all duration-200",
             isCollapsed ? "pl-12" : "pl-48"
           )}
         >

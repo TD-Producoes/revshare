@@ -22,12 +22,18 @@ import {
   CalendarDays,
   ListChecks,
   BarChart3,
+  Check,
 } from "lucide-react";
 
 const statusBadge = (status: string) => {
   const normalized = status.toLowerCase();
   if (normalized === "paid") {
-    return <Badge className="bg-emerald-500 text-white">Paid</Badge>;
+    return (
+      <Badge variant="success">
+        <Check className="size-3 text-emerald-600" />
+        Paid
+      </Badge>
+    );
   }
   if (normalized === "failed") {
     return <Badge variant="destructive">Failed</Badge>;

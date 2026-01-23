@@ -27,68 +27,60 @@ export default function CreatorAffiliatesPage() {
           Review performance across all affiliates promoting your projects.
         </p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">All Affiliates</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-muted-foreground text-center py-8">
-              Loading affiliates...
-            </p>
-          ) : marketers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No affiliates yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Projects</TableHead>
-                  <TableHead className="text-right">Affiliate Revenue</TableHead>
-                  <TableHead className="text-right">Commission Owed</TableHead>
-                  <TableHead className="text-right">Purchases</TableHead>
-                  <TableHead className="text-right">Customers</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {marketers.map((marketer) => (
-                  <TableRow key={marketer.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        className="hover:underline"
-                        href={`/founder/affiliates/${marketer.id}`}
-                      >
-                        {marketer.name}
-                      </Link>
-                      <div className="text-xs text-muted-foreground">
-                        {marketer.email}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(marketer.projectCount)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(marketer.affiliateRevenue)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(marketer.commissionOwed)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(marketer.purchasesCount)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(marketer.customersCount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <p className="text-muted-foreground text-center py-8">
+          Loading affiliates...
+        </p>
+      ) : marketers.length === 0 ? (
+        <p className="text-muted-foreground text-center py-8">
+          No affiliates yet.
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead className="text-right">Projects</TableHead>
+              <TableHead className="text-right">Affiliate Revenue</TableHead>
+              <TableHead className="text-right">Commission Owed</TableHead>
+              <TableHead className="text-right">Purchases</TableHead>
+              <TableHead className="text-right">Customers</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {marketers.map((marketer) => (
+              <TableRow key={marketer.id}>
+                <TableCell className="font-medium">
+                  <Link
+                    className="hover:underline"
+                    href={`/founder/affiliates/${marketer.id}`}
+                  >
+                    {marketer.name}
+                  </Link>
+                  <div className="text-xs text-muted-foreground">
+                    {marketer.email}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(marketer.projectCount)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatCurrency(marketer.affiliateRevenue)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatCurrency(marketer.commissionOwed)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(marketer.purchasesCount)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(marketer.customersCount)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </div>
   );
 }

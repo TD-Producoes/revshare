@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Check } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,16 @@ import type { MarketerProjectReward } from "@/lib/hooks/marketer";
 
 const statusLabel: Record<
   MarketerProjectReward["status"],
-  { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
+  {
+    label: string;
+    variant: "default" | "secondary" | "outline" | "destructive" | "success";
+  }
 > = {
   IN_PROGRESS: { label: "In progress", variant: "outline" },
   PENDING_REFUND: { label: "Pending refund window", variant: "secondary" },
   UNLOCKED: { label: "Unlocked", variant: "default" },
   CLAIMED: { label: "Claimed", variant: "secondary" },
-  PAID: { label: "Paid", variant: "secondary" },
+  PAID: { label: "Paid", variant: "success" },
 };
 
 const getMilestoneCopy = (
@@ -165,7 +169,16 @@ export function MarketerRewardsTab({
                         Unlock at: {getMilestoneCopy(item.reward, currency)}
                       </p>
                     </div>
-                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                    <Badge variant={badge.variant}>
+                      {item.status === "PAID" ? (
+                        <>
+                          <Check className="size-3 text-emerald-600" />
+                          {badge.label}
+                        </>
+                      ) : (
+                        badge.label
+                      )}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -254,12 +267,19 @@ export function MarketerRewardsTab({
                     <TableCell>{getMilestoneCopy(item.reward, currency)}</TableCell>
                     <TableCell>{getRewardCopy(item.reward, currency)}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">
-                        {item.earned.status === "PAID"
-                          ? "Paid"
-                          : item.earned.status === "CLAIMED"
-                            ? "Claimed"
-                            : "Unlocked"}
+                      <Badge
+                        variant={item.earned.status === "PAID" ? "success" : "secondary"}
+                      >
+                        {item.earned.status === "PAID" ? (
+                          <>
+                            <Check className="size-3 text-emerald-600" />
+                            Paid
+                          </>
+                        ) : item.earned.status === "CLAIMED" ? (
+                          "Claimed"
+                        ) : (
+                          "Unlocked"
+                        )}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
