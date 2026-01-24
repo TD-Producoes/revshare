@@ -467,7 +467,7 @@ export function CreateProjectForm({
       ) : trigger === undefined ? (
         <DialogTrigger asChild>
           <Button>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4" />
             New Project
           </Button>
         </DialogTrigger>

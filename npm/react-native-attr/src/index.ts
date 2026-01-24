@@ -1,21 +1,34 @@
 import { useEffect } from "react";
-import { Linking, Platform } from "react-native";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Device from "expo-device";
 
 type TrackClickParams = {
   appKey: string;
-  baseUrl: string;
+  baseUrl?: string;
   marketerId: string;
   deviceId: string;
   url?: string;
   endpoint?: string;
 };
 
+type ResolveAttributionParams = {
+  appKey: string;
+  baseUrl?: string;
+  deviceModel: string;
+  osVersion: string;
+  platform?: string;
+  locale?: string;
+  userAgent?: string;
+  endpoint?: string;
+};
+
 type AttributionConfig = {
   appKey: string;
-  baseUrl: string;
+  baseUrl?: string;
   marketerParam?: string;
   endpoint?: string;
+  resolveEndpoint?: string;
   enabled?: boolean;
   deviceStorageKey?: string;
   marketerStorageKey?: string;
@@ -25,10 +38,11 @@ type AttributionConfig = {
   onTracked?: (result: { ok: boolean; marketerId: string }) => void;
 };
 
-const DEFAULT_ENDPOINT = "/api/attribution/click";
-const DEFAULT_MARKETER_PARAM = "marketerId";
-const DEFAULT_DEVICE_STORAGE_KEY = "@marketplace/attribution/device-id";
+const DEFAULT_RESOLVE_ENDPOINT = "/api/attribution/resolve";
+const BASE_URL = "https://revshare.fast";
+
 export const MARKETER_ID_STORAGE_KEY = "@marketplace/attribution/marketer-id";
+const RESOLVED_FLAG_STORAGE_KEY = "@marketplace/attribution/marketer-resolve/complete";
 
 export async function getStoredMarketerId(
   storageKey: string = MARKETER_ID_STORAGE_KEY,
@@ -57,34 +71,70 @@ export async function syncRevenueCatAttribution(options?: {
   }
 }
 
-function createRandomId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-async function getDeviceId(storageKey: string) {
-  const existing = await AsyncStorage.getItem(storageKey);
-  if (existing) return existing;
-  const next = createRandomId();
-  await AsyncStorage.setItem(storageKey, next);
-  return next;
-}
-
-function extractMarketerId(url: string, marketerParam: string) {
+function getLocale() {
   try {
-    const parsed = new URL(url);
-    return parsed.searchParams.get(marketerParam);
+    return Intl.DateTimeFormat().resolvedOptions().locale || undefined;
   } catch {
-    const query = url.split("?")[1];
-    if (!query) return null;
-    const pairs = query.split("&");
-    for (const pair of pairs) {
-      const [key, value] = pair.split("=");
-      if (key === marketerParam) {
-        return decodeURIComponent(value ?? "");
-      }
-    }
-    return null;
+    return undefined;
   }
+}
+
+async function getDeviceInfo() {
+  const platform = Platform.OS;
+  let osVersion = Device.osVersion ?? (Platform.Version ? String(Platform.Version) : "unknown");
+  let deviceModel: string = Device.modelName ?? Device.modelId ?? platform;
+  let userAgent: string | undefined;
+
+  if (platform === "web" && typeof navigator !== "undefined") {
+    userAgent = navigator.userAgent;
+  }
+
+  if (userAgent && platform === "ios") {
+    const match = userAgent.match(/OS ([\d_]+)/i);
+    if (match?.[1]) {
+      osVersion = match[1].replace(/_/g, ".");
+    }
+  }
+
+  if (platform === "ios") {
+    if (deviceModel.toLowerCase().startsWith("iphone")) {
+      deviceModel = "iPhone";
+    } else if (deviceModel.toLowerCase().startsWith("ipad")) {
+      deviceModel = "iPad";
+    }
+  }
+
+  return {
+    deviceModel,
+    osVersion,
+    platform,
+    locale: getLocale(),
+    userAgent,
+  };
+}
+
+async function resolveMarketerId(params: ResolveAttributionParams) {
+  const response = await fetch(
+    `${params.baseUrl ?? BASE_URL}${params.endpoint ?? DEFAULT_RESOLVE_ENDPOINT}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        appKey: params.appKey,
+        deviceModel: params.deviceModel,
+        osVersion: params.osVersion,
+        platform: params.platform,
+        locale: params.locale,
+        userAgent: params.userAgent,
+      }),
+    },
+  );
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "Failed to resolve attribution");
+  }
+  return payload?.marketerId ?? null;
 }
 
 async function hasTracked(marketerId: string) {
@@ -97,35 +147,12 @@ async function markTracked(marketerId: string) {
   await AsyncStorage.setItem(key, "1");
 }
 
-export async function trackClick(params: TrackClickParams) {
-  console.log('Tracking click with params', `${params.baseUrl}${params.endpoint ?? DEFAULT_ENDPOINT}`);
-  const response = await fetch(`${params.baseUrl}${params.endpoint ?? DEFAULT_ENDPOINT}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      appKey: params.appKey,
-      marketerId: params.marketerId,
-      deviceId: params.deviceId,
-      url: params.url,
-    }),
-  });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error ?? "Failed to track attribution");
-  }
-  return response.json().catch((e) => 
-    { console.error('Failed to parse response json', e); return null; }
-  );
-}
-
 export function AttributionTracker(config: AttributionConfig) {
   const {
     appKey,
-    baseUrl,
-    marketerParam = DEFAULT_MARKETER_PARAM,
-    endpoint = DEFAULT_ENDPOINT,
+    baseUrl = BASE_URL,
+    resolveEndpoint = DEFAULT_RESOLVE_ENDPOINT,
     enabled = true,
-    deviceStorageKey = DEFAULT_DEVICE_STORAGE_KEY,
     marketerStorageKey = MARKETER_ID_STORAGE_KEY,
     dedupe = true,
     syncRevenueCat = false,
@@ -137,61 +164,72 @@ export function AttributionTracker(config: AttributionConfig) {
     if (!enabled) return;
     let isActive = true;
 
-    const handleUrl = async (url: string | null) => {
-      if (!url || !isActive) return;
-      const marketerId = extractMarketerId(url, marketerParam);
-      if (!marketerId) return;
-      if (dedupe && (await hasTracked(marketerId))) return;
-      const deviceId = await getDeviceId(deviceStorageKey);
-      console.log('Tracking attribution click', { marketerId, deviceId });
+    const resolveAttribution = async () => {
+      if (!isActive) return;
+      const resolvedFlagKey = marketerStorageKey
+        ? `${marketerStorageKey}/resolved`
+        : RESOLVED_FLAG_STORAGE_KEY;
+      if (marketerStorageKey) {
+        const storedMarketerId = await AsyncStorage.getItem(marketerStorageKey);
+        if (storedMarketerId) {
+          return;
+        }
+      }
+      if (await AsyncStorage.getItem(resolvedFlagKey)) {
+        return;
+      }
+      const deviceInfo = await getDeviceInfo();
+      let marketerId: string | null = null;
       try {
-        const res = await trackClick({
+        marketerId = await resolveMarketerId({
           appKey,
           baseUrl,
-          marketerId,
-          deviceId,
-          url,
-          endpoint,
+          deviceModel: deviceInfo.deviceModel,
+          osVersion: deviceInfo.osVersion,
+          platform: deviceInfo.platform,
+          locale: deviceInfo.locale,
+          userAgent: deviceInfo.userAgent,
+          endpoint: resolveEndpoint,
         });
-        console.log('Attribution tracked successfully', res);
-        if (dedupe) {
-          await markTracked(marketerId);
-        }
-        if (marketerStorageKey) {
-          await AsyncStorage.setItem(marketerStorageKey, marketerId);
-        }
-        if (syncRevenueCat && Platform.OS !== "web") {
-          try {
-            console.log('Syncing marketer ID to RevenueCat', marketerId);
-            const Purchases = require("react-native-purchases").default;
-            Purchases.setAttributes({ [revenueCatAttributeKey]: marketerId });
-          } catch {
-            // Ignore if RevenueCat isn't configured yet.
-          }
-        }
-        onTracked?.({ ok: true, marketerId });
-      } catch (e) {
-        console.error('Failed to track attribution click', e);
-        onTracked?.({ ok: false, marketerId });
+      } catch (error) {
+        console.error("Failed to resolve marketer ID", error);
       }
+
+      if (!marketerId) {
+        await AsyncStorage.setItem(resolvedFlagKey, "1");
+        return;
+      }
+      if (dedupe && (await hasTracked(marketerId))) return;
+
+      if (dedupe) {
+        await markTracked(marketerId);
+      }
+      if (marketerStorageKey) {
+        await AsyncStorage.setItem(marketerStorageKey, marketerId);
+      }
+      await AsyncStorage.setItem(resolvedFlagKey, "1");
+      if (syncRevenueCat && Platform.OS !== "web") {
+        try {
+          console.log('Syncing marketer ID to RevenueCat', marketerId);
+          const Purchases = require("react-native-purchases").default;
+          Purchases.setAttributes({ [revenueCatAttributeKey]: marketerId });
+        } catch {
+          // Ignore if RevenueCat isn't configured yet.
+        }
+      }
+      onTracked?.({ ok: true, marketerId });
     };
 
-    Linking.getInitialURL().then(handleUrl).catch(() => null);
-    const subscription = Linking.addEventListener("url", (event) => {
-      void handleUrl(event.url);
-    });
+    void resolveAttribution();
 
     return () => {
       isActive = false;
-      subscription.remove();
     };
   }, [
     appKey,
     baseUrl,
-    marketerParam,
-    endpoint,
+    resolveEndpoint,
     enabled,
-    deviceStorageKey,
     marketerStorageKey,
     dedupe,
     syncRevenueCat,

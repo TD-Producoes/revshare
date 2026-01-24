@@ -240,58 +240,52 @@ export function MarketerRewardsTab({
         <p className="text-sm text-destructive">{claimError}</p>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Earned Rewards</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {earnedRewards.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No rewards earned yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Reward</TableHead>
-                  <TableHead>Milestone</TableHead>
-                  <TableHead>Reward Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Earned</TableHead>
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold">Earned Rewards</h3>
+        {earnedRewards.length === 0 ? (
+          <p className="text-muted-foreground">No rewards earned yet.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reward</TableHead>
+                <TableHead>Milestone</TableHead>
+                <TableHead>Reward Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Earned</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {earnedRewards.map((item) => (
+                <TableRow key={item.earned.id}>
+                  <TableCell className="font-medium">{item.reward.name}</TableCell>
+                  <TableCell>{getMilestoneCopy(item.reward, currency)}</TableCell>
+                  <TableCell>{getRewardCopy(item.reward, currency)}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={item.earned.status === "PAID" ? "success" : "secondary"}
+                    >
+                      {item.earned.status === "PAID" ? (
+                        <>
+                          <Check className="size-3 text-emerald-600" />
+                          Paid
+                        </>
+                      ) : item.earned.status === "CLAIMED" ? (
+                        "Claimed"
+                      ) : (
+                        "Unlocked"
+                      )}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {renderEarnedAt(item.earned.earnedAt)}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {earnedRewards.map((item) => (
-                  <TableRow key={item.earned.id}>
-                    <TableCell className="font-medium">{item.reward.name}</TableCell>
-                    <TableCell>{getMilestoneCopy(item.reward, currency)}</TableCell>
-                    <TableCell>{getRewardCopy(item.reward, currency)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={item.earned.status === "PAID" ? "success" : "secondary"}
-                      >
-                        {item.earned.status === "PAID" ? (
-                          <>
-                            <Check className="size-3 text-emerald-600" />
-                            Paid
-                          </>
-                        ) : item.earned.status === "CLAIMED" ? (
-                          "Claimed"
-                        ) : (
-                          "Unlocked"
-                        )}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {renderEarnedAt(item.earned.earnedAt)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

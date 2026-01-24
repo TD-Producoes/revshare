@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -446,93 +445,89 @@ export function ProjectRewardsTab({
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Rewards list</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isRewardsLoading ? (
-            <p className="text-muted-foreground">Loading rewards...</p>
-          ) : rewards.length === 0 ? (
-            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No rewards yet. Create a milestone reward to motivate marketers.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Reward</TableHead>
-                  <TableHead>Milestone</TableHead>
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold">Rewards list</h3>
+        {isRewardsLoading ? (
+          <p className="text-muted-foreground">Loading rewards...</p>
+        ) : rewards.length === 0 ? (
+          <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+            No rewards yet. Create a milestone reward to motivate marketers.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reward</TableHead>
+                <TableHead>Milestone</TableHead>
                 <TableHead>Reward Type</TableHead>
                 <TableHead>Availability</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[56px]" />
               </TableRow>
             </TableHeader>
-              <TableBody>
-                {rewards.map((reward) => (
-                  <TableRow key={reward.id}>
-                    <TableCell className="font-medium">{reward.name}</TableCell>
-                    <TableCell>
-                      {getMilestoneLabel(reward, projectCurrency ?? "USD")}
-                    </TableCell>
-                    <TableCell>
-                      {getRewardTypeLabel(reward, projectCurrency ?? "USD")}
-                    </TableCell>
-                    <TableCell>{getAvailabilityLabel(reward)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={statusBadge[reward.status] as "default" | "secondary" | "outline"}
-                        className={cn(reward.status === "ACTIVE" && "capitalize")}
-                      >
-                        {statusLabels[reward.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Reward actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEdit(reward.id)}>
-                            Edit
+            <TableBody>
+              {rewards.map((reward) => (
+                <TableRow key={reward.id}>
+                  <TableCell className="font-medium">{reward.name}</TableCell>
+                  <TableCell>
+                    {getMilestoneLabel(reward, projectCurrency ?? "USD")}
+                  </TableCell>
+                  <TableCell>
+                    {getRewardTypeLabel(reward, projectCurrency ?? "USD")}
+                  </TableCell>
+                  <TableCell>{getAvailabilityLabel(reward)}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={statusBadge[reward.status] as "default" | "secondary" | "outline"}
+                      className={cn(reward.status === "ACTIVE" && "capitalize")}
+                    >
+                      {statusLabels[reward.status]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Reward actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEdit(reward.id)}>
+                          Edit
+                        </DropdownMenuItem>
+                        {reward.status !== "ACTIVE" ? (
+                          <DropdownMenuItem
+                            onClick={() => updateStatus(reward.id, "ACTIVE")}
+                          >
+                            Activate
                           </DropdownMenuItem>
-                          {reward.status !== "ACTIVE" ? (
-                            <DropdownMenuItem
-                              onClick={() => updateStatus(reward.id, "ACTIVE")}
-                            >
-                              Activate
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              onClick={() => updateStatus(reward.id, "PAUSED")}
-                            >
-                              Pause
-                            </DropdownMenuItem>
-                          )}
-                          {reward.status !== "ARCHIVED" ? (
-                            <DropdownMenuItem
-                              onClick={() => updateStatus(reward.id, "ARCHIVED")}
-                            >
-                              Archive
-                            </DropdownMenuItem>
-                          ) : null}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          {loadError ? (
-            <p className="text-sm text-destructive mt-3">{loadError}</p>
-          ) : null}
-        </CardContent>
-      </Card>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => updateStatus(reward.id, "PAUSED")}
+                          >
+                            Pause
+                          </DropdownMenuItem>
+                        )}
+                        {reward.status !== "ARCHIVED" ? (
+                          <DropdownMenuItem
+                            onClick={() => updateStatus(reward.id, "ARCHIVED")}
+                          >
+                            Archive
+                          </DropdownMenuItem>
+                        ) : null}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        {loadError ? (
+          <p className="text-sm text-destructive mt-3">{loadError}</p>
+        ) : null}
+      </div>
 
       <Dialog
         open={isOpen}

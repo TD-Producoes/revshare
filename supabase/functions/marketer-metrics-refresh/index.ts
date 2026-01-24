@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import Stripe from "https://esm.sh/stripe@16.2.0?target=deno";
 
 type PurchaseRow = {
   projectId: string;
@@ -15,6 +14,7 @@ type PurchaseRow = {
 type ClickRow = {
   projectId: string;
   marketerId: string;
+  deviceId: string;
   createdAt: string;
 };
 
@@ -24,6 +24,7 @@ type SnapshotTotals = {
   purchasesCountDay: number;
   customerEmailsDay: Set<string>;
   clicksCountDay: number;
+  installsCountDay: number;
 };
 
 function createEmptySnapshotTotals(): SnapshotTotals {
@@ -33,6 +34,7 @@ function createEmptySnapshotTotals(): SnapshotTotals {
     purchasesCountDay: 0,
     customerEmailsDay: new Set<string>(),
     clicksCountDay: 0,
+    installsCountDay: 0,
   };
 }
 
@@ -44,10 +46,6 @@ function getDateKey(value: string) {
   return `${year}-${month}-${day}`;
 }
 
-function getDateKeyFromUnix(seconds: number) {
-  return getDateKey(new Date(seconds * 1000).toISOString());
-}
-
 Deno.serve(async (request) => {
   if (request.method !== "POST") {
     return new Response("Method Not Allowed", { status: 405 });
@@ -55,12 +53,8 @@ Deno.serve(async (request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const stripeSecretKey = Deno.env.get("PLATFORM_STRIPE_SECRET_KEY");
   if (!supabaseUrl || !supabaseServiceKey) {
     return new Response("Missing Supabase env vars.", { status: 500 });
-  }
-  if (!stripeSecretKey) {
-    return new Response("Missing Stripe secret key.", { status: 500 });
   }
 
   const url = new URL(request.url);
@@ -70,51 +64,10 @@ Deno.serve(async (request) => {
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - lookbackDays);
   since.setUTCHours(0, 0, 0, 0);
-  const sinceUnix = Math.floor(since.getTime() / 1000);
-  const nowUnix = Math.floor(Date.now() / 1000);
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
   });
-  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-06-20" });
-
-  const { data: projects, error: projectsError } = await supabase
-    .from("Project")
-    .select("id,creatorStripeAccountId");
-
-  if (projectsError) {
-    return new Response(projectsError.message, { status: 500 });
-  }
-
-  const totalRevenueByProjectDate = new Map<string, number>();
-  for (const project of projects ?? []) {
-    if (!project.creatorStripeAccountId) {
-      continue;
-    }
-    let startingAfter: string | undefined = undefined;
-    while (true) {
-      const charges = await stripe.charges.list(
-        {
-          limit: 100,
-          starting_after: startingAfter,
-        },
-        { stripeAccount: project.creatorStripeAccountId },
-      );
-
-      charges.data.forEach((charge) => {
-        if (!charge.paid || charge.refunded) return;
-        if (charge.created < sinceUnix || charge.created > nowUnix) return;
-        const dateKey = getDateKeyFromUnix(charge.created);
-        const key = `${project.id}:${dateKey}`;
-        const current = totalRevenueByProjectDate.get(key) ?? 0;
-        totalRevenueByProjectDate.set(key, current + (charge.amount ?? 0));
-      });
-
-      if (!charges.has_more) break;
-      startingAfter = charges.data.at(-1)?.id;
-      if (!startingAfter) break;
-    }
-  }
 
   const { data, error } = await supabase
     .from("Purchase")
@@ -130,7 +83,7 @@ Deno.serve(async (request) => {
 
   const { data: clickData, error: clickError } = await supabase
     .from("AttributionClick")
-    .select("projectId,marketerId,createdAt")
+    .select("projectId,marketerId,deviceId,createdAt")
     .gte("createdAt", since.toISOString());
 
   if (clickError) {
@@ -146,7 +99,11 @@ Deno.serve(async (request) => {
     const dateKey = getDateKey(click.createdAt);
     const key = `${click.projectId}:${click.marketerId}:${dateKey}`;
     const existing = snapshotMap.get(key) ?? createEmptySnapshotTotals();
-    existing.clicksCountDay += 1;
+    if (click.deviceId?.startsWith("install:")) {
+      existing.installsCountDay += 1;
+    } else {
+      existing.clicksCountDay += 1;
+    }
     snapshotMap.set(key, existing);
   });
 
@@ -167,22 +124,20 @@ Deno.serve(async (request) => {
     snapshotMap.set(key, existing);
   });
 
+  const now = new Date();
   const upserts = Array.from(snapshotMap.entries()).map(([key, totals]) => {
     const [projectId, marketerId, dateKey] = key.split(":");
     const date = new Date(`${dateKey}T00:00:00.000Z`);
-    const now = new Date();
-    const projectRevenueDay =
-      totalRevenueByProjectDate.get(`${projectId}:${dateKey}`) ?? 0;
     return {
       projectId,
       marketerId,
       date,
-      projectRevenueDay,
       affiliateRevenueDay: totals.affiliateRevenueDay,
       commissionOwedDay: totals.commissionOwedDay,
       purchasesCountDay: totals.purchasesCountDay,
       customersCountDay: totals.customerEmailsDay.size,
       clicksCountDay: totals.clicksCountDay,
+      installsCountDay: totals.installsCountDay,
       updatedAt: now,
     };
   });

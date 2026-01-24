@@ -7,7 +7,9 @@ type PurchaseRow = {
   commissionAmount: number;
   couponId: string | null;
   marketerId: string | null;
+  revenueCatEventId: string | null;
   customerEmail: string | null;
+  customerExternalId: string | null;
   createdAt: string;
   project: {
     platformCommissionPercent: string | number | null;
@@ -204,7 +206,7 @@ Deno.serve(async (request) => {
   const { data: totalData, error: totalError } = await supabase
     .from("Purchase")
     .select(
-      "projectId,amount,commissionAmount,couponId,marketerId,customerEmail,project:Project(platformCommissionPercent)",
+      "projectId,amount,commissionAmount,couponId,marketerId,revenueCatEventId,customerEmail,customerExternalId,project:Project(platformCommissionPercent)",
     )
     .in("projectId", stripeProjectIds)
     .not("commissionStatus", "in", '("REFUNDED","CHARGEBACK")');
@@ -220,19 +222,21 @@ Deno.serve(async (request) => {
     totals.purchasesCount += 1;
     const commissionAmount = Number(row.commissionAmount) || 0;
     const platformPercent = Number(row.project?.platformCommissionPercent) || 0;
-    if (row.couponId || row.marketerId) {
+    const customerKey =
+      row.customerEmail?.toLowerCase() ?? row.customerExternalId ?? null;
+    if (row.couponId || (row.revenueCatEventId && row.marketerId)) {
       totals.affiliatePurchasesCount += 1;
       totals.affiliateRevenue += Number(row.amount) || 0;
-      if (row.customerEmail) {
-        totals.affiliateCustomerEmails.add(row.customerEmail.toLowerCase());
+      if (customerKey) {
+        totals.affiliateCustomerEmails.add(customerKey);
       }
     } else {
       totals.directPurchasesCount += 1;
     }
     totals.affiliateShareOwed += commissionAmount;
     totals.platformFee += Math.round(commissionAmount * platformPercent);
-    if (row.customerEmail) {
-      totals.customerEmails.add(row.customerEmail.toLowerCase());
+    if (customerKey) {
+      totals.customerEmails.add(customerKey);
     }
     totalsByProject.set(row.projectId, totals);
   }
@@ -240,7 +244,7 @@ Deno.serve(async (request) => {
   const { data, error } = await supabase
     .from("Purchase")
     .select(
-      "projectId,amount,commissionAmount,couponId,marketerId,customerEmail,createdAt,project:Project(platformCommissionPercent)",
+      "projectId,amount,commissionAmount,couponId,marketerId,revenueCatEventId,customerEmail,customerExternalId,createdAt,project:Project(platformCommissionPercent)",
     )
     .not("commissionStatus", "in", '("REFUNDED","CHARGEBACK")')
     .in("projectId", stripeProjectIds)
@@ -269,11 +273,13 @@ Deno.serve(async (request) => {
 
     const commissionAmount = Number(row.commissionAmount) || 0;
     const platformPercent = Number(row.project?.platformCommissionPercent) || 0;
-    if (row.couponId || row.marketerId) {
+    const customerKey =
+      row.customerEmail?.toLowerCase() ?? row.customerExternalId ?? null;
+    if (row.couponId || (row.revenueCatEventId && row.marketerId)) {
       existing.affiliateRevenueDay += Number(row.amount) || 0;
       existing.affiliatePurchasesCountDay += 1;
-      if (row.customerEmail) {
-        existing.affiliateCustomerEmailsDay.add(row.customerEmail.toLowerCase());
+      if (customerKey) {
+        existing.affiliateCustomerEmailsDay.add(customerKey);
       }
     } else {
       existing.directPurchasesCountDay += 1;
@@ -281,24 +287,98 @@ Deno.serve(async (request) => {
     existing.affiliateShareOwedDay += commissionAmount;
     existing.platformFeeDay += Math.round(commissionAmount * platformPercent);
     existing.purchasesCountDay += 1;
-    if (row.customerEmail) {
-      existing.customerEmailsDay.add(row.customerEmail.toLowerCase());
+    if (customerKey) {
+      existing.customerEmailsDay.add(customerKey);
     }
 
     snapshotMap.set(key, existing);
   });
 
-  const upserts = Array.from(snapshotMap.entries()).map(([key, totals]) => {
+  const now = new Date();
+  const todayKey = getDateKey(now.toISOString());
+
+  // Past days: only upsert daily metrics (cumulative values are unknown for past dates)
+  const pastUpserts: Record<string, unknown>[] = [];
+  // Today: upsert both daily and cumulative metrics (cumulative values are accurate now)
+  const todayUpserts: Record<string, unknown>[] = [];
+  const projectsWithToday = new Set<string>();
+
+  for (const [key, totals] of snapshotMap.entries()) {
     const [projectId, dateKey] = key.split(":");
     const date = new Date(`${dateKey}T00:00:00.000Z`);
+    const mrr = mrrByProject.get(projectId) ?? 0;
+
+    if (dateKey === todayKey) {
+      projectsWithToday.add(projectId);
+      const aggregateTotals =
+        totalsByProject.get(projectId) ?? createEmptyTotals();
+      aggregateTotals.mrr = mrr;
+      todayUpserts.push({
+        projectId,
+        date,
+        totalRevenue: totalRevenueByProject.get(projectId) ?? 0,
+        affiliateRevenue: aggregateTotals.affiliateRevenue,
+        affiliateShareOwed: aggregateTotals.affiliateShareOwed,
+        platformFee: aggregateTotals.platformFee,
+        mrr: aggregateTotals.mrr,
+        purchasesCount: aggregateTotals.purchasesCount,
+        affiliatePurchasesCount: aggregateTotals.affiliatePurchasesCount,
+        directPurchasesCount: aggregateTotals.directPurchasesCount,
+        uniqueCustomers: aggregateTotals.customerEmails.size,
+        affiliateCustomers: aggregateTotals.affiliateCustomerEmails.size,
+        totalRevenueDay: totals.totalRevenueDay,
+        affiliateRevenueDay: totals.affiliateRevenueDay,
+        affiliateShareOwedDay: totals.affiliateShareOwedDay,
+        platformFeeDay: totals.platformFeeDay,
+        mrrDay: mrr,
+        purchasesCountDay: totals.purchasesCountDay,
+        affiliatePurchasesCountDay: totals.affiliatePurchasesCountDay,
+        directPurchasesCountDay: totals.directPurchasesCountDay,
+        uniqueCustomersDay: totals.customerEmailsDay.size,
+        affiliateCustomersDay: totals.affiliateCustomerEmailsDay.size,
+        updatedAt: now,
+      });
+    } else {
+      const aggregateTotals =
+        totalsByProject.get(projectId) ?? createEmptyTotals();
+      aggregateTotals.mrr = mrr;
+      pastUpserts.push({
+        projectId,
+        date,
+        totalRevenue: totalRevenueByProject.get(projectId) ?? 0,
+        affiliateRevenue: aggregateTotals.affiliateRevenue,
+        affiliateShareOwed: aggregateTotals.affiliateShareOwed,
+        platformFee: aggregateTotals.platformFee,
+        mrr: aggregateTotals.mrr,
+        purchasesCount: aggregateTotals.purchasesCount,
+        affiliatePurchasesCount: aggregateTotals.affiliatePurchasesCount,
+        directPurchasesCount: aggregateTotals.directPurchasesCount,
+        uniqueCustomers: aggregateTotals.customerEmails.size,
+        affiliateCustomers: aggregateTotals.affiliateCustomerEmails.size,
+        totalRevenueDay: totals.totalRevenueDay,
+        affiliateRevenueDay: totals.affiliateRevenueDay,
+        affiliateShareOwedDay: totals.affiliateShareOwedDay,
+        platformFeeDay: totals.platformFeeDay,
+        purchasesCountDay: totals.purchasesCountDay,
+        affiliatePurchasesCountDay: totals.affiliatePurchasesCountDay,
+        directPurchasesCountDay: totals.directPurchasesCountDay,
+        uniqueCustomersDay: totals.customerEmailsDay.size,
+        affiliateCustomersDay: totals.affiliateCustomerEmailsDay.size,
+        updatedAt: now,
+      });
+    }
+  }
+
+  // Ensure every project gets a today row with cumulative metrics even if no purchases today
+  for (const projectId of stripeProjectIds) {
+    if (projectsWithToday.has(projectId)) continue;
     const mrr = mrrByProject.get(projectId) ?? 0;
     const aggregateTotals =
       totalsByProject.get(projectId) ?? createEmptyTotals();
     aggregateTotals.mrr = mrr;
-    const now = new Date();
-    return {
+    todayUpserts.push({
       projectId,
-      date,
+      date: new Date(`${todayKey}T00:00:00.000Z`),
       totalRevenue: totalRevenueByProject.get(projectId) ?? 0,
       affiliateRevenue: aggregateTotals.affiliateRevenue,
       affiliateShareOwed: aggregateTotals.affiliateShareOwed,
@@ -309,19 +389,21 @@ Deno.serve(async (request) => {
       directPurchasesCount: aggregateTotals.directPurchasesCount,
       uniqueCustomers: aggregateTotals.customerEmails.size,
       affiliateCustomers: aggregateTotals.affiliateCustomerEmails.size,
-      totalRevenueDay: totals.totalRevenueDay,
-      affiliateRevenueDay: totals.affiliateRevenueDay,
-      affiliateShareOwedDay: totals.affiliateShareOwedDay,
-      platformFeeDay: totals.platformFeeDay,
+      totalRevenueDay: 0,
+      affiliateRevenueDay: 0,
+      affiliateShareOwedDay: 0,
+      platformFeeDay: 0,
       mrrDay: mrr,
-      purchasesCountDay: totals.purchasesCountDay,
-      affiliatePurchasesCountDay: totals.affiliatePurchasesCountDay,
-      directPurchasesCountDay: totals.directPurchasesCountDay,
-      uniqueCustomersDay: totals.customerEmailsDay.size,
-      affiliateCustomersDay: totals.affiliateCustomerEmailsDay.size,
+      purchasesCountDay: 0,
+      affiliatePurchasesCountDay: 0,
+      directPurchasesCountDay: 0,
+      uniqueCustomersDay: 0,
+      affiliateCustomersDay: 0,
       updatedAt: now,
-    };
-  });
+    });
+  }
+
+  const upserts = [...todayUpserts, ...pastUpserts];
 
   if (upserts.length === 0) {
     return new Response(JSON.stringify({ ok: true, count: 0 }), {
@@ -329,12 +411,24 @@ Deno.serve(async (request) => {
     });
   }
 
-  const { error: upsertError } = await supabase
-    .from("MetricsSnapshot")
-    .upsert(upserts, { onConflict: "projectId,date" });
+  // Upsert today's rows (full cumulative + daily metrics)
+  if (todayUpserts.length > 0) {
+    const { error: todayError } = await supabase
+      .from("MetricsSnapshot")
+      .upsert(todayUpserts, { onConflict: "projectId,date" });
+    if (todayError) {
+      return new Response(todayError.message, { status: 500 });
+    }
+  }
 
-  if (upsertError) {
-    return new Response(upsertError.message, { status: 500 });
+  // Upsert past rows (daily metrics only — cumulative fields left unchanged)
+  if (pastUpserts.length > 0) {
+    const { error: pastError } = await supabase
+      .from("MetricsSnapshot")
+      .upsert(pastUpserts, { onConflict: "projectId,date" });
+    if (pastError) {
+      return new Response(pastError.message, { status: 500 });
+    }
   }
 
   return new Response(JSON.stringify({ ok: true, count: upserts.length }), {

@@ -18,6 +18,8 @@ const updateSchema = z
     marketerCommissionPercent: z.number().min(0).max(100).optional(),
     country: z.string().length(2).optional().nullable(),
     website: z.string().url().optional().nullable().or(z.literal("")),
+    appStoreUrl: z.string().url().optional().nullable().or(z.literal("")),
+    playStoreUrl: z.string().url().optional().nullable().or(z.literal("")),
     foundationDate: z
       .string()
       .datetime()
@@ -47,6 +49,8 @@ const updateSchema = z
       data.marketerCommissionPercent !== undefined ||
       data.country !== undefined ||
       data.website !== undefined ||
+      data.appStoreUrl !== undefined ||
+      data.playStoreUrl !== undefined ||
       data.foundationDate !== undefined ||
       data.about !== undefined ||
       data.features !== undefined ||
@@ -88,6 +92,8 @@ export async function GET(
       marketerCommissionPercent: true,
       country: true,
       website: true,
+      appStoreUrl: true,
+      playStoreUrl: true,
       foundationDate: true,
       about: true,
       features: true,
@@ -239,6 +245,12 @@ export async function PATCH(
       ...(payload.website !== undefined
         ? { website: payload.website || null }
         : {}),
+      ...(payload.appStoreUrl !== undefined
+        ? { appStoreUrl: payload.appStoreUrl || null }
+        : {}),
+      ...(payload.playStoreUrl !== undefined
+        ? { playStoreUrl: payload.playStoreUrl || null }
+        : {}),
       ...(payload.foundationDate !== undefined
         ? {
             foundationDate: payload.foundationDate
@@ -285,6 +297,8 @@ export async function PATCH(
       marketerCommissionPercent: true,
       country: true,
       website: true,
+      appStoreUrl: true,
+      playStoreUrl: true,
       foundationDate: true,
       about: true,
       features: true,

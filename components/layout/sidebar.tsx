@@ -125,7 +125,7 @@ function NavLink({
     <Link
       href={item.href}
       className={cn(
-        "relative flex items-center gap-3 rounded-md px-3 py-2 text-xs transition-colors",
+        "relative flex items-center gap-3 rounded-md px-2 py-2 text-xs transition-colors",
         isCollapsed && "justify-center px-2",
         isActive
           ? "bg-secondary text-secondary-foreground font-medium"
@@ -197,7 +197,7 @@ export function Sidebar() {
             (section, sectionIndex) => (
               <div key={section.label ?? sectionIndex} className="space-y-1">
                 {section.label && !isCollapsed ? (
-                  <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+                  <p className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
                     {section.label}
                   </p>
                 ) : null}

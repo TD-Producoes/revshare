@@ -22,6 +22,7 @@ type SnapshotTotals = {
   purchasesCountDay: number;
   customerEmailsDay: Set<string>;
   clicksCountDay: number;
+  installsCountDay: number;
 };
 
 function createEmptySnapshotTotals(): SnapshotTotals {
@@ -31,6 +32,7 @@ function createEmptySnapshotTotals(): SnapshotTotals {
     purchasesCountDay: 0,
     customerEmailsDay: new Set<string>(),
     clicksCountDay: 0,
+    installsCountDay: 0,
   };
 }
 
@@ -113,7 +115,7 @@ Deno.serve(async (request) => {
 
   const { data: clickData, error: clickError } = await supabase
     .from("AttributionClick")
-    .select("projectId,marketerId,createdAt")
+    .select("projectId,marketerId,deviceId,createdAt")
     .in("projectId", projectIds)
     .gte("createdAt", since.toISOString());
 
@@ -123,26 +125,27 @@ Deno.serve(async (request) => {
 
   const rows = (data ?? []) as PurchaseRow[];
   const snapshotMap = new Map<string, SnapshotTotals>();
-  const totalRevenueByProjectDate = new Map<string, number>();
 
   (clickData ?? []).forEach((row) => {
-    const click = row as { projectId: string; marketerId: string; createdAt: string };
+    const click = row as {
+      projectId: string;
+      marketerId: string;
+      deviceId: string;
+      createdAt: string;
+    };
     if (!click.projectId || !click.marketerId) return;
     const dateKey = getDateKey(click.createdAt);
     const key = `${click.projectId}:${click.marketerId}:${dateKey}`;
     const existing = snapshotMap.get(key) ?? createEmptySnapshotTotals();
-    existing.clicksCountDay += 1;
+    if (click.deviceId?.startsWith("install:")) {
+      existing.installsCountDay += 1;
+    } else {
+      existing.clicksCountDay += 1;
+    }
     snapshotMap.set(key, existing);
   });
 
   rows.forEach((row) => {
-    if (row.projectId) {
-      const dateKey = getDateKey(row.createdAt);
-      const key = `${row.projectId}:${dateKey}`;
-      const current = totalRevenueByProjectDate.get(key) ?? 0;
-      totalRevenueByProjectDate.set(key, current + (Number(row.amount) || 0));
-    }
-
     const marketerId = row.coupon?.marketerId ?? row.marketerId;
     if (!row.projectId || !marketerId) return;
     const dateKey = getDateKey(row.createdAt);
@@ -159,22 +162,20 @@ Deno.serve(async (request) => {
     snapshotMap.set(key, existing);
   });
 
+  const now = new Date();
   const upserts = Array.from(snapshotMap.entries()).map(([key, totals]) => {
     const [projectId, marketerId, dateKey] = key.split(":");
     const date = new Date(`${dateKey}T00:00:00.000Z`);
-    const now = new Date();
-    const projectRevenueDay =
-      totalRevenueByProjectDate.get(`${projectId}:${dateKey}`) ?? 0;
     return {
       projectId,
       marketerId,
       date,
-      projectRevenueDay,
       affiliateRevenueDay: totals.affiliateRevenueDay,
       commissionOwedDay: totals.commissionOwedDay,
       purchasesCountDay: totals.purchasesCountDay,
       customersCountDay: totals.customerEmailsDay.size,
       clicksCountDay: totals.clicksCountDay,
+      installsCountDay: totals.installsCountDay,
       updatedAt: now,
     };
   });

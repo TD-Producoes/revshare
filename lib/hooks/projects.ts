@@ -20,6 +20,8 @@ export type ApiProject = {
   marketerCommissionPercent?: string | number | null;
   country?: string | null;
   website?: string | null;
+  appStoreUrl?: string | null;
+  playStoreUrl?: string | null;
   foundationDate?: string | Date | null;
   about?: string | null;
   features?: string[] | null;
@@ -105,6 +107,8 @@ export type ProjectMetricsSnapshot = {
     directPurchases?: number;
     clicks?: number;
     clicks30d?: number;
+    installs?: number;
+    installs30d?: number;
   };
   timeline: Array<{
     date: string;
@@ -117,6 +121,8 @@ export type ProjectMetricsSnapshot = {
     directPurchasesCount?: number;
     uniqueCustomers?: number;
     affiliateCustomers?: number;
+    clicksCount?: number;
+    installsCount?: number;
   }>;
 };
 
@@ -129,7 +135,9 @@ export type ProjectMarketer = {
 export type ProjectAttributionClicks = {
   total: number;
   last30Days: number;
-  marketers: Array<{ marketerId: string; clicks: number }>;
+  installsTotal?: number;
+  installsLast30Days?: number;
+  marketers: Array<{ marketerId: string; clicks: number; installs?: number }>;
 };
 
 export type PublicProjectStats = {
@@ -293,6 +301,52 @@ export function useProjectAttributionClicks(id?: string | null) {
         throw new Error(payload?.error ?? "Failed to fetch attribution clicks.");
       }
       return payload?.data as ProjectAttributionClicks;
+    },
+  });
+}
+
+export function useAttributionLink(projectId?: string | null) {
+  return useQuery<{ code: string; url: string } | null>({
+    queryKey: ["project-attribution-link", projectId ?? "none"],
+    enabled: Boolean(projectId),
+    queryFn: async () => {
+      if (!projectId) return null;
+      const response = await fetch(`/api/projects/${projectId}/attribution-link`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to load attribution link.");
+      }
+      return payload?.data ?? null;
+    },
+  });
+}
+
+export function useAttributionLinks(projectIds: string[] = [], enabled = true) {
+  return useQuery<Record<string, string>>({
+    queryKey: ["project-attribution-links", projectIds],
+    enabled: enabled && projectIds.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
+        projectIds.map(async (projectId) => {
+          const response = await fetch(
+            `/api/projects/${projectId}/attribution-link`,
+          );
+          const payload = await response.json().catch(() => null);
+          if (!response.ok) {
+            throw new Error(
+              payload?.error ?? "Failed to load attribution link.",
+            );
+          }
+          return { projectId, url: payload?.data?.url ?? "" };
+        }),
+      );
+      const links: Record<string, string> = {};
+      results.forEach((result) => {
+        if (result.url) {
+          links[result.projectId] = result.url;
+        }
+      });
+      return links;
     },
   });
 }

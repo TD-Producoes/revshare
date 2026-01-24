@@ -62,8 +62,9 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
     purchasesCount: 0,
     customersCount: 0,
     clicksCount: 0,
+    installsCount: 0,
   };
-  const timeline = metrics?.timeline ?? [];
+  const combinedTimeline = metrics?.timeline ?? [];
   const activeTabLabel = { overview: "Overview", metrics: "Metrics" }[
     activeTab
   ];
@@ -103,7 +104,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-7">
           <Breadcrumb>
@@ -192,12 +193,13 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
 
         <TabsContent value="metrics">
           <MarketerMetricsTab
-            timeline={timeline}
+            timeline={combinedTimeline}
             currency={currency}
             projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             clicksTotal={summary.clicksCount}
+            installsTotal={summary.installsCount}
           />
         </TabsContent>
       </Tabs>

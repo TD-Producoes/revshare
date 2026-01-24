@@ -216,8 +216,10 @@ export type MarketerMetrics = {
     affiliateRevenue: number;
     commissionOwed: number;
     purchasesCount: number;
+    projectPurchasesCount?: number;
     customersCount: number;
     clicksCount: number;
+    installsCount: number;
   };
   timeline: Array<{
     date: string;
@@ -225,8 +227,11 @@ export type MarketerMetrics = {
     affiliateRevenue: number;
     commissionOwed: number;
     purchasesCount: number;
+    projectPurchasesCount?: number;
     customersCount: number;
+    projectCustomersCount?: number;
     clicksCount: number;
+    installsCount: number;
   }>;
 };
 

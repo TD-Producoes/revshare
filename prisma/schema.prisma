@@ -59,6 +59,8 @@ model Project {
   integrations              ProjectIntegration[]
   attributionAppKeys        AttributionAppKey[]
   attributionClicks         AttributionClick[]
+  attributionInstallFingerprints AttributionInstallFingerprint[]
+  attributionShortLinks     AttributionShortLink[]
   onboardingStatus          String?
   onboardingData            Json?
   onboardingCompletedAt     DateTime?
@@ -67,6 +69,8 @@ model Project {
   marketerCommissionPercent Decimal                   @default(0.2) @db.Decimal(5, 2)
   country                   String?
   website                   String?
+  appStoreUrl               String?
+  playStoreUrl              String?
   foundationDate            DateTime?
   about                     String?                   @db.Text
   features                  String[]                  @default([])
@@ -151,6 +155,39 @@ model AttributionClick {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, marketerId, deviceId])
+  @@index([projectId])
+  @@index([marketerId])
+}
+
+model AttributionInstallFingerprint {
+  id          String   @id @default(cuid())
+  projectId   String
+  marketerId  String
+  ipAddress   String
+  deviceModel String
+  osVersion   String
+  platform    String?
+  locale      String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, ipAddress, deviceModel, osVersion])
+  @@index([projectId])
+  @@index([marketerId])
+}
+
+model AttributionShortLink {
+  id        String   @id @default(cuid())
+  projectId String
+  marketerId String
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, marketerId])
   @@index([projectId])
   @@index([marketerId])
 }
@@ -317,6 +354,7 @@ model Purchase {
   amount                   Int
   currency                 String
   customerEmail            String?
+  customerExternalId       String?
   commissionAmount         Int
   commissionAmountOriginal Int?
   refundedAmount           Int              @default(0)
@@ -679,12 +717,12 @@ model MarketerMetricsSnapshot {
   projectId           String
   marketerId          String
   date                DateTime
-  projectRevenueDay   Int      @default(0)
   affiliateRevenueDay Int      @default(0)
   commissionOwedDay   Int      @default(0)
   purchasesCountDay   Int      @default(0)
   customersCountDay   Int      @default(0)
   clicksCountDay      Int      @default(0)
+  installsCountDay    Int      @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

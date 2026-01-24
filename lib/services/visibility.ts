@@ -10,6 +10,8 @@ export interface RedactableProject {
   name: string;
   visibility?: VisibilityMode | string;
   website?: string | null;
+  appStoreUrl?: string | null;
+  playStoreUrl?: string | null;
   logoUrl?: string | null;
   imageUrls?: string[] | null;
   description?: string | null;
@@ -56,6 +58,8 @@ export function redactProjectData<T extends RedactableProject>(
   if (visibility === VisibilityMode.GHOST) {
     redacted.name = "Anonymous Project";
     redacted.website = null;
+    redacted.appStoreUrl = null;
+    redacted.playStoreUrl = null;
     redacted.logoUrl = null;
     if (redacted.imageUrls) redacted.imageUrls = [];
     redacted.description = "This project identity is private.";

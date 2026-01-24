@@ -19,18 +19,10 @@ interface RevenueChartProps {
   title?: string;
   showAffiliate?: boolean;
   currency?: string;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  valueFormatter?: (value: number) => string;
 }
-
-const chartConfig = {
-  revenue: {
-    label: "Revenue",
-    color: "var(--chart-1)",
-  },
-  affiliateRevenue: {
-    label: "Affiliate",
-    color: "var(--chart-4)",
-  },
-} satisfies ChartConfig;
 
 type TooltipPayloadItem = {
   name?: string;
@@ -44,11 +36,13 @@ function RevenueTooltip({
   payload,
   label,
   formatter,
+  config,
 }: {
   active?: boolean;
   payload?: TooltipPayloadItem[];
   label?: string;
   formatter: (value: number) => string;
+  config: ChartConfig;
 }) {
   if (!active || !payload?.length) return null;
 
@@ -61,9 +55,7 @@ function RevenueTooltip({
         {rows.map((item) => {
           const key = item.dataKey ?? item.name ?? "value";
           const labelText =
-            chartConfig[key as keyof typeof chartConfig]?.label ||
-            item.name ||
-            key;
+            config[key as keyof typeof config]?.label || item.name || key;
           return (
             <div key={key} className="flex items-center justify-between gap-6">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -89,13 +81,29 @@ export function RevenueChart({
   title = "Revenue Over Time",
   showAffiliate = true,
   currency = "USD",
+  primaryLabel,
+  secondaryLabel,
+  valueFormatter,
 }: RevenueChartProps) {
-  const formatter = new Intl.NumberFormat("en-US", {
+  const fallbackFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
+  const formatValue = valueFormatter
+    ? valueFormatter
+    : (value: number) => fallbackFormatter.format(value);
+  const chartConfig = {
+    revenue: {
+      label: primaryLabel ?? "Revenue",
+      color: "var(--chart-1)",
+    },
+    affiliateRevenue: {
+      label: secondaryLabel ?? "Affiliate",
+      color: "var(--chart-4)",
+    },
+  } satisfies ChartConfig;
 
   const toDateKey = (value: Date) =>
     `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(
@@ -190,12 +198,15 @@ export function RevenueChart({
               axisLine={false}
               tickMargin={8}
               fontSize={12}
-              tickFormatter={(value) => formatter.format(Number(value))}
+              tickFormatter={(value) => formatValue(Number(value))}
               className="text-muted-foreground"
             />
             <ChartTooltip
               content={
-                <RevenueTooltip formatter={(value) => formatter.format(value)} />
+                <RevenueTooltip
+                  formatter={(value) => formatValue(value)}
+                  config={chartConfig}
+                />
               }
             />
             <Area

@@ -41,6 +41,7 @@ import {
   Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { MarketerMetricsTab } from "@/components/creator/marketer-tabs/metrics-tab";
 
 type MetricsSummary = {
   totalRevenue: number;
@@ -54,6 +55,8 @@ type MetricsSummary = {
   affiliatePurchases?: number;
   clicks?: number;
   clicks30d?: number;
+  installs?: number;
+  installs30d?: number;
 };
 
 type MetricsTimeline = Array<{
@@ -65,6 +68,9 @@ type MetricsTimeline = Array<{
   affiliateCustomers?: number;
   totalRevenue: number;
   affiliateRevenue: number;
+  affiliateShareOwed?: number;
+  clicksCount?: number;
+  installsCount?: number;
 }>;
 
 type AffiliateRow = {
@@ -75,6 +81,7 @@ type AffiliateRow = {
   revenue: number;
   commission: number;
   clicks: number;
+  installs?: number;
 };
 
 function sumField(data: MetricsTimeline, key: keyof MetricsTimeline[number]) {
@@ -230,6 +237,19 @@ export function ProjectMetricsTab({
     affiliateCustomers: entry.affiliateCustomers ?? 0,
   }));
 
+  const marketerMetricsTimeline = timeline.map((entry) => ({
+    date: entry.date,
+    projectRevenue: entry.totalRevenue,
+    affiliateRevenue: entry.affiliateRevenue,
+    commissionOwed: entry.affiliateShareOwed ?? 0,
+    purchasesCount: entry.affiliatePurchasesCount ?? 0,
+    projectPurchasesCount: entry.purchasesCount ?? 0,
+    customersCount: entry.affiliateCustomers ?? 0,
+    projectCustomersCount: entry.uniqueCustomers ?? 0,
+    clicksCount: entry.clicksCount ?? 0,
+    installsCount: entry.installsCount ?? 0,
+  }));
+
   const purchaseConfig = {
     purchases: {
       label: "Total Purchases",
@@ -254,7 +274,7 @@ export function ProjectMetricsTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Affiliate Share"
           value={`${affiliateShare}%`}
@@ -288,9 +308,15 @@ export function ProjectMetricsTab({
           description={`Last 30 days: ${formatNumber(metrics.clicks30d ?? 0)}`}
           icon={ChartLine}
         />
+        <StatCard
+          title="Installs"
+          value={formatNumber(metrics.installs ?? 0)}
+          description={`Last 30 days: ${formatNumber(metrics.installs30d ?? 0)}`}
+          icon={ChartLine}
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* <div className="grid gap-4 lg:grid-cols-2">
         <RevenueChart
           data={timeline.map((entry) => ({
             date: entry.date,
@@ -307,7 +333,18 @@ export function ProjectMetricsTab({
           config={purchaseConfig}
           valueFormatter={(value) => formatNumber(value)}
         />
-      </div>
+      </div> */}
+
+      <MarketerMetricsTab
+        timeline={marketerMetricsTimeline}
+        currency={currency}
+        projects={[]}
+        selectedProjectId={null}
+        onSelectProject={() => null}
+        showProjectFilter={false}
+        clicksTotal={metrics.clicks ?? 0}
+        installsTotal={metrics.installs ?? 0}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <MetricAreaChart
@@ -332,118 +369,118 @@ export function ProjectMetricsTab({
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base">Marketer Performance</CardTitle>
-            <Popover open={marketerFilterOpen} onOpenChange={setMarketerFilterOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={marketerFilterOpen}
-                  className="w-full justify-between sm:w-[240px]"
-                >
-                  {selectedMarketerLabel}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search marketers..." />
-                  <CommandList>
-                    <CommandEmpty>No marketers found.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        value="all"
-                        onSelect={() => {
-                          setSelectedMarketerId(null);
-                          setMarketerFilterOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "ml-2 mr-2 h-4 w-4",
-                            selectedMarketerId ? "opacity-0" : "opacity-100",
-                          )}
-                        />
-                        All marketers
-                      </CommandItem>
-                      {marketerOptions.map((marketer) => {
-                        const isSelected = selectedMarketerId === marketer.id;
-                        return (
-                          <CommandItem
-                            key={marketer.id}
-                            value={marketer.label}
-                            onSelect={() => {
-                              setSelectedMarketerId(marketer.id);
-                              setMarketerFilterOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "ml-2 mr-2 h-4 w-4",
-                                isSelected ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            {marketer.label}
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredRows.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No marketer activity yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Marketer</TableHead>
-                  <TableHead>Promo Codes</TableHead>
-                  <TableHead className="text-right">Purchases</TableHead>
-                  <TableHead className="text-right">Clicks</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">Commission</TableHead>
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-base font-semibold">Marketer Performance</h3>
+          <Popover open={marketerFilterOpen} onOpenChange={setMarketerFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={marketerFilterOpen}
+                className="w-full justify-between sm:w-[240px]"
+              >
+                {selectedMarketerLabel}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search marketers..." />
+                <CommandList>
+                  <CommandEmpty>No marketers found.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="all"
+                      onSelect={() => {
+                        setSelectedMarketerId(null);
+                        setMarketerFilterOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "ml-2 mr-2 h-4 w-4",
+                          selectedMarketerId ? "opacity-0" : "opacity-100",
+                        )}
+                      />
+                      All marketers
+                    </CommandItem>
+                    {marketerOptions.map((marketer) => {
+                      const isSelected = selectedMarketerId === marketer.id;
+                      return (
+                        <CommandItem
+                          key={marketer.id}
+                          value={marketer.label}
+                          onSelect={() => {
+                            setSelectedMarketerId(marketer.id);
+                            setMarketerFilterOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "ml-2 mr-2 h-4 w-4",
+                              isSelected ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          {marketer.label}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+        {filteredRows.length === 0 ? (
+          <p className="text-muted-foreground text-center py-8">
+            No marketer activity yet.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Marketer</TableHead>
+                <TableHead>Promo Codes</TableHead>
+                <TableHead className="text-right">Purchases</TableHead>
+                <TableHead className="text-right">Clicks</TableHead>
+                <TableHead className="text-right">Installs</TableHead>
+                <TableHead className="text-right">Revenue</TableHead>
+                <TableHead className="text-right">Commission</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredRows.map((row) => (
+                <TableRow key={row.marketerId}>
+                  <TableCell className="font-medium">
+                    {row.marketerName}
+                  </TableCell>
+                  <TableCell>
+                    <code className="bg-muted px-2 py-1 rounded text-xs">
+                      {row.referralCode}
+                    </code>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.purchases)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.clicks)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.installs ?? 0)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.revenue, currency)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(row.commission, currency)}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRows.map((row) => (
-                  <TableRow key={row.marketerId}>
-                    <TableCell className="font-medium">
-                      {row.marketerName}
-                    </TableCell>
-                    <TableCell>
-                      <code className="bg-muted px-2 py-1 rounded text-xs">
-                        {row.referralCode}
-                      </code>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(row.purchases)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(row.clicks)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(row.revenue, currency)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(row.commission, currency)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }
