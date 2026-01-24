@@ -93,16 +93,43 @@ export async function GET(
           activeSubscribers: 0,
           clicks: 0,
           clicks30d: 0,
+          installs: 0,
+          installs30d: 0,
         },
         timeline: [],
       },
     });
   }
 
-  const [totalClicks, clicks30d] = await Promise.all([
-    prisma.attributionClick.count({ where: { projectId } }),
+  const [totalClicks, clicks30d, totalInstalls, installs30d] = await Promise.all([
     prisma.attributionClick.count({
-      where: { projectId, createdAt: { gte: since } },
+      where: {
+        projectId,
+        OR: [
+          { deviceId: { startsWith: "click:" } },
+          { NOT: { deviceId: { startsWith: "install:" } } },
+        ],
+      },
+    }),
+    prisma.attributionClick.count({
+      where: {
+        projectId,
+        createdAt: { gte: since },
+        OR: [
+          { deviceId: { startsWith: "click:" } },
+          { NOT: { deviceId: { startsWith: "install:" } } },
+        ],
+      },
+    }),
+    prisma.attributionClick.count({
+      where: { projectId, deviceId: { startsWith: "install:" } },
+    }),
+    prisma.attributionClick.count({
+      where: {
+        projectId,
+        createdAt: { gte: since },
+        deviceId: { startsWith: "install:" },
+      },
     }),
   ]);
 
@@ -122,6 +149,8 @@ export async function GET(
     affiliateCustomers: latest?.affiliateCustomers ?? 0,
     clicks: totalClicks,
     clicks30d,
+    installs: totalInstalls,
+    installs30d,
   };
 
   summary.affiliateMrr = summary.totalRevenue

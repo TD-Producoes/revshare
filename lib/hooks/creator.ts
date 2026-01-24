@@ -162,6 +162,7 @@ export type CreatorMarketerMetrics = {
     purchasesCount: number;
     customersCount: number;
     clicksCount: number;
+    installsCount: number;
   };
   timeline: Array<{
     date: string;
@@ -171,6 +172,7 @@ export type CreatorMarketerMetrics = {
     purchasesCount: number;
     customersCount: number;
     clicksCount: number;
+    installsCount: number;
   }>;
 };
 

@@ -62,6 +62,7 @@ export async function GET(request: Request) {
         purchasesCountDay: true,
         customersCountDay: true,
         clicksCountDay: true,
+        installsCountDay: true,
       },
     }),
     prisma.marketerMetricsSnapshot.aggregate({
@@ -73,6 +74,7 @@ export async function GET(request: Request) {
         purchasesCountDay: true,
         customersCountDay: true,
         clicksCountDay: true,
+        installsCountDay: true,
       },
     }),
   ]);
@@ -86,6 +88,7 @@ export async function GET(request: Request) {
         purchasesCount: totals._sum.purchasesCountDay ?? 0,
         customersCount: totals._sum.customersCountDay ?? 0,
         clicksCount: totals._sum.clicksCountDay ?? 0,
+        installsCount: totals._sum.installsCountDay ?? 0,
       },
       timeline: timeline.map((entry) => ({
         date: entry.date.toISOString(),
@@ -95,6 +98,7 @@ export async function GET(request: Request) {
         purchasesCount: entry.purchasesCountDay,
         customersCount: entry.customersCountDay,
         clicksCount: entry.clicksCountDay ?? 0,
+        installsCount: entry.installsCountDay ?? 0,
       })),
     },
   });

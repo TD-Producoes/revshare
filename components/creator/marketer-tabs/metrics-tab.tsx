@@ -33,6 +33,7 @@ type MetricsTimeline = Array<{
   purchasesCount: number;
   customersCount: number;
   clicksCount?: number;
+  installsCount?: number;
 }>;
 
 function sumField(data: MetricsTimeline, key: keyof MetricsTimeline[number]) {
@@ -132,6 +133,7 @@ export function MarketerMetricsTab({
   isProjectLoading,
   showProjectFilter = true,
   clicksTotal,
+  installsTotal,
 }: {
   timeline: MetricsTimeline;
   currency: string;
@@ -141,6 +143,7 @@ export function MarketerMetricsTab({
   isProjectLoading?: boolean;
   showProjectFilter?: boolean;
   clicksTotal?: number;
+  installsTotal?: number;
 }) {
   const selectedProjectLabel =
     projects.find((project) => project.id === selectedProjectId)?.name ??
@@ -157,6 +160,10 @@ export function MarketerMetricsTab({
   const clicksChartData = timeline.map((entry) => ({
     date: entry.date,
     clicks: entry.clicksCount ?? 0,
+  }));
+  const installsChartData = timeline.map((entry) => ({
+    date: entry.date,
+    installs: entry.installsCount ?? 0,
   }));
 
   const purchasesConfig = {
@@ -176,6 +183,12 @@ export function MarketerMetricsTab({
     clicks: {
       label: "Clicks",
       color: "hsl(var(--chart-4))",
+    },
+  } satisfies ChartConfig;
+  const installsConfig = {
+    installs: {
+      label: "Installs",
+      color: "hsl(var(--chart-5))",
     },
   } satisfies ChartConfig;
 
@@ -259,7 +272,7 @@ export function MarketerMetricsTab({
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <MetricAreaChart
           title="Customers (Last 30 Days)"
           data={customersChartData}
@@ -272,9 +285,15 @@ export function MarketerMetricsTab({
           config={clicksConfig}
           valueFormatter={(value) => formatNumber(value)}
         />
+        <MetricAreaChart
+          title="Installs (Last 30 Days)"
+          data={installsChartData}
+          config={installsConfig}
+          valueFormatter={(value) => formatNumber(value)}
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">30-Day Snapshot</CardTitle>
@@ -310,6 +329,12 @@ export function MarketerMetricsTab({
                 {formatNumber(sumField(timeline, "clicksCount"))}
               </span>
             </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Installs</span>
+              <span className="font-medium">
+                {formatNumber(sumField(timeline, "installsCount"))}
+              </span>
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -322,6 +347,19 @@ export function MarketerMetricsTab({
             </p>
             <p className="text-sm text-muted-foreground">
               All-time clicks for this marketer
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Total Installs</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-2xl font-semibold">
+              {formatNumber(installsTotal ?? 0)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              All-time installs for this marketer
             </p>
           </CardContent>
         </Card>

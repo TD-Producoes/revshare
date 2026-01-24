@@ -97,6 +97,7 @@ function buildAffiliateRows(
   }>,
   approvedMarketers: Array<{ id: string; name: string }>,
   marketerClicks: Map<string, number>,
+  marketerInstalls: Map<string, number>,
 ) {
   const couponMap = new Map<
     string,
@@ -139,6 +140,7 @@ function buildAffiliateRows(
     ...couponMap.keys(),
     ...purchaseMap.keys(),
     ...marketerClicks.keys(),
+    ...marketerInstalls.keys(),
   ]);
 
   const marketerNameMap = new Map(
@@ -163,6 +165,7 @@ function buildAffiliateRows(
       revenue: purchaseInfo?.revenue ?? 0,
       commission: purchaseInfo?.commission ?? 0,
       clicks: marketerClicks.get(marketerId) ?? 0,
+      installs: marketerInstalls.get(marketerId) ?? 0,
       refundWindowDays: couponInfo?.refundWindowDays ?? null,
     };
   });
@@ -435,6 +438,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     affiliateCustomers: 0,
     clicks: 0,
     clicks30d: 0,
+    installs: 0,
+    installs30d: 0,
   };
   const revenueData =
     projectMetrics?.timeline?.map((entry) => ({
@@ -449,11 +454,18 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       row.clicks,
     ]),
   );
+  const installMap = new Map<string, number>(
+    (attributionClicks?.marketers ?? []).map((row) => [
+      row.marketerId,
+      row.installs ?? 0,
+    ]),
+  );
   const affiliateRows = buildAffiliateRows(
     projectCoupons,
     projectPurchases,
     projectMarketers,
     clickMap,
+    installMap,
   );
 
   // Calculate commission owed per marketer
@@ -1309,6 +1321,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               }
               country={apiProject?.country}
               website={apiProject?.website}
+              appStoreUrl={apiProject?.appStoreUrl}
+              playStoreUrl={apiProject?.playStoreUrl}
               foundationDate={apiProject?.foundationDate}
               about={apiProject?.about}
               features={apiProject?.features}

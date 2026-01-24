@@ -26,7 +26,7 @@ import {
   useCouponsForMarketer,
   useProjectCouponTemplates,
 } from "@/lib/hooks/coupons";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Dialog,
@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { useAttributionLinks } from "@/lib/hooks/projects";
 
 interface MyOffersTableProps {
   offers?: Offer[];
@@ -91,8 +92,24 @@ export function MyOffersTable({
     useProjectCouponTemplates(templateProjectId, false, userId);
   const hasContracts = contracts.length > 0;
 
-  const displayOffers = limit ? offers.slice(0, limit) : offers;
-  const displayContracts = limit ? contracts.slice(0, limit) : contracts;
+  const displayOffers = useMemo(
+    () => (limit ? offers.slice(0, limit) : offers),
+    [offers, limit],
+  );
+  const displayContracts = useMemo(
+    () => (limit ? contracts.slice(0, limit) : contracts),
+    [contracts, limit],
+  );
+  const attributionProjectIds = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...displayContracts.map((contract) => contract.projectId),
+          ...displayOffers.map((offer) => offer.projectId),
+        ]),
+      ).sort(),
+    [displayContracts, displayOffers],
+  );
 
   const getProject = (projectId: string) => {
     return projects.find((p) => p.id === projectId);
@@ -309,6 +326,17 @@ export function MyOffersTable({
     setSelectedTemplateId(templates[0].id);
   }, [isTemplateDialogOpen, selectedTemplateId, templates]);
 
+  const {
+    data: shortLinks = {},
+    error: shortLinkError,
+  } = useAttributionLinks(attributionProjectIds, Boolean(userId));
+  const shortLinkErrorMessage =
+    shortLinkError instanceof Error
+      ? shortLinkError.message
+      : shortLinkError
+        ? "Failed to load attribution links."
+        : null;
+
   if (hasContracts) {
     if (!userId) {
       return null;
@@ -318,6 +346,9 @@ export function MyOffersTable({
         {couponError ? (
           <p className="text-sm text-destructive">{couponError}</p>
         ) : null}
+        {shortLinkErrorMessage ? (
+          <p className="text-sm text-destructive">{shortLinkErrorMessage}</p>
+        ) : null}
 
         <Table>
           <TableHeader>
@@ -325,7 +356,7 @@ export function MyOffersTable({
               <TableHead>Project</TableHead>
               <TableHead className="text-right">Commission</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Referral Link</TableHead>
+              <TableHead>Attribution Link</TableHead>
               <TableHead>Coupon</TableHead>
               <TableHead className="text-right">Test Checkout</TableHead>
               <TableHead className="text-right">Applied</TableHead>
@@ -342,6 +373,8 @@ export function MyOffersTable({
                 coupon?.code
                   ? buildReferralLink(contract.projectId, coupon.code)
                   : null;
+              const shortLink = shortLinks[contract.projectId] ?? null;
+              const linkToShow = shortLink ?? referralLink;
               const isClaiming =
                 claimCoupon.isPending &&
                 claimCoupon.variables?.projectId === contract.projectId;
@@ -369,16 +402,16 @@ export function MyOffersTable({
                     {renderContractStatusBadge(contract.status)}
                   </TableCell>
                   <TableCell>
-                    {referralLink ? (
+                    {linkToShow ? (
                       <div className="flex items-center gap-2">
                         <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-[160px]">
-                          {referralLink}
+                          {linkToShow}
                         </code>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => handleCopy(referralLink)}
+                          onClick={() => handleCopy(linkToShow)}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -469,7 +502,7 @@ export function MyOffersTable({
                   Loading templates...
                 </p>
               ) : templates.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground">
                   No active templates available for this project yet.
                 </p>
               ) : (
@@ -673,13 +706,16 @@ export function MyOffersTable({
 
   return (
     <div className="space-y-4">
+      {shortLinkErrorMessage ? (
+        <p className="text-sm text-destructive">{shortLinkErrorMessage}</p>
+      ) : null}
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Project</TableHead>
             <TableHead>Founder</TableHead>
             <TableHead className="text-right">Rev Share</TableHead>
-            <TableHead>Referral Link</TableHead>
+            <TableHead>Attribution Link</TableHead>
             <TableHead>Coupon</TableHead>
             <TableHead className="text-right">Clicks</TableHead>
             <TableHead className="text-right">Conversions</TableHead>
@@ -734,13 +770,15 @@ export function MyOffersTable({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <code className="bg-muted px-2 py-1 rounded text-xs truncate max-w-[150px]">
-                      {offer.referralLink}
+                      {shortLinks[offer.projectId] ?? offer.referralLink}
                     </code>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => handleCopy(offer.referralLink)}
+                      onClick={() =>
+                        handleCopy(shortLinks[offer.projectId] ?? offer.referralLink)
+                      }
                     >
                       <Copy className="h-3 w-3" />
                     </Button>

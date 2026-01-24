@@ -15,6 +15,7 @@ type PurchaseRow = {
 type ClickRow = {
   projectId: string;
   marketerId: string;
+  deviceId: string;
   createdAt: string;
 };
 
@@ -24,6 +25,7 @@ type SnapshotTotals = {
   purchasesCountDay: number;
   customerEmailsDay: Set<string>;
   clicksCountDay: number;
+  installsCountDay: number;
 };
 
 function createEmptySnapshotTotals(): SnapshotTotals {
@@ -33,6 +35,7 @@ function createEmptySnapshotTotals(): SnapshotTotals {
     purchasesCountDay: 0,
     customerEmailsDay: new Set<string>(),
     clicksCountDay: 0,
+    installsCountDay: 0,
   };
 }
 
@@ -130,7 +133,7 @@ Deno.serve(async (request) => {
 
   const { data: clickData, error: clickError } = await supabase
     .from("AttributionClick")
-    .select("projectId,marketerId,createdAt")
+    .select("projectId,marketerId,deviceId,createdAt")
     .gte("createdAt", since.toISOString());
 
   if (clickError) {
@@ -146,7 +149,11 @@ Deno.serve(async (request) => {
     const dateKey = getDateKey(click.createdAt);
     const key = `${click.projectId}:${click.marketerId}:${dateKey}`;
     const existing = snapshotMap.get(key) ?? createEmptySnapshotTotals();
-    existing.clicksCountDay += 1;
+    if (click.deviceId?.startsWith("install:")) {
+      existing.installsCountDay += 1;
+    } else {
+      existing.clicksCountDay += 1;
+    }
     snapshotMap.set(key, existing);
   });
 
@@ -183,6 +190,7 @@ Deno.serve(async (request) => {
       purchasesCountDay: totals.purchasesCountDay,
       customersCountDay: totals.customerEmailsDay.size,
       clicksCountDay: totals.clicksCountDay,
+      installsCountDay: totals.installsCountDay,
       updatedAt: now,
     };
   });

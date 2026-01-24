@@ -33,25 +33,69 @@ export async function GET(
   since.setUTCDate(since.getUTCDate() - 30);
   since.setUTCHours(0, 0, 0, 0);
 
-  const [total, last30Days, marketers] = await Promise.all([
-    prisma.attributionClick.count({ where: { projectId } }),
-    prisma.attributionClick.count({
-      where: { projectId, createdAt: { gte: since } },
-    }),
-    prisma.attributionClick.groupBy({
-      by: ["marketerId"],
-      where: { projectId },
-      _count: { _all: true },
-    }),
-  ]);
+  const [total, last30Days, totalInstalls, last30Installs, marketers, installMarketers] =
+    await Promise.all([
+      prisma.attributionClick.count({
+        where: {
+          projectId,
+          OR: [
+            { deviceId: { startsWith: "click:" } },
+            { NOT: { deviceId: { startsWith: "install:" } } },
+          ],
+        },
+      }),
+      prisma.attributionClick.count({
+        where: {
+          projectId,
+          createdAt: { gte: since },
+          OR: [
+            { deviceId: { startsWith: "click:" } },
+            { NOT: { deviceId: { startsWith: "install:" } } },
+          ],
+        },
+      }),
+      prisma.attributionClick.count({
+        where: { projectId, deviceId: { startsWith: "install:" } },
+      }),
+      prisma.attributionClick.count({
+        where: {
+          projectId,
+          createdAt: { gte: since },
+          deviceId: { startsWith: "install:" },
+        },
+      }),
+      prisma.attributionClick.groupBy({
+        by: ["marketerId"],
+        where: {
+          projectId,
+          OR: [
+            { deviceId: { startsWith: "click:" } },
+            { NOT: { deviceId: { startsWith: "install:" } } },
+          ],
+        },
+        _count: { _all: true },
+      }),
+      prisma.attributionClick.groupBy({
+        by: ["marketerId"],
+        where: { projectId, deviceId: { startsWith: "install:" } },
+        _count: { _all: true },
+      }),
+    ]);
+
+  const installsByMarketer = new Map(
+    installMarketers.map((row) => [row.marketerId, row._count._all]),
+  );
 
   return NextResponse.json({
     data: {
       total,
       last30Days,
+      installsTotal: totalInstalls,
+      installsLast30Days: last30Installs,
       marketers: marketers.map((row) => ({
         marketerId: row.marketerId,
         clicks: row._count._all,
+        installs: installsByMarketer.get(row.marketerId) ?? 0,
       })),
     },
   });

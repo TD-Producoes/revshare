@@ -54,6 +54,8 @@ type MetricsSummary = {
   affiliatePurchases?: number;
   clicks?: number;
   clicks30d?: number;
+  installs?: number;
+  installs30d?: number;
 };
 
 type MetricsTimeline = Array<{
@@ -75,6 +77,7 @@ type AffiliateRow = {
   revenue: number;
   commission: number;
   clicks: number;
+  installs?: number;
 };
 
 function sumField(data: MetricsTimeline, key: keyof MetricsTimeline[number]) {
@@ -288,6 +291,12 @@ export function ProjectMetricsTab({
           description={`Last 30 days: ${formatNumber(metrics.clicks30d ?? 0)}`}
           icon={ChartLine}
         />
+        <StatCard
+          title="Installs"
+          value={formatNumber(metrics.installs ?? 0)}
+          description={`Last 30 days: ${formatNumber(metrics.installs30d ?? 0)}`}
+          icon={ChartLine}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -407,6 +416,7 @@ export function ProjectMetricsTab({
                 <TableHead>Promo Codes</TableHead>
                 <TableHead className="text-right">Purchases</TableHead>
                 <TableHead className="text-right">Clicks</TableHead>
+                <TableHead className="text-right">Installs</TableHead>
                 <TableHead className="text-right">Revenue</TableHead>
                 <TableHead className="text-right">Commission</TableHead>
               </TableRow>
@@ -427,6 +437,9 @@ export function ProjectMetricsTab({
                   </TableCell>
                   <TableCell className="text-right">
                     {formatNumber(row.clicks)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.installs ?? 0)}
                   </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(row.revenue, currency)}

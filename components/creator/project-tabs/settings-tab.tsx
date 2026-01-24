@@ -53,6 +53,8 @@ export function ProjectSettingsTab({
   marketerCommissionPercent,
   country,
   website,
+  appStoreUrl,
+  playStoreUrl,
   foundationDate,
   about,
   features,
@@ -77,6 +79,8 @@ export function ProjectSettingsTab({
   marketerCommissionPercent?: number | null;
   country?: string | null;
   website?: string | null;
+  appStoreUrl?: string | null;
+  playStoreUrl?: string | null;
   foundationDate?: string | Date | null;
   about?: string | null;
   features?: string[] | null;
@@ -108,6 +112,8 @@ export function ProjectSettingsTab({
         : "",
     country: country ?? "",
     website: website ?? "",
+    appStoreUrl: appStoreUrl ?? "",
+    playStoreUrl: playStoreUrl ?? "",
     foundationDate: formatDateInput(foundationDate),
     about: about ?? "",
     features: features ?? [],
@@ -162,6 +168,8 @@ export function ProjectSettingsTab({
           : "",
       country: country ?? "",
       website: website ?? "",
+      appStoreUrl: appStoreUrl ?? "",
+      playStoreUrl: playStoreUrl ?? "",
       foundationDate: formatDateInput(foundationDate),
       about: about ?? "",
       features: features ?? [],
@@ -183,6 +191,8 @@ export function ProjectSettingsTab({
     marketerCommissionPercent,
     country,
     website,
+    appStoreUrl,
+    playStoreUrl,
     foundationDate,
     about,
     features,
@@ -339,6 +349,8 @@ export function ProjectSettingsTab({
             : undefined,
           country: form.country || undefined,
           website: form.website.trim() || null,
+          appStoreUrl: form.appStoreUrl.trim() || null,
+          playStoreUrl: form.playStoreUrl.trim() || null,
           foundationDate: form.foundationDate
             ? new Date(form.foundationDate).toISOString()
             : null,
@@ -512,6 +524,33 @@ export function ProjectSettingsTab({
                     foundationDate: event.target.value,
                   }))
                 }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="projectAppStore">App Store URL</Label>
+              <Input
+                id="projectAppStore"
+                type="url"
+                value={form.appStoreUrl}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, appStoreUrl: event.target.value }))
+                }
+                placeholder="https://apps.apple.com/..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="projectPlayStore">Play Store URL</Label>
+              <Input
+                id="projectPlayStore"
+                type="url"
+                value={form.playStoreUrl}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, playStoreUrl: event.target.value }))
+                }
+                placeholder="https://play.google.com/..."
               />
             </div>
           </div>

@@ -7,6 +7,8 @@ import { ArrowLeft, Tag } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { StatCard } from "@/components/shared/stat-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -24,7 +26,7 @@ import { MarketerPromoCodesTab } from "@/components/marketer/project-tabs/promo-
 import { formatCurrency } from "@/lib/data/metrics";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
-import { useProject } from "@/lib/hooks/projects";
+import { useAttributionLink, useProject } from "@/lib/hooks/projects";
 import { useContractsForMarketer } from "@/lib/hooks/contracts";
 import {
   useClaimCoupon,
@@ -78,6 +80,9 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
   const [activeTab, setActiveTab] = useState("overview");
   const [claimError, setClaimError] = useState<string | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
+  const { data: attributionLink, error: attributionError } = useAttributionLink(
+    resolvedProjectId,
+  );
 
   const isLoading =
     isAuthLoading ||
@@ -118,6 +123,14 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
   const contract = contracts.find(
     (item) => item.projectId === resolvedProjectId,
   );
+
+  const attributionUrl = attributionLink?.url ?? "";
+  const attributionErrorMessage =
+    attributionError instanceof Error
+      ? attributionError.message
+      : attributionError
+        ? "Failed to load attribution link."
+        : null;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -233,6 +246,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
       : null;
   const projectCurrency =
     typeof project.currency === "string" ? project.currency : "USD";
+  const hasStoreUrls = Boolean(project.appStoreUrl || project.playStoreUrl);
 
   const totals = stats?.totals ?? {
     purchases: 0,
@@ -287,85 +301,124 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
         </div>
 
         <TabsContent value="overview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Attribution link</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Share this link to send users to the app store and attribute
+                installs to your marketer ID.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  value={attributionUrl}
+                  readOnly
+                  placeholder="Generating link..."
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="sm:self-stretch"
+                  onClick={() => handleCopy(attributionUrl)}
+                  disabled={!attributionUrl}
+                >
+                  Copy link
+                </Button>
+              </div>
+              {attributionErrorMessage && (
+                <p className="text-xs text-destructive">
+                  {attributionErrorMessage}
+                </p>
+              )}
+              {!hasStoreUrls && (
+                <p className="text-xs text-amber-600">
+                  Ask the founder to add the App Store and Play Store URLs so this
+                  link can redirect users after tracking.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Revenue Attributed"
-          value={formatCurrency(totals.revenue, projectCurrency)}
-          description={`${totals.purchases} purchases`}
-          icon={Tag}
-        />
-        <StatCard
-          title="Total Commission"
-          value={formatCurrency(totals.commission, projectCurrency)}
-          description="All time"
-          icon={Tag}
-        />
-        <StatCard
-          title="Awaiting Founder"
-          value={formatCurrency(
-            commissionStatus.awaitingCreator.amount,
-            projectCurrency,
-          )}
-          description={`${commissionStatus.awaitingCreator.count} purchases`}
-          icon={Tag}
-        />
-        <StatCard
-          title="Refund Window"
-          value={formatCurrency(
-            commissionStatus.awaitingRefundWindow.amount,
-            projectCurrency,
-          )}
-          description={`${commissionStatus.awaitingRefundWindow.count} purchases`}
-          icon={Tag}
-        />
-        <StatCard
-          title="Ready to Payout"
-          value={formatCurrency(commissionStatus.ready.amount, projectCurrency)}
-          description={`${commissionStatus.ready.count} purchases`}
-          icon={Tag}
-        />
-      </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Revenue Attributed"
+              value={formatCurrency(totals.revenue, projectCurrency)}
+              description={`${totals.purchases} purchases`}
+              icon={Tag}
+            />
+            <StatCard
+              title="Total Commission"
+              value={formatCurrency(totals.commission, projectCurrency)}
+              description="All time"
+              icon={Tag}
+            />
+            <StatCard
+              title="Awaiting Founder"
+              value={formatCurrency(
+                commissionStatus.awaitingCreator.amount,
+                projectCurrency,
+              )}
+              description={`${commissionStatus.awaitingCreator.count} purchases`}
+              icon={Tag}
+            />
+            <StatCard
+              title="Refund Window"
+              value={formatCurrency(
+                commissionStatus.awaitingRefundWindow.amount,
+                projectCurrency,
+              )}
+              description={`${commissionStatus.awaitingRefundWindow.count} purchases`}
+              icon={Tag}
+            />
+            <StatCard
+              title="Ready to Payout"
+              value={formatCurrency(commissionStatus.ready.amount, projectCurrency)}
+              description={`${commissionStatus.ready.count} purchases`}
+              icon={Tag}
+            />
+          </div>
 
-      <div className="space-y-3">
-        <h3 className="text-base font-semibold">Commission Adjustments</h3>
-        {projectAdjustments.length === 0 ? (
-          <p className="text-muted-foreground text-xs">
-            No adjustments recorded yet.
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {projectAdjustments.map((adjustment) => (
-                <TableRow key={adjustment.id}>
-                  <TableCell className="text-muted-foreground">
-                    {new Date(adjustment.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="capitalize">
-                    {adjustment.reason.replace(/_/g, " ")}
-                  </TableCell>
-                  <TableCell className="text-right text-red-600">
-                    {formatCurrency(adjustment.amount, adjustment.currency)}
-                  </TableCell>
-                  <TableCell className="capitalize">
-                    <Badge variant="outline">
-                      {adjustment.status.replace(/_/g, " ")}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold">Commission Adjustments</h3>
+            {projectAdjustments.length === 0 ? (
+              <p className="text-muted-foreground text-xs">
+                No adjustments recorded yet.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {projectAdjustments.map((adjustment) => (
+                    <TableRow key={adjustment.id}>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(adjustment.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {adjustment.reason.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right text-red-600">
+                        {formatCurrency(adjustment.amount, adjustment.currency)}
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        <Badge variant="outline">
+                          {adjustment.status.replace(/_/g, " ")}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="purchases">
