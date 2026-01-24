@@ -3,27 +3,15 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Tag } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { StatCard } from "@/components/shared/stat-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useQueryClient } from "@tanstack/react-query";
 import { MarketerPurchasesTab } from "@/components/marketer/project-tabs/purchases-tab";
 import { MarketerPromoCodesTab } from "@/components/marketer/project-tabs/promo-codes-tab";
 
-import { formatCurrency } from "@/lib/data/metrics";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
 import { useAttributionLink, useProject } from "@/lib/hooks/projects";
@@ -35,11 +23,13 @@ import {
 } from "@/lib/hooks/coupons";
 import {
   useMarketerAdjustments,
-  useMarketerProjectStats,
+  useMarketerMetrics,
   useMarketerPurchases,
   useMarketerProjectRewards,
 } from "@/lib/hooks/marketer";
 import { MarketerRewardsTab } from "@/components/marketer/project-tabs/rewards-tab";
+import { MarketerProjectOverviewTab } from "@/components/marketer/project-tabs/overview-tab";
+import { MarketerProjectMetricsTab } from "@/components/marketer/project-tabs/metrics-tab";
 
 interface MarketerProjectDetailProps {
   projectId: string;
@@ -64,8 +54,11 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
   const adjustments = adjustmentsPayload?.data ?? [];
   const { data: coupons = [], isLoading: isCouponsLoading } =
     useCouponsForMarketer(currentUser?.id);
-  const { data: stats, isLoading: isStatsLoading, error: statsError } =
-    useMarketerProjectStats(resolvedProjectId, currentUser?.id);
+  const {
+    data: metrics,
+    isLoading: isMetricsLoading,
+    error: metricsError,
+  } = useMarketerMetrics(currentUser?.id, resolvedProjectId);
   const {
     data: rewardItems = [],
     isLoading: isRewardsLoading,
@@ -91,7 +84,7 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
     isContractsLoading ||
     isPurchasesLoading ||
     isCouponsLoading ||
-    isStatsLoading ||
+    isMetricsLoading ||
     isTemplatesLoading ||
     isAdjustmentsLoading ||
     isRewardsLoading;
@@ -228,12 +221,12 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
     );
   }
 
-  if (statsError) {
+  if (metricsError) {
     return (
       <div className="text-xs text-muted-foreground">
-        {statsError instanceof Error
-          ? statsError.message
-          : "Unable to load project stats."}
+        {metricsError instanceof Error
+          ? metricsError.message
+          : "Unable to load project metrics."}
       </div>
     );
   }
@@ -248,17 +241,24 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
     typeof project.currency === "string" ? project.currency : "USD";
   const hasStoreUrls = Boolean(project.appStoreUrl || project.playStoreUrl);
 
-  const totals = stats?.totals ?? {
-    purchases: 0,
-    revenue: 0,
-    commission: 0,
+  const metricsSummary = metrics?.summary ?? {
+    projectRevenue: 0,
+    affiliateRevenue: 0,
+    commissionOwed: 0,
+    purchasesCount: 0,
+    customersCount: 0,
+    clicksCount: 0,
+    installsCount: 0,
   };
-  const commissionStatus = stats?.commissions ?? {
-    awaitingCreator: { count: 0, amount: 0 },
-    awaitingRefundWindow: { count: 0, amount: 0 },
-    ready: { count: 0, amount: 0 },
-    paid: { count: 0, amount: 0 },
-  };
+  const combinedTimeline = metrics?.timeline ?? [];
+  const affiliateSummary = metricsSummary;
+  const affiliateShare =
+    affiliateSummary.projectRevenue > 0
+      ? Math.round(
+          (affiliateSummary.affiliateRevenue / affiliateSummary.projectRevenue) *
+            100,
+        )
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -288,6 +288,9 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
             <TabsTrigger className="px-3 py-2 text-sm" value="overview">
               Overview
             </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="metrics">
+              Metrics
+            </TabsTrigger>
             <TabsTrigger className="px-3 py-2 text-sm" value="rewards">
               Rewards
             </TabsTrigger>
@@ -300,125 +303,28 @@ export function MarketerProjectDetail({ projectId }: MarketerProjectDetailProps)
           </TabsList>
         </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Attribution link</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Share this link to send users to the app store and attribute
-                installs to your marketer ID.
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Input
-                  value={attributionUrl}
-                  readOnly
-                  placeholder="Generating link..."
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="sm:self-stretch"
-                  onClick={() => handleCopy(attributionUrl)}
-                  disabled={!attributionUrl}
-                >
-                  Copy link
-                </Button>
-              </div>
-              {attributionErrorMessage && (
-                <p className="text-xs text-destructive">
-                  {attributionErrorMessage}
-                </p>
-              )}
-              {!hasStoreUrls && (
-                <p className="text-xs text-amber-600">
-                  Ask the founder to add the App Store and Play Store URLs so this
-                  link can redirect users after tracking.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="overview">
+          <MarketerProjectOverviewTab
+            attributionUrl={attributionUrl}
+            attributionErrorMessage={attributionErrorMessage}
+            hasStoreUrls={hasStoreUrls}
+            onCopyLink={handleCopy}
+            metricsSummary={affiliateSummary}
+            affiliateShare={affiliateShare}
+            projectCurrency={projectCurrency}
+            projectAdjustments={projectAdjustments}
+          />
+        </TabsContent>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Revenue Attributed"
-              value={formatCurrency(totals.revenue, projectCurrency)}
-              description={`${totals.purchases} purchases`}
-              icon={Tag}
-            />
-            <StatCard
-              title="Total Commission"
-              value={formatCurrency(totals.commission, projectCurrency)}
-              description="All time"
-              icon={Tag}
-            />
-            <StatCard
-              title="Awaiting Founder"
-              value={formatCurrency(
-                commissionStatus.awaitingCreator.amount,
-                projectCurrency,
-              )}
-              description={`${commissionStatus.awaitingCreator.count} purchases`}
-              icon={Tag}
-            />
-            <StatCard
-              title="Refund Window"
-              value={formatCurrency(
-                commissionStatus.awaitingRefundWindow.amount,
-                projectCurrency,
-              )}
-              description={`${commissionStatus.awaitingRefundWindow.count} purchases`}
-              icon={Tag}
-            />
-            <StatCard
-              title="Ready to Payout"
-              value={formatCurrency(commissionStatus.ready.amount, projectCurrency)}
-              description={`${commissionStatus.ready.count} purchases`}
-              icon={Tag}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="text-base font-semibold">Commission Adjustments</h3>
-            {projectAdjustments.length === 0 ? (
-              <p className="text-muted-foreground text-xs">
-                No adjustments recorded yet.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projectAdjustments.map((adjustment) => (
-                    <TableRow key={adjustment.id}>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(adjustment.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {adjustment.reason.replace(/_/g, " ")}
-                      </TableCell>
-                      <TableCell className="text-right text-red-600">
-                        {formatCurrency(adjustment.amount, adjustment.currency)}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        <Badge variant="outline">
-                          {adjustment.status.replace(/_/g, " ")}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+        <TabsContent value="metrics">
+          <MarketerProjectMetricsTab
+            timeline={combinedTimeline}
+            clicksTotal={affiliateSummary.clicksCount}
+            installsTotal={affiliateSummary.installsCount}
+            currency={projectCurrency}
+            projectId={resolvedProjectId ?? null}
+            projectName={project.name}
+          />
         </TabsContent>
 
         <TabsContent value="purchases">

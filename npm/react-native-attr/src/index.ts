@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type TrackClickParams = {
   appKey: string;
-  baseUrl: string;
+  baseUrl?: string;
   marketerId: string;
   deviceId: string;
   url?: string;
@@ -13,7 +13,7 @@ type TrackClickParams = {
 
 type ResolveAttributionParams = {
   appKey: string;
-  baseUrl: string;
+  baseUrl?: string;
   deviceModel: string;
   osVersion: string;
   platform?: string;
@@ -24,7 +24,7 @@ type ResolveAttributionParams = {
 
 type AttributionConfig = {
   appKey: string;
-  baseUrl: string;
+  baseUrl?: string;
   marketerParam?: string;
   endpoint?: string;
   resolveEndpoint?: string;
@@ -37,8 +37,9 @@ type AttributionConfig = {
   onTracked?: (result: { ok: boolean; marketerId: string }) => void;
 };
 
-const DEFAULT_ENDPOINT = "/api/attribution/click";
 const DEFAULT_RESOLVE_ENDPOINT = "/api/attribution/resolve";
+const BASE_URL = "https://revshare.fast";
+
 export const MARKETER_ID_STORAGE_KEY = "@marketplace/attribution/marketer-id";
 
 export async function getStoredMarketerId(
@@ -79,7 +80,7 @@ function getLocale() {
 async function getDeviceInfo() {
   let osVersion = Platform.Version ? String(Platform.Version) : "unknown";
   const platform = Platform.OS;
-  let deviceModel = platform;
+  let deviceModel: string = platform;
   let userAgent: string | undefined;
 
   try {
@@ -152,31 +153,10 @@ async function markTracked(marketerId: string) {
   await AsyncStorage.setItem(key, "1");
 }
 
-export async function trackClick(params: TrackClickParams) {
-  console.log('Tracking click with params', `${params.baseUrl}${params.endpoint ?? DEFAULT_ENDPOINT}`);
-  const response = await fetch(`${params.baseUrl}${params.endpoint ?? DEFAULT_ENDPOINT}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      appKey: params.appKey,
-      marketerId: params.marketerId,
-      deviceId: params.deviceId,
-      url: params.url,
-    }),
-  });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error ?? "Failed to track attribution");
-  }
-  return response.json().catch((e) => 
-    { console.error('Failed to parse response json', e); return null; }
-  );
-}
-
 export function AttributionTracker(config: AttributionConfig) {
   const {
     appKey,
-    baseUrl,
+    baseUrl = BASE_URL,
     resolveEndpoint = DEFAULT_RESOLVE_ENDPOINT,
     enabled = true,
     marketerStorageKey = MARKETER_ID_STORAGE_KEY,

@@ -64,7 +64,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
     clicksCount: 0,
     installsCount: 0,
   };
-  const timeline = metrics?.timeline ?? [];
+  const combinedTimeline = metrics?.timeline ?? [];
   const activeTabLabel = { overview: "Overview", metrics: "Metrics" }[
     activeTab
   ];
@@ -193,7 +193,7 @@ export function CreatorMarketerDetail({ marketerId }: { marketerId: string }) {
 
         <TabsContent value="metrics">
           <MarketerMetricsTab
-            timeline={timeline}
+            timeline={combinedTimeline}
             currency={currency}
             projects={projects}
             selectedProjectId={selectedProjectId}

@@ -121,6 +121,8 @@ export type ProjectMetricsSnapshot = {
     directPurchasesCount?: number;
     uniqueCustomers?: number;
     affiliateCustomers?: number;
+    clicksCount?: number;
+    installsCount?: number;
   }>;
 };
 

@@ -6,7 +6,6 @@ import {
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RevenueChart } from "@/components/shared/revenue-chart";
@@ -25,13 +24,66 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/data/metrics";
 
+type TooltipPayloadItem = {
+  name?: string;
+  dataKey?: string;
+  value?: number;
+  color?: string;
+};
+
+function MetricTooltip({
+  active,
+  payload,
+  label,
+  formatter,
+  config,
+}: {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+  label?: string;
+  formatter: (value: number) => string;
+  config: ChartConfig;
+}) {
+  if (!active || !payload?.length) return null;
+
+  const rows = payload.filter((item) => item.value != null);
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-popover/95 px-4 py-3 text-sm shadow-2xl">
+      <div className="text-sm font-semibold text-foreground">{label}</div>
+      <div className="mt-2 space-y-1">
+        {rows.map((item) => {
+          const key = item.dataKey ?? item.name ?? "value";
+          const labelText = config[key as keyof typeof config]?.label || item.name || key;
+          return (
+            <div key={key} className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span
+                  className="h-3 w-1.5 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span>{labelText}</span>
+              </div>
+              <span className="font-medium text-foreground tabular-nums">
+                {formatter(Number(item.value))}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 type MetricsTimeline = Array<{
   date: string;
   projectRevenue: number;
   affiliateRevenue: number;
   commissionOwed: number;
   purchasesCount: number;
+  projectPurchasesCount?: number;
   customersCount: number;
+  projectCustomersCount?: number;
   clicksCount?: number;
   installsCount?: number;
 }>;
@@ -93,8 +145,9 @@ function MetricAreaChart({
             />
             <ChartTooltip
               content={
-                <ChartTooltipContent
-                  formatter={(value) => valueFormatter(Number(value))}
+                <MetricTooltip
+                  formatter={(value) => valueFormatter(value)}
+                  config={config}
                 />
               }
             />
@@ -149,13 +202,25 @@ export function MarketerMetricsTab({
     projects.find((project) => project.id === selectedProjectId)?.name ??
     "All projects";
 
+  const hasProjectPurchases = timeline.some(
+    (entry) => entry.projectPurchasesCount != null,
+  );
+  const hasProjectCustomers = timeline.some(
+    (entry) => entry.projectCustomersCount != null,
+  );
   const purchasesChartData = timeline.map((entry) => ({
     date: entry.date,
-    purchases: entry.purchasesCount ?? 0,
+    revenue: hasProjectPurchases
+      ? entry.projectPurchasesCount ?? 0
+      : entry.purchasesCount ?? 0,
+    affiliateRevenue: hasProjectPurchases ? entry.purchasesCount ?? 0 : 0,
   }));
   const customersChartData = timeline.map((entry) => ({
     date: entry.date,
     customers: entry.customersCount ?? 0,
+    ...(hasProjectCustomers
+      ? { projectCustomers: entry.projectCustomersCount ?? 0 }
+      : {}),
   }));
   const clicksChartData = timeline.map((entry) => ({
     date: entry.date,
@@ -166,32 +231,42 @@ export function MarketerMetricsTab({
     installs: entry.installsCount ?? 0,
   }));
 
-  const purchasesConfig = {
-    purchases: {
-      label: "Purchases",
-      color: "hsl(var(--chart-1))",
-    },
-  } satisfies ChartConfig;
+  const purchasesPrimaryLabel = hasProjectPurchases
+    ? "Total Purchases"
+    : "Purchases";
+  const purchasesSecondaryLabel = hasProjectPurchases
+    ? "Affiliate Purchases"
+    : "";
 
-  const customersConfig = {
-    customers: {
-      label: "Customers",
-      color: "hsl(var(--chart-3))",
-    },
-  } satisfies ChartConfig;
+  const customersConfig = hasProjectCustomers
+    ? ({
+        projectCustomers: {
+          label: "Total Customers",
+          color: "var(--chart-1)",
+        },
+        customers: {
+          label: "Affiliate Customers",
+          color: "var(--chart-2)",
+        },
+      } satisfies ChartConfig)
+    : ({
+        customers: {
+          label: "Customers",
+          color: "var(--primary)",
+        },
+      } satisfies ChartConfig);
   const clicksConfig = {
     clicks: {
       label: "Clicks",
-      color: "hsl(var(--chart-4))",
+      color: "var(--primary)",
     },
   } satisfies ChartConfig;
   const installsConfig = {
     installs: {
       label: "Installs",
-      color: "hsl(var(--chart-5))",
+      color: "var(--primary)",
     },
   } satisfies ChartConfig;
-
   return (
     <div className="space-y-6">
       {showProjectFilter ? (
@@ -264,10 +339,12 @@ export function MarketerMetricsTab({
           showAffiliate={true}
           currency={currency}
         />
-        <MetricAreaChart
+        <RevenueChart
           title="Purchases (Last 30 Days)"
           data={purchasesChartData}
-          config={purchasesConfig}
+          showAffiliate={hasProjectPurchases}
+          primaryLabel={purchasesPrimaryLabel}
+          secondaryLabel={purchasesSecondaryLabel}
           valueFormatter={(value) => formatNumber(value)}
         />
       </div>

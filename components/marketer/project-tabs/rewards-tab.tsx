@@ -243,7 +243,7 @@ export function MarketerRewardsTab({
       <div className="space-y-3">
         <h3 className="text-base font-semibold">Earned Rewards</h3>
         {earnedRewards.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No rewards earned yet.</p>
+          <p className="text-muted-foreground">No rewards earned yet.</p>
         ) : (
           <Table>
             <TableHeader>

@@ -41,6 +41,7 @@ import {
   Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { MarketerMetricsTab } from "@/components/creator/marketer-tabs/metrics-tab";
 
 type MetricsSummary = {
   totalRevenue: number;
@@ -67,6 +68,9 @@ type MetricsTimeline = Array<{
   affiliateCustomers?: number;
   totalRevenue: number;
   affiliateRevenue: number;
+  affiliateShareOwed?: number;
+  clicksCount?: number;
+  installsCount?: number;
 }>;
 
 type AffiliateRow = {
@@ -233,6 +237,19 @@ export function ProjectMetricsTab({
     affiliateCustomers: entry.affiliateCustomers ?? 0,
   }));
 
+  const marketerMetricsTimeline = timeline.map((entry) => ({
+    date: entry.date,
+    projectRevenue: entry.totalRevenue,
+    affiliateRevenue: entry.affiliateRevenue,
+    commissionOwed: entry.affiliateShareOwed ?? 0,
+    purchasesCount: entry.affiliatePurchasesCount ?? 0,
+    projectPurchasesCount: entry.purchasesCount ?? 0,
+    customersCount: entry.affiliateCustomers ?? 0,
+    projectCustomersCount: entry.uniqueCustomers ?? 0,
+    clicksCount: entry.clicksCount ?? 0,
+    installsCount: entry.installsCount ?? 0,
+  }));
+
   const purchaseConfig = {
     purchases: {
       label: "Total Purchases",
@@ -257,7 +274,7 @@ export function ProjectMetricsTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Affiliate Share"
           value={`${affiliateShare}%`}
@@ -299,7 +316,7 @@ export function ProjectMetricsTab({
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* <div className="grid gap-4 lg:grid-cols-2">
         <RevenueChart
           data={timeline.map((entry) => ({
             date: entry.date,
@@ -316,7 +333,18 @@ export function ProjectMetricsTab({
           config={purchaseConfig}
           valueFormatter={(value) => formatNumber(value)}
         />
-      </div>
+      </div> */}
+
+      <MarketerMetricsTab
+        timeline={marketerMetricsTimeline}
+        currency={currency}
+        projects={[]}
+        selectedProjectId={null}
+        onSelectProject={() => null}
+        showProjectFilter={false}
+        clicksTotal={metrics.clicks ?? 0}
+        installsTotal={metrics.installs ?? 0}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <MetricAreaChart

@@ -379,19 +379,82 @@ Deno.serve(async (request) => {
     snapshotMap.set(key, existing);
   });
 
-  const upserts = Array.from(snapshotMap.entries()).map(([key, totals]) => {
+  const now = new Date();
+  const todayKey = getDateKey(now.toISOString());
+
+  // Past days: only upsert daily metrics (cumulative values are unknown for past dates)
+  const pastUpserts: Record<string, unknown>[] = [];
+  // Today: upsert both daily and cumulative metrics (cumulative values are accurate now)
+  const todayUpserts: Record<string, unknown>[] = [];
+  const projectsWithToday = new Set<string>();
+
+  for (const [key, totals] of snapshotMap.entries()) {
     const [projectId, dateKey] = key.split(":");
     const date = new Date(`${dateKey}T00:00:00.000Z`);
+    const mrr = mrrByProject.get(projectId) ?? 0;
+
+    if (dateKey === todayKey) {
+      projectsWithToday.add(projectId);
+      const revenue = revenueByProject.get(projectId) ?? 0;
+      const customers = customersByProject.get(projectId) ?? 0;
+      const aggregateTotals =
+        totalsByProject.get(projectId) ?? createEmptyTotals();
+      aggregateTotals.mrr = mrr;
+      todayUpserts.push({
+        projectId,
+        date,
+        totalRevenue: revenue,
+        affiliateRevenue: aggregateTotals.affiliateRevenue,
+        affiliateShareOwed: aggregateTotals.affiliateShareOwed,
+        platformFee: aggregateTotals.platformFee,
+        mrr: aggregateTotals.mrr,
+        purchasesCount: aggregateTotals.purchasesCount,
+        affiliatePurchasesCount: aggregateTotals.affiliatePurchasesCount,
+        directPurchasesCount: aggregateTotals.directPurchasesCount,
+        uniqueCustomers: customers,
+        affiliateCustomers: aggregateTotals.affiliateCustomerEmails.size,
+        totalRevenueDay: totals.totalRevenueDay,
+        affiliateRevenueDay: totals.affiliateRevenueDay,
+        affiliateShareOwedDay: totals.affiliateShareOwedDay,
+        platformFeeDay: totals.platformFeeDay,
+        mrrDay: mrr,
+        purchasesCountDay: totals.purchasesCountDay,
+        affiliatePurchasesCountDay: totals.affiliatePurchasesCountDay,
+        directPurchasesCountDay: totals.directPurchasesCountDay,
+        uniqueCustomersDay: totals.customerEmailsDay.size,
+        affiliateCustomersDay: totals.affiliateCustomerEmailsDay.size,
+        updatedAt: now,
+      });
+    } else {
+      pastUpserts.push({
+        projectId,
+        date,
+        totalRevenueDay: totals.totalRevenueDay,
+        affiliateRevenueDay: totals.affiliateRevenueDay,
+        affiliateShareOwedDay: totals.affiliateShareOwedDay,
+        platformFeeDay: totals.platformFeeDay,
+        purchasesCountDay: totals.purchasesCountDay,
+        affiliatePurchasesCountDay: totals.affiliatePurchasesCountDay,
+        directPurchasesCountDay: totals.directPurchasesCountDay,
+        uniqueCustomersDay: totals.customerEmailsDay.size,
+        affiliateCustomersDay: totals.affiliateCustomerEmailsDay.size,
+        updatedAt: now,
+      });
+    }
+  }
+
+  // Ensure every project gets a today row with cumulative metrics even if no purchases today
+  for (const projectId of projectIds) {
+    if (projectsWithToday.has(projectId)) continue;
     const mrr = mrrByProject.get(projectId) ?? 0;
     const revenue = revenueByProject.get(projectId) ?? 0;
     const customers = customersByProject.get(projectId) ?? 0;
     const aggregateTotals =
       totalsByProject.get(projectId) ?? createEmptyTotals();
     aggregateTotals.mrr = mrr;
-    const now = new Date();
-    return {
+    todayUpserts.push({
       projectId,
-      date,
+      date: new Date(`${todayKey}T00:00:00.000Z`),
       totalRevenue: revenue,
       affiliateRevenue: aggregateTotals.affiliateRevenue,
       affiliateShareOwed: aggregateTotals.affiliateShareOwed,
@@ -402,19 +465,21 @@ Deno.serve(async (request) => {
       directPurchasesCount: aggregateTotals.directPurchasesCount,
       uniqueCustomers: customers,
       affiliateCustomers: aggregateTotals.affiliateCustomerEmails.size,
-      totalRevenueDay: totals.totalRevenueDay,
-      affiliateRevenueDay: totals.affiliateRevenueDay,
-      affiliateShareOwedDay: totals.affiliateShareOwedDay,
-      platformFeeDay: totals.platformFeeDay,
+      totalRevenueDay: 0,
+      affiliateRevenueDay: 0,
+      affiliateShareOwedDay: 0,
+      platformFeeDay: 0,
       mrrDay: mrr,
-      purchasesCountDay: totals.purchasesCountDay,
-      affiliatePurchasesCountDay: totals.affiliatePurchasesCountDay,
-      directPurchasesCountDay: totals.directPurchasesCountDay,
-      uniqueCustomersDay: totals.customerEmailsDay.size,
-      affiliateCustomersDay: totals.affiliateCustomerEmailsDay.size,
+      purchasesCountDay: 0,
+      affiliatePurchasesCountDay: 0,
+      directPurchasesCountDay: 0,
+      uniqueCustomersDay: 0,
+      affiliateCustomersDay: 0,
       updatedAt: now,
-    };
-  });
+    });
+  }
+
+  const upserts = [...todayUpserts, ...pastUpserts];
 
   if (upserts.length === 0) {
     return new Response(JSON.stringify({ ok: true, count: 0, skipped }), {
@@ -422,12 +487,24 @@ Deno.serve(async (request) => {
     });
   }
 
-  const { error: upsertError } = await supabase
-    .from("MetricsSnapshot")
-    .upsert(upserts, { onConflict: "projectId,date" });
+  // Upsert today's rows (full cumulative + daily metrics)
+  if (todayUpserts.length > 0) {
+    const { error: todayError } = await supabase
+      .from("MetricsSnapshot")
+      .upsert(todayUpserts, { onConflict: "projectId,date" });
+    if (todayError) {
+      return new Response(todayError.message, { status: 500 });
+    }
+  }
 
-  if (upsertError) {
-    return new Response(upsertError.message, { status: 500 });
+  // Upsert past rows (daily metrics only — cumulative fields left unchanged)
+  if (pastUpserts.length > 0) {
+    const { error: pastError } = await supabase
+      .from("MetricsSnapshot")
+      .upsert(pastUpserts, { onConflict: "projectId,date" });
+    if (pastError) {
+      return new Response(pastError.message, { status: 500 });
+    }
   }
 
   return new Response(

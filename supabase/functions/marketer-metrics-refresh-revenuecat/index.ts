@@ -125,7 +125,6 @@ Deno.serve(async (request) => {
 
   const rows = (data ?? []) as PurchaseRow[];
   const snapshotMap = new Map<string, SnapshotTotals>();
-  const totalRevenueByProjectDate = new Map<string, number>();
 
   (clickData ?? []).forEach((row) => {
     const click = row as {
@@ -147,13 +146,6 @@ Deno.serve(async (request) => {
   });
 
   rows.forEach((row) => {
-    if (row.projectId) {
-      const dateKey = getDateKey(row.createdAt);
-      const key = `${row.projectId}:${dateKey}`;
-      const current = totalRevenueByProjectDate.get(key) ?? 0;
-      totalRevenueByProjectDate.set(key, current + (Number(row.amount) || 0));
-    }
-
     const marketerId = row.coupon?.marketerId ?? row.marketerId;
     if (!row.projectId || !marketerId) return;
     const dateKey = getDateKey(row.createdAt);
@@ -170,17 +162,14 @@ Deno.serve(async (request) => {
     snapshotMap.set(key, existing);
   });
 
+  const now = new Date();
   const upserts = Array.from(snapshotMap.entries()).map(([key, totals]) => {
     const [projectId, marketerId, dateKey] = key.split(":");
     const date = new Date(`${dateKey}T00:00:00.000Z`);
-    const now = new Date();
-    const projectRevenueDay =
-      totalRevenueByProjectDate.get(`${projectId}:${dateKey}`) ?? 0;
     return {
       projectId,
       marketerId,
       date,
-      projectRevenueDay,
       affiliateRevenueDay: totals.affiliateRevenueDay,
       commissionOwedDay: totals.commissionOwedDay,
       purchasesCountDay: totals.purchasesCountDay,

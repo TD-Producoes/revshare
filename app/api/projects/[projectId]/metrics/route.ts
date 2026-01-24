@@ -52,6 +52,8 @@ export async function GET(
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - lookbackDays);
   since.setUTCHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
 
   const snapshots = await prisma.metricsSnapshot.findMany({
     where: {
@@ -101,7 +103,13 @@ export async function GET(
     });
   }
 
-  const [totalClicks, clicks30d, totalInstalls, installs30d] = await Promise.all([
+  const [
+    totalClicks,
+    clicks30d,
+    totalInstalls,
+    installs30d,
+    attributionClicks,
+  ] = await Promise.all([
     prisma.attributionClick.count({
       where: {
         projectId,
@@ -130,6 +138,10 @@ export async function GET(
         createdAt: { gte: since },
         deviceId: { startsWith: "install:" },
       },
+    }),
+    prisma.attributionClick.findMany({
+      where: { projectId, createdAt: { gte: since } },
+      select: { createdAt: true, deviceId: true },
     }),
   ]);
 
@@ -161,18 +173,57 @@ export async function GET(
       ? Math.round((summary.affiliateMrr / summary.mrr) * summary.activeSubscribers)
       : 0;
 
-  const timeline = snapshots.map((snapshot) => ({
-    date: snapshot.date.toISOString(),
-    totalRevenue: snapshot.totalRevenueDay,
-    affiliateRevenue: snapshot.affiliateRevenueDay,
-    affiliateShareOwed: snapshot.affiliateShareOwedDay,
-    platformFee: snapshot.platformFeeDay,
-    purchasesCount: snapshot.purchasesCountDay,
-    affiliatePurchasesCount: snapshot.affiliatePurchasesCountDay,
-    directPurchasesCount: snapshot.directPurchasesCountDay,
-    uniqueCustomers: snapshot.uniqueCustomersDay,
-    affiliateCustomers: snapshot.affiliateCustomersDay,
-  }));
+  const clicksByDate = new Map<string, number>();
+  const installsByDate = new Map<string, number>();
+  attributionClicks.forEach((click) => {
+    const dateKey = click.createdAt.toISOString().split("T")[0];
+    if (click.deviceId?.startsWith("install:")) {
+      installsByDate.set(dateKey, (installsByDate.get(dateKey) ?? 0) + 1);
+    } else {
+      clicksByDate.set(dateKey, (clicksByDate.get(dateKey) ?? 0) + 1);
+    }
+  });
+
+  const snapshotMap = new Map(
+    snapshots.map((snapshot) => [
+      snapshot.date.toISOString().split("T")[0],
+      snapshot,
+    ]),
+  );
+  const timeline: Array<{
+    date: string;
+    totalRevenue: number;
+    affiliateRevenue: number;
+    affiliateShareOwed: number;
+    platformFee: number;
+    purchasesCount: number;
+    affiliatePurchasesCount: number;
+    directPurchasesCount: number;
+    uniqueCustomers: number;
+    affiliateCustomers: number;
+    clicksCount: number;
+    installsCount: number;
+  }> = [];
+  const cursor = new Date(since);
+  while (cursor <= today) {
+    const dateKey = cursor.toISOString().split("T")[0];
+    const snapshot = snapshotMap.get(dateKey);
+    timeline.push({
+      date: cursor.toISOString(),
+      totalRevenue: snapshot?.totalRevenueDay ?? 0,
+      affiliateRevenue: snapshot?.affiliateRevenueDay ?? 0,
+      affiliateShareOwed: snapshot?.affiliateShareOwedDay ?? 0,
+      platformFee: snapshot?.platformFeeDay ?? 0,
+      purchasesCount: snapshot?.purchasesCountDay ?? 0,
+      affiliatePurchasesCount: snapshot?.affiliatePurchasesCountDay ?? 0,
+      directPurchasesCount: snapshot?.directPurchasesCountDay ?? 0,
+      uniqueCustomers: snapshot?.uniqueCustomersDay ?? 0,
+      affiliateCustomers: snapshot?.affiliateCustomersDay ?? 0,
+      clicksCount: clicksByDate.get(dateKey) ?? 0,
+      installsCount: installsByDate.get(dateKey) ?? 0,
+    });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
 
   return NextResponse.json({ data: { summary, timeline } });
 }

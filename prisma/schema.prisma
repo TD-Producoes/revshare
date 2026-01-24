@@ -354,6 +354,7 @@ model Purchase {
   amount                   Int
   currency                 String
   customerEmail            String?
+  customerExternalId       String?
   commissionAmount         Int
   commissionAmountOriginal Int?
   refundedAmount           Int              @default(0)
@@ -716,7 +717,6 @@ model MarketerMetricsSnapshot {
   projectId           String
   marketerId          String
   date                DateTime
-  projectRevenueDay   Int      @default(0)
   affiliateRevenueDay Int      @default(0)
   commissionOwedDay   Int      @default(0)
   purchasesCountDay   Int      @default(0)

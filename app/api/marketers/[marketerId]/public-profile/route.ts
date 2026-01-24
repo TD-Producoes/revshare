@@ -412,7 +412,6 @@ export async function GET(
       id: true,
       projectId: true,
       date: true,
-      projectRevenueDay: true,
       affiliateRevenueDay: true,
       commissionOwedDay: true,
       purchasesCountDay: true,
@@ -420,6 +419,30 @@ export async function GET(
     },
     orderBy: { date: "desc" },
   });
+
+  // Fetch project revenue from MetricsSnapshot (actual project revenue)
+  const projectRevenueSnapshots = await prisma.metricsSnapshot.findMany({
+    where: { projectId: { in: projectIds } },
+    select: { projectId: true, date: true, totalRevenueDay: true },
+  });
+
+  // Build maps for project revenue by date and by project
+  const projectRevenueByDate = new Map<string, number>();
+  const projectRevenueByProjectId = new Map<string, number>();
+  let totalProjectRevenueCents = 0;
+  for (const entry of projectRevenueSnapshots) {
+    const dateStr = entry.date.toISOString().split("T")[0];
+    const amount = entry.totalRevenueDay ?? 0;
+    totalProjectRevenueCents += amount;
+    projectRevenueByDate.set(
+      dateStr,
+      (projectRevenueByDate.get(dateStr) ?? 0) + amount,
+    );
+    projectRevenueByProjectId.set(
+      entry.projectId,
+      (projectRevenueByProjectId.get(entry.projectId) ?? 0) + amount,
+    );
+  }
 
   // Calculate metrics summary (totals from all snapshots)
   const metricsSummary = {
@@ -431,16 +454,13 @@ export async function GET(
   };
 
   for (const snapshot of metricsSnapshots) {
-    metricsSummary.totalProjectRevenue += snapshot.projectRevenueDay;
     metricsSummary.totalAffiliateRevenue += snapshot.affiliateRevenueDay;
     metricsSummary.totalCommissionOwed += snapshot.commissionOwedDay;
     metricsSummary.totalPurchases += snapshot.purchasesCountDay;
-    // Note: customersCountDay is already a count, not individual IDs
-    // We'll use the max value per day to avoid double counting
   }
 
   // Convert from cents to dollars for revenue/commission
-  metricsSummary.totalProjectRevenue = metricsSummary.totalProjectRevenue / 100;
+  metricsSummary.totalProjectRevenue = totalProjectRevenueCents / 100;
   metricsSummary.totalAffiliateRevenue =
     metricsSummary.totalAffiliateRevenue / 100;
   metricsSummary.totalCommissionOwed = metricsSummary.totalCommissionOwed / 100;
@@ -485,8 +505,9 @@ export async function GET(
       customers: 0,
     };
 
+    dayMetrics.projectRevenue = projectRevenueByDate.get(dateKey) ?? 0;
+
     for (const snapshot of daySnapshots) {
-      dayMetrics.projectRevenue += snapshot.projectRevenueDay;
       dayMetrics.affiliateRevenue += snapshot.affiliateRevenueDay;
       dayMetrics.commissionOwed += snapshot.commissionOwedDay;
       dayMetrics.purchases += snapshot.purchasesCountDay;
@@ -531,14 +552,14 @@ export async function GET(
     const existing = projectMetricsMap.get(snapshot.projectId) ?? {
       projectId: snapshot.projectId,
       projectName: redactedProject?.name ?? "Unknown",
-      totalProjectRevenue: 0,
+      totalProjectRevenue:
+        projectRevenueByProjectId.get(snapshot.projectId) ?? 0,
       totalAffiliateRevenue: 0,
       totalCommissionOwed: 0,
       totalPurchases: 0,
       totalCustomers: 0,
     };
 
-    existing.totalProjectRevenue += snapshot.projectRevenueDay;
     existing.totalAffiliateRevenue += snapshot.affiliateRevenueDay;
     existing.totalCommissionOwed += snapshot.commissionOwedDay;
     existing.totalPurchases += snapshot.purchasesCountDay;

@@ -309,6 +309,7 @@ export async function POST(
       amount,
       currency: (event.currency ?? "usd").toLowerCase(),
       customerEmail: null,
+      customerExternalId: event.original_app_user_id ?? event.app_user_id ?? null,
       commissionAmount,
       commissionAmountOriginal: commissionAmount,
       refundWindowDays,
