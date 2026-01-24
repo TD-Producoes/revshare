@@ -88,8 +88,9 @@ export function AttributionKeysSetup({
     },
     onSuccess: async (record) => {
       setCreatedKey(record?.key ?? null);
-      if (record?.id && record?.key) {
-        setRevealedKeys((prev) => ({ ...prev, [record.id]: record.key }));
+      if (record && record.id && record.key) {
+        const key = record.key;
+        setRevealedKeys((prev) => ({ ...prev, [record.id]: key }));
       }
       setKeyLabel("");
       setIsCreateOpen(false);

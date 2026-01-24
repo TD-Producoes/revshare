@@ -426,9 +426,24 @@ Deno.serve(async (request) => {
         updatedAt: now,
       });
     } else {
+      const revenue = revenueByProject.get(projectId) ?? 0;
+      const customers = customersByProject.get(projectId) ?? 0;
+      const aggregateTotals =
+        totalsByProject.get(projectId) ?? createEmptyTotals();
+      aggregateTotals.mrr = mrr;
       pastUpserts.push({
         projectId,
         date,
+        totalRevenue: revenue,
+        affiliateRevenue: aggregateTotals.affiliateRevenue,
+        affiliateShareOwed: aggregateTotals.affiliateShareOwed,
+        platformFee: aggregateTotals.platformFee,
+        mrr: aggregateTotals.mrr,
+        purchasesCount: aggregateTotals.purchasesCount,
+        affiliatePurchasesCount: aggregateTotals.affiliatePurchasesCount,
+        directPurchasesCount: aggregateTotals.directPurchasesCount,
+        uniqueCustomers: customers,
+        affiliateCustomers: aggregateTotals.affiliateCustomerEmails.size,
         totalRevenueDay: totals.totalRevenueDay,
         affiliateRevenueDay: totals.affiliateRevenueDay,
         affiliateShareOwedDay: totals.affiliateShareOwedDay,

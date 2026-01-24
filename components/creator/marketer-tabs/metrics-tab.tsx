@@ -238,23 +238,20 @@ export function MarketerMetricsTab({
     ? "Affiliate Purchases"
     : "";
 
-  const customersConfig = hasProjectCustomers
-    ? ({
-        projectCustomers: {
-          label: "Total Customers",
-          color: "var(--chart-1)",
-        },
-        customers: {
-          label: "Affiliate Customers",
-          color: "var(--chart-2)",
-        },
-      } satisfies ChartConfig)
-    : ({
-        customers: {
-          label: "Customers",
-          color: "var(--primary)",
-        },
-      } satisfies ChartConfig);
+  const customersConfig: ChartConfig = {
+    customers: {
+      label: hasProjectCustomers ? "Affiliate Customers" : "Customers",
+      color: hasProjectCustomers ? "var(--chart-2)" : "var(--primary)",
+    },
+    ...(hasProjectCustomers
+      ? {
+          projectCustomers: {
+            label: "Total Customers",
+            color: "var(--chart-1)",
+          },
+        }
+      : {}),
+  };
   const clicksConfig = {
     clicks: {
       label: "Clicks",
