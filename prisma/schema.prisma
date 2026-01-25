@@ -61,6 +61,7 @@ model Project {
   attributionClicks         AttributionClick[]
   attributionInstallFingerprints AttributionInstallFingerprint[]
   attributionShortLinks     AttributionShortLink[]
+  attributionDeferredTokens AttributionDeferredToken[]
   onboardingStatus          String?
   onboardingData            Json?
   onboardingCompletedAt     DateTime?
@@ -71,6 +72,11 @@ model Project {
   website                   String?
   appStoreUrl               String?
   playStoreUrl              String?
+  appScheme                 String?
+  appTeamId                 String?                   // Apple Team ID (e.g., "ABC123XYZ")
+  appBundleId               String?                   // iOS Bundle ID (e.g., "com.myapp.ios")
+  androidPackageName        String?                   // Android package (e.g., "com.myapp.android")
+  androidSha256Fingerprint  String?                   // Android signing cert fingerprint
   foundationDate            DateTime?
   about                     String?                   @db.Text
   features                  String[]                  @default([])
@@ -190,6 +196,21 @@ model AttributionShortLink {
   @@unique([projectId, marketerId])
   @@index([projectId])
   @@index([marketerId])
+}
+
+model AttributionDeferredToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  projectId  String
+  marketerId String
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([projectId])
+  @@index([createdAt])
 }
 
 model Contract {

@@ -77,6 +77,16 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Apple App Site Association for Universal Links
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/json",
+          },
+        ],
+      },
     ];
   },
 };

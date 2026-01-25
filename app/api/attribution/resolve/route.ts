@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, userAgent } from "next/server";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -28,6 +28,15 @@ function hashKey(key: string) {
 
 function hashFingerprint(value: string) {
   return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+// Extract stable UA parts that match between Safari and WebView
+// e.g. "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15"
+function parseBaseUserAgent(userAgent: string) {
+  const match = userAgent.match(
+    /^Mozilla\/[\d.]+ \([^)]+\) AppleWebKit\/[\d.]+/i
+  );
+  return match?.[0] ?? null;
 }
 
 function getIpAddress(headers: Headers) {
@@ -77,22 +86,58 @@ export async function POST(request: Request) {
     );
   }
 
+  // Only match fingerprints created within the last 7 days
+  const timeWindowMs = 7 * 24 * 60 * 60 * 1000;
+  const minCreatedAt = new Date(Date.now() - timeWindowMs);
+
   const fingerprintWhere = {
     projectId: keyRecord.projectId,
     ipAddress,
     deviceModel: payload.deviceModel,
     osVersion: payload.osVersion,
+    createdAt: { gte: minCreatedAt },
     ...(payload.platform ? { platform: payload.platform } : {}),
-    ...(payload.locale ? { locale: payload.locale } : {}),
   };
+
+  const requestUserAgent = request.headers.get("user-agent");
+  console.log("tiago Request User-Agent:", requestUserAgent);
+  console.log("tiago Fingerprint where:", fingerprintWhere);
 
   const fingerprint = await prisma.attributionInstallFingerprint.findFirst({
     where: fingerprintWhere,
     orderBy: { createdAt: "desc" },
-    select: { marketerId: true },
+    select: { marketerId: true, userAgent: true },
   });
 
+  console.log("tiago Fingerprint found:", fingerprint);
+
+  // Validate userAgent base matches (Safari vs WebView stable parts)
+  let validatedMarketerId: string | null = null;
   if (fingerprint?.marketerId) {
+    const storedBaseUA = fingerprint.userAgent
+      ? parseBaseUserAgent(fingerprint.userAgent)
+      : null;
+    const payloadBaseUA = payload.userAgent
+      ? parseBaseUserAgent(payload.userAgent)
+      : null;
+
+    console.log("tiago Stored base UA:", storedBaseUA);
+    console.log("tiago Payload base UA:", payloadBaseUA);
+
+    // If both have UA, they must match. If either is missing, skip UA validation.
+    if (storedBaseUA && payloadBaseUA) {
+      if (storedBaseUA === payloadBaseUA) {
+        validatedMarketerId = fingerprint.marketerId;
+      } else {
+        console.log("tiago UA mismatch - rejecting fingerprint");
+      }
+    } else {
+      // No UA to compare, trust the other fingerprint fields
+      validatedMarketerId = fingerprint.marketerId;
+    }
+  }
+
+  if (validatedMarketerId) {
     const fingerprintHash = hashFingerprint(
       `${ipAddress}|${payload.deviceModel}|${payload.osVersion}`,
     );
@@ -100,21 +145,21 @@ export async function POST(request: Request) {
       where: {
         projectId_marketerId_deviceId: {
           projectId: keyRecord.projectId,
-          marketerId: fingerprint.marketerId,
+          marketerId: validatedMarketerId,
           deviceId: `install:${fingerprintHash}`,
         },
       },
       update: {},
       create: {
         projectId: keyRecord.projectId,
-        marketerId: fingerprint.marketerId,
+        marketerId: validatedMarketerId,
         deviceId: `install:${fingerprintHash}`,
       },
     });
   }
 
   return NextResponse.json(
-    { ok: true, marketerId: fingerprint?.marketerId ?? null },
+    { ok: true, marketerId: validatedMarketerId },
     { headers: corsHeaders },
   );
 }

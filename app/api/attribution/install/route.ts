@@ -157,7 +157,7 @@ export async function GET(request: Request) {
         marketerId,
         platform,
         locale,
-        userAgent,
+        userAgent, // Store full UA for logging/debugging
       },
     });
   }
