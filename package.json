@@ -1,7 +1,21 @@
 {
-  "name": "creator-marketer-marketplace",
+  "name": "revshare",
   "version": "0.1.0",
-  "private": true,
+  "description": "A marketplace connecting SaaS founders with performance marketers through transparent revenue sharing",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TD-Producoes/revshare.git"
+  },
+  "keywords": [
+    "affiliate",
+    "marketplace",
+    "saas",
+    "revenue-share",
+    "stripe-connect",
+    "nextjs"
+  ],
+  "author": "Tiago Antunes <tiagoantunespt@gmail.com>",
   "scripts": {
     "dev": "next dev",
     "build": "npx prisma generate && next build",
