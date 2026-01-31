@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, CreditCard, ExternalLink, Plus } from "lucide-react";
+import { CheckCircle, ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -181,56 +181,6 @@ export function MarketerPayoutsTab({
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Payout Method</CardTitle>
-          <CardDescription>
-            Configure how you receive your earnings.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-3 border rounded-md">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-muted rounded-md">
-                <CreditCard className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="font-medium">Bank Account</p>
-                <p className="text-sm text-muted-foreground">
-                  **** **** **** 4242
-                </p>
-              </div>
-            </div>
-            <Badge variant="outline">Default</Badge>
-          </div>
-          <Button variant="outline" className="w-full">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Payout Method
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Tax Information</CardTitle>
-          <CardDescription>
-            Required for payouts above $600/year.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">W-9 Form</p>
-              <p className="text-sm text-muted-foreground">
-                Required for US-based affiliates
-              </p>
-            </div>
-            <Badge variant="outline">Not Submitted</Badge>
-          </div>
-          <Button variant="outline">Submit W-9</Button>
         </CardContent>
       </Card>
     </div>

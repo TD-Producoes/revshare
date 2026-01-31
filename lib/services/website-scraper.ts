@@ -75,30 +75,70 @@ function extractTextContent(html: string): string {
 }
 
 /**
+ * Gets the Chrome executable path for the current environment
+ */
+async function getChromePath(): Promise<{ executablePath: string; args: string[] }> {
+  const isServerless = !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.VERCEL;
+
+  if (isServerless) {
+    // Use @sparticuz/chromium for serverless (Vercel/Lambda)
+    const chromium = (await import("@sparticuz/chromium")).default;
+    return {
+      executablePath: await chromium.executablePath(),
+      args: chromium.args,
+    };
+  }
+
+  // Local development - find local Chrome installation
+  const possiblePaths = [
+    // macOS
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    // Linux
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    // Windows
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+  ];
+
+  const fs = await import("fs");
+  for (const chromePath of possiblePaths) {
+    if (fs.existsSync(chromePath)) {
+      return {
+        executablePath: chromePath,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+        ],
+      };
+    }
+  }
+
+  throw new Error("Chrome not found. Please install Google Chrome for local development.");
+}
+
+/**
  * Fetches fully rendered HTML content from a URL using a headless browser
  * This ensures we get the content as users see it, including JavaScript-rendered content
  */
 async function fetchWebsiteHTML(url: string): Promise<string> {
-  // Dynamically import puppeteer to avoid loading it if not needed
-  const puppeteer = await import("puppeteer");
+  const puppeteer = await import("puppeteer-core");
+  const { executablePath, args } = await getChromePath();
 
   const parsedUrl = new URL(url.startsWith("http") ? url : `https://${url}`);
   const targetUrl = parsedUrl.toString();
 
   let browser;
   try {
-    // Launch headless browser with optimized settings
     browser = await puppeteer.launch({
+      args,
+      defaultViewport: { width: 1920, height: 1080 },
+      executablePath,
       headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--disable-web-security",
-      ],
-      timeout: 30000, // 30 second timeout for browser launch
     });
 
     const page = await browser.newPage();

@@ -51,11 +51,10 @@ export async function POST(request: Request) {
   const role = payload.role ?? "founder";
 
   const accountType: "express" | "standard" = payload.type ?? "express";
-  const countryCode: string = payload.country ?? "US";
 
   const account = await stripe.accounts.create({
     type: accountType,
-    country: countryCode,
+    ...(payload.country && { country: payload.country }),
     email: payload.email,
     ...(payload.businessType && { business_type: payload.businessType }),
     capabilities: {
