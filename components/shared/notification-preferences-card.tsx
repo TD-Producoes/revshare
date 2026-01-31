@@ -38,6 +38,8 @@ export function NotificationPreferencesCard({
       await updatePreferences.mutateAsync({
         userId,
         emailEnabled,
+        webhookEnabled: data?.data?.webhookEnabled ?? false,
+        webhookUrl: data?.data?.webhookUrl ?? null,
       });
       setIsDirty(false);
     } catch (error) {
