@@ -102,11 +102,11 @@ export type MarketerProjectReward = {
     milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
     milestoneValue: number;
     rewardType:
-      | "DISCOUNT_COUPON"
-      | "FREE_SUBSCRIPTION"
-      | "PLAN_UPGRADE"
-      | "ACCESS_PERK"
-      | "MONEY";
+    | "DISCOUNT_COUPON"
+    | "FREE_SUBSCRIPTION"
+    | "PLAN_UPGRADE"
+    | "ACCESS_PERK"
+    | "MONEY";
     rewardLabel: string | null;
     rewardPercentOff?: number | null;
     rewardDurationMonths?: number | null;
@@ -310,6 +310,24 @@ export function useMarketerRewardEarnings(userId?: string | null) {
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to fetch reward earnings.");
+      }
+      const payload = await response.json();
+      return Array.isArray(payload?.data) ? payload.data : [];
+    },
+  });
+}
+
+export function useMarketerAllRewardsProgress(userId?: string | null) {
+  return useQuery<MarketerProjectReward[]>({
+    queryKey: ["marketer-all-rewards-progress", userId ?? "none"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/marketer/all-rewards-progress?userId=${userId}`
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Failed to fetch rewards progress.");
       }
       const payload = await response.json();
       return Array.isArray(payload?.data) ? payload.data : [];

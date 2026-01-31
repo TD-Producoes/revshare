@@ -3,6 +3,7 @@
 import { formatCurrency, formatNumber } from "@/lib/data/metrics";
 import { StatCard } from "@/components/shared/stat-card";
 import { MyOffersTable } from "./my-offers-table";
+import { MyRewardsTable } from "./my-rewards-table";
 import {
   DollarSign,
   AlertCircle,
@@ -18,6 +19,10 @@ import { PurchasesTable } from "./purchases-table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useMarketerAllRewardsProgress } from "@/lib/hooks/marketer";
+import { useCouponsForMarketer } from "@/lib/hooks/coupons";
+import { useAttributionLinks } from "@/lib/hooks/projects";
+import { toast } from "sonner";
 
 export function MarketerDashboard() {
   const { data: authUserId, isLoading: isAuthLoading } = useAuthUserId();
@@ -28,13 +33,27 @@ export function MarketerDashboard() {
     useMarketerPurchases(currentUser?.id);
   const { data: metrics, isLoading: isMetricsLoading } =
     useMarketerMetrics(currentUser?.id);
+  const { data: rewardItems = [], isLoading: isRewardsLoading } =
+    useMarketerAllRewardsProgress(currentUser?.id);
+  const { data: coupons = [], isLoading: isCouponsLoading } =
+    useCouponsForMarketer(currentUser?.id);
+
+  const projectIds = contracts.map((c) => c.projectId);
+  const { data: attributionLinks = {} } = useAttributionLinks(projectIds, Boolean(currentUser?.id));
+
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard`);
+  };
 
   if (
     isAuthLoading ||
     isUserLoading ||
     isContractsLoading ||
     isPurchasesLoading ||
-    isMetricsLoading
+    isMetricsLoading ||
+    isRewardsLoading ||
+    isCouponsLoading
   ) {
     return (
       <div className="flex h-40 items-center justify-center text-muted-foreground">
@@ -67,11 +86,11 @@ export function MarketerDashboard() {
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back, {currentUser.name}. Here&apos;s your affiliate performance.
+          Welcome back, {currentUser!.name}. Here&apos;s your affiliate performance.
         </p>
       </div>
 
-      {!currentUser.stripeConnectedAccountId && (
+      {!currentUser!.stripeConnectedAccountId && (
         <Alert className="border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertCircle className="h-4 w-4" />
           <div className="flex items-start justify-between gap-4">
@@ -116,15 +135,20 @@ export function MarketerDashboard() {
           icon={Users}
         />
       </div>
-
+      {rewardItems.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-md font-semibold">Your Active Rewards</h2>
+          <MyRewardsTable rewards={rewardItems} />
+        </div>
+      )}
       {/* Active Offers */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Your Active Offers</h2>
-        <MyOffersTable userId={currentUser.id} contracts={approvedContracts} limit={5} />
+        <h2 className="text-md font-semibold mb-4">Your Active Offers</h2>
+        <MyOffersTable userId={currentUser!.id} contracts={approvedContracts} limit={5} />
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold mb-4">Recent Purchases</h2>
+        <h2 className="text-md font-semibold mb-4">Recent Purchases</h2>
         <PurchasesTable purchases={purchases} limit={5} />
       </div>
     </div>
