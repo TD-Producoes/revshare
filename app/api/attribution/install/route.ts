@@ -113,7 +113,7 @@ export async function GET(request: Request) {
   const [project, contract] = await Promise.all([
     prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, appStoreUrl: true, playStoreUrl: true },
+      select: { id: true, appStoreUrl: true, playStoreUrl: true, website: true },
     }),
     prisma.contract.findUnique({
       where: { projectId_userId: { projectId, userId: marketerId } },
@@ -145,22 +145,17 @@ export async function GET(request: Request) {
     osVersion,
   };
 
-  const existing = await prisma.attributionInstallFingerprint.findUnique({
+  await prisma.attributionInstallFingerprint.upsert({
     where: { projectId_ipAddress_deviceModel_osVersion: fingerprintKey },
-    select: { id: true },
+    update: {},
+    create: {
+      ...fingerprintKey,
+      marketerId,
+      platform,
+      locale,
+      userAgent,
+    },
   });
-
-  if (!existing) {
-    await prisma.attributionInstallFingerprint.create({
-      data: {
-        ...fingerprintKey,
-        marketerId,
-        platform,
-        locale,
-        userAgent, // Store full UA for logging/debugging
-      },
-    });
-  }
 
   await prisma.attributionClick.upsert({
     where: {
@@ -181,14 +176,14 @@ export async function GET(request: Request) {
 
   const redirectUrl =
     platform === "ios"
-      ? project.appStoreUrl
+      ? (project.appStoreUrl ?? project.website)
       : platform === "android"
-        ? project.playStoreUrl
-        : null;
+        ? (project.playStoreUrl ?? project.website)
+        : project.website;
 
   if (redirectUrl) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.json({ ok: true }, { headers: corsHeaders });
+  return NextResponse.json({ error: "No redirect URL configured" }, { status: 404, headers: corsHeaders });
 }
