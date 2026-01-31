@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import type { ReactElement } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { useAuthUserId } from "@/lib/hooks/auth";
-import { useUser } from "@/lib/hooks/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -214,9 +212,6 @@ export function CreateProjectForm({
   const queryClient = useQueryClient();
   const [tempProjectId] = useState(() => `temp-${Date.now()}`);
   const [userId, setUserId] = useState<string | null>(null);
-  const { data: authUserId } = useAuthUserId();
-  const { data: currentUser } = useUser(authUserId);
-
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -397,6 +392,7 @@ export function CreateProjectForm({
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      await queryClient.invalidateQueries({ queryKey: ["creator-dashboard"] });
       // Move to success step
       setStep("success");
     },
@@ -420,37 +416,25 @@ export function CreateProjectForm({
   };
 
   const handleConnectStripe = async () => {
-    if (!userId) return;
-    
+    if (!createdProjectId) return;
+
     setIsConnectingStripe(true);
     setError("");
-    
+
     try {
-      const origin = window.location.origin;
-      const response = await fetch("/api/connect/accounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userId,
-          email: currentUser?.email || "",
-          name: currentUser?.name || "",
-          role: "founder",
-          returnUrl: `${origin}/founder/settings`,
-          refreshUrl: `${origin}/founder/settings`,
-        }),
-      });
-      
-      const payload = await response.json().catch(() => null);
+      const response = await fetch(
+        `/api/connect/oauth/authorize?projectId=${createdProjectId}`
+      );
       if (!response.ok) {
+        const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? "Failed to connect Stripe.");
       }
-      
-      if (payload?.data?.onboardingUrl) {
-        window.location.href = payload.data.onboardingUrl;
-        return;
+      const payload = await response.json();
+      const url = payload?.data?.url;
+      if (!url) {
+        throw new Error("Stripe redirect URL missing.");
       }
-      
-      throw new Error("Missing onboarding URL.");
+      window.location.href = url;
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to connect Stripe.";
@@ -547,9 +531,6 @@ export function CreateProjectForm({
                   </div>
                   {error && <p className="text-sm text-destructive mt-2">{error}</p>}
                 </div>
-                {createdProjectId ? (
-                  <AttributionKeysSetup projectId={createdProjectId} />
-                ) : null}
               </div>
             ) : step === 1 ? (
               // Step 1: URL Input
@@ -944,7 +925,7 @@ export function CreateProjectForm({
               <Button
                 type="button"
                 onClick={handleConnectStripe}
-                disabled={isConnectingStripe || !currentUser}
+                disabled={isConnectingStripe || !createdProjectId}
               >
                 {isConnectingStripe ? (
                   <>
