@@ -171,7 +171,7 @@ export default function SettingsPage() {
         throw new Error(payload?.error ?? "Failed to connect Stripe.");
       }
       if (payload?.data?.onboardingUrl) {
-        window.location.href = payload.data.onboardingUrl;
+        window.open(payload.data.onboardingUrl, "_blank");
         return;
       }
       throw new Error("Missing onboarding URL.");
@@ -197,7 +197,7 @@ export default function SettingsPage() {
         throw new Error(payload?.error ?? "Failed to open Stripe.");
       }
       if (payload?.data?.url) {
-        window.location.href = payload.data.url;
+        window.open(payload.data.url, "_blank");
         return;
       }
       throw new Error("Missing Stripe login URL.");

@@ -90,7 +90,7 @@ export function MarketerDashboard() {
         </p>
       </div>
 
-      {!currentUser!.stripeConnectedAccountId && (
+      {currentUser!.stripeConnectedAccountId && (
         <Alert className="border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertCircle className="h-4 w-4" />
           <div className="flex items-start justify-between gap-4">

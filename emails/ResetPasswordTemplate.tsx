@@ -104,7 +104,7 @@ const noteStyles = {
   color: "#7a756f",
   fontSize: "13px",
   lineHeight: "1.5",
-  margin: "0 0 16px",
+  margin: "16px 0",
 };
 
 const dividerStyles = {

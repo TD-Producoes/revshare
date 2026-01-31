@@ -317,3 +317,40 @@ export async function PATCH(
 
   return NextResponse.json({ data: updated });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  let authUser;
+  try {
+    authUser = await requireAuthUser();
+  } catch (error) {
+    return authErrorResponse(error);
+  }
+
+  const { projectId } = await params;
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, userId: true },
+  });
+
+  if (!project) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  if (project.userId !== authUser.id) {
+    return NextResponse.json(
+      { error: "You are not authorized to delete this project" },
+      { status: 403 }
+    );
+  }
+
+  // Delete the project - cascades will handle related records
+  await prisma.project.delete({
+    where: { id: projectId },
+  });
+
+  return NextResponse.json({ success: true });
+}

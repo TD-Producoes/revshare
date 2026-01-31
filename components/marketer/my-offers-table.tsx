@@ -168,7 +168,7 @@ export function MyOffersTable({
         <CardContent className="py-8 text-center text-muted-foreground">
           <p>You don&apos;t have any active offers yet.</p>
           <p className="text-sm mt-1">
-            <Link href="/marketer/browse" className="text-primary hover:underline">
+            <Link href="/marketer/projects" className="text-primary hover:underline">
               Browse projects
             </Link>{" "}
             to find opportunities.
