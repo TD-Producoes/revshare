@@ -81,7 +81,7 @@ export function MyOffers({
               <CardContent className="py-8 text-center text-muted-foreground">
                 <p>You don&apos;t have any active contracts yet.</p>
                 <p className="text-sm mt-1">
-                  <Link href="/marketer/browse" className="text-primary hover:underline">
+                  <Link href="/marketer/projects" className="text-primary hover:underline">
                     Browse projects
                   </Link>{" "}
                   to find opportunities.
