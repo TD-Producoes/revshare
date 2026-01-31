@@ -75,119 +75,29 @@ function extractTextContent(html: string): string {
 }
 
 /**
- * Gets the Chrome executable path for the current environment
- */
-async function getChromePath(): Promise<{ executablePath: string; args: string[] }> {
-  const isServerless = !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.VERCEL;
-
-  if (isServerless) {
-    // Use @sparticuz/chromium for serverless (Vercel/Lambda)
-    const chromium = (await import("@sparticuz/chromium")).default;
-    return {
-      executablePath: await chromium.executablePath(),
-      args: chromium.args,
-    };
-  }
-
-  // Local development - find local Chrome installation
-  const possiblePaths = [
-    // macOS
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    "/Applications/Chromium.app/Contents/MacOS/Chromium",
-    // Linux
-    "/usr/bin/google-chrome",
-    "/usr/bin/chromium-browser",
-    "/usr/bin/chromium",
-    // Windows
-    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-  ];
-
-  const fs = await import("fs");
-  for (const chromePath of possiblePaths) {
-    if (fs.existsSync(chromePath)) {
-      return {
-        executablePath: chromePath,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-        ],
-      };
-    }
-  }
-
-  throw new Error("Chrome not found. Please install Google Chrome for local development.");
-}
-
-/**
- * Fetches fully rendered HTML content from a URL using a headless browser
- * This ensures we get the content as users see it, including JavaScript-rendered content
+ * Fetches HTML content from a URL using fetch (no browser needed)
+ * Works for most websites since metadata is in the initial HTML
  */
 async function fetchWebsiteHTML(url: string): Promise<string> {
-  const puppeteer = await import("puppeteer-core");
-  const { executablePath, args } = await getChromePath();
-
   const parsedUrl = new URL(url.startsWith("http") ? url : `https://${url}`);
   const targetUrl = parsedUrl.toString();
 
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      args,
-      defaultViewport: { width: 1920, height: 1080 },
-      executablePath,
-      headless: true,
-    });
+  const response = await fetch(targetUrl, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5",
+    },
+    signal: AbortSignal.timeout(15000), // 15 second timeout
+  });
 
-    const page = await browser.newPage();
-
-    // Set a realistic viewport and user agent
-    await page.setViewport({ width: 1920, height: 1080 });
-    await page.setUserAgent(
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
-
-    // Navigate to the page and wait for content to load
-    // Wait for network to be idle (no requests for 500ms) or timeout after 15 seconds
-    await page.goto(targetUrl, {
-      waitUntil: "networkidle2", // Wait until there are no more than 2 network connections for at least 500ms
-      timeout: 15000, // 15 second timeout for page load
-    });
-
-    // Additional wait for any lazy-loaded content
-    // Wait a bit more for React/Vue/Angular apps to fully render
-    // Use Promise-based delay instead of deprecated waitForTimeout
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Get the fully rendered HTML
-    const html = await page.content();
-
-    return html;
-  } catch (error) {
-    console.error("Error fetching website with Puppeteer:", error);
-
-    // If Puppeteer fails, throw a descriptive error
-    if (error instanceof Error) {
-      if (error.message.includes("timeout")) {
-        throw new Error("Request timed out while loading the website");
-      }
-      if (error.message.includes("net::ERR")) {
-        throw new Error(`Failed to load website: ${error.message}`);
-      }
-      throw new Error(`Failed to fetch website: ${error.message}`);
-    }
-
-    throw new Error("Failed to fetch website with headless browser");
-  } finally {
-    // Always close the browser to free up resources
-    if (browser) {
-      await browser.close().catch((err: unknown) => {
-        console.error("Error closing browser:", err);
-      });
-    }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch website: HTTP ${response.status}`);
   }
+
+  return response.text();
 }
 
 /**
