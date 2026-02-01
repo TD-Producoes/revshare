@@ -78,6 +78,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Badge } from "../ui/badge";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface ProjectDetailProps {
   projectId: string;
@@ -264,7 +266,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     settings: "Settings",
   }[activeTab] ?? "Overview";
   const searchParams = useSearchParams();
+  const router = useRouter();
   const handledCreateRef = useRef<string | null>(null);
+  const handledErrorRef = useRef(false);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -297,6 +301,24 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       }
     }
   }, [searchParams, projectId]);
+
+  // Handle Stripe connection error from OAuth callback
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "stripe_account_already_connected" && !handledErrorRef.current) {
+      handledErrorRef.current = true;
+      toast.error(
+        "This Stripe account is already connected to another project. Please use a different Stripe account."
+      );
+      // Remove error param from URL
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete("error");
+      const newUrl = newSearchParams.toString()
+        ? `${window.location.pathname}?${newSearchParams.toString()}`
+        : window.location.pathname;
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     setRevenueCatProjectId(apiProject?.revenueCatProjectId ?? "");

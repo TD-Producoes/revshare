@@ -55,7 +55,7 @@ model Project {
   description               String?
   category                  String?                   @default("Other")
   refundWindowDays          Int                       @default(30)
-  creatorStripeAccountId    String?
+  creatorStripeAccountId    String?                   @unique
   integrations              ProjectIntegration[]
   attributionAppKeys        AttributionAppKey[]
   attributionClicks         AttributionClick[]

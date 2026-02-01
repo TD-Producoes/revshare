@@ -138,6 +138,22 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
+
+    // Check if this Stripe account is already connected to another project
+    const existingProject = await prisma.project.findFirst({
+      where: { creatorStripeAccountId },
+      select: { id: true },
+    });
+
+    if (existingProject) {
+      return NextResponse.json(
+        {
+          error:
+            "This Stripe account is already connected to another project",
+        },
+        { status: 400 }
+      );
+    }
   }
   const platformCommissionRaw = payload.platformCommissionPercent ?? 5;
   const marketerCommissionRaw = payload.marketerCommissionPercent ?? 20;

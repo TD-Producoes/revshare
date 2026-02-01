@@ -79,6 +79,23 @@ export async function GET(request: Request) {
     currency = null;
   }
 
+  // Check if this Stripe account is already connected to another project
+  const existingProject = await prisma.project.findFirst({
+    where: {
+      creatorStripeAccountId: account.id,
+      NOT: { id: projectId },
+    },
+    select: { id: true },
+  });
+
+  if (existingProject) {
+    const returnUrl = process.env.ACCOUNT_LINK_RETURN_URL ?? DEFAULT_RETURN_URL;
+    const errorUrl = new URL(returnUrl);
+    errorUrl.pathname = `/founder/projects/${projectId}`;
+    errorUrl.searchParams.set("error", "stripe_account_already_connected");
+    return NextResponse.redirect(errorUrl.toString());
+  }
+
   await prisma.project.update({
     where: { id: projectId },
     data: {

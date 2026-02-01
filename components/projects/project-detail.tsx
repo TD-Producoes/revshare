@@ -43,6 +43,7 @@ import {
 import { ProjectRewards } from "@/components/projects/project-rewards";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ApplyToPromoteDialog } from "@/components/marketer/apply-to-promote-dialog";
+import { toast } from "sonner";
 
 type ProjectDetailProps = {
   /**
@@ -222,6 +223,23 @@ export function ProjectDetail({
     getRevSharePercent,
     getContractStatus,
   ]);
+
+  // Handle Stripe connection error from OAuth callback
+  useEffect(() => {
+    const error = searchParams?.get("error");
+    if (error === "stripe_account_already_connected") {
+      toast.error(
+        "This Stripe account is already connected to another project. Please use a different Stripe account."
+      );
+      // Remove error param from URL
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete("error");
+      const newUrl = newSearchParams.toString()
+        ? `${window.location.pathname}?${newSearchParams.toString()}`
+        : window.location.pathname;
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [searchParams, router]);
 
   // Handle opening the apply dialog
   const handleOpenApply = () => {
