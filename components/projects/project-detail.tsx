@@ -511,12 +511,12 @@ export function ProjectDetail({
         </div>
       ) : (
         // Public header - full hero section with breadcrumbs
-        <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-24 lg:pb-16 overflow-hidden">
+        <div className="relative border-b border-border/40 bg-muted/5 pt-20 pb-6 lg:pt-20 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.02)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)] pointer-events-none" />
 
           <div className="mx-auto max-w-7xl px-6 pt-0 relative z-10">
             {/* Breadcrumb */}
-            <Breadcrumb className="mb-6">
+            <Breadcrumb className="mb-4">
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
@@ -541,18 +541,18 @@ export function ProjectDetail({
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
-            <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
-              <div className="flex gap-6 items-center">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div className="flex gap-4 items-center">
                 {isAnonymousName(project.name) ? (
                   // Show spy icon for GHOST marketers
-                  <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-muted border-2 border-border shadow-sm">
+                  <div className="flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-xl bg-muted border-2 border-border shadow-sm">
                     {getAvatarFallback(
                       project.name,
-                      "h-10 w-10 md:h-12 md:w-12"
+                      "h-7 w-7 md:h-8 md:w-8"
                     )}
                   </div>
                 ) : (
-                  <Avatar className="flex h-20 w-20 md:h-24 md:w-24 rounded-lg">
+                  <Avatar className="flex h-14 w-14 md:h-16 md:w-16 rounded-lg">
                     <AvatarImage
                       src={getProjectAvatarUrl(project.name, project.logoUrl)}
                       alt={project.name}
@@ -562,10 +562,10 @@ export function ProjectDetail({
                     </AvatarFallback>
                   </Avatar>
                 )}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
                     <h1
-                      className={`text-3xl md:text-4xl font-bold tracking-tight transition-all ${
+                      className={`text-2xl md:text-3xl font-bold tracking-tight transition-all ${
                         isAnonymousName(project.name)
                           ? "blur-xs opacity-60"
                           : ""
@@ -576,21 +576,21 @@ export function ProjectDetail({
                     {project.creatorStripeAccountId && (
                       <Badge
                         variant="outline"
-                        className="border-emerald-500/20 text-emerald-600 bg-emerald-500/10 gap-1"
+                        className="border-emerald-500/20 text-emerald-600 bg-emerald-500/10 gap-1 text-xs"
                       >
                         <ShieldCheck className="h-3 w-3" /> Verified
                       </Badge>
                     )}
                   </div>
                   {project.description && (
-                    <p className="text-lg text-muted-foreground max-w-2xl">
+                    <p className="text-sm text-muted-foreground max-w-2xl">
                       {project.description}
                     </p>
                   )}
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-1">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                     {project.category && (
-                      <div className="flex items-center gap-1.5">
-                        <Building2 className="h-4 w-4" />
+                      <div className="flex items-center gap-1">
+                        <Building2 className="h-3.5 w-3.5" />
                         {project.category}
                       </div>
                     )}
@@ -599,25 +599,19 @@ export function ProjectDetail({
                         href={websiteHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
                       >
-                        <Globe className="h-4 w-4" />
+                        <Globe className="h-3.5 w-3.5" />
                         {websiteDisplay}
                       </a>
                     )}
-                    {foundedYear && (
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-4 w-4" />
-                        Launched in {foundedYear}
-                      </div>
-                    )}
                     {project.country && countryName && (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <Image
                           src={getCountryFlagUrl(project.country)}
                           alt={`${countryName} flag`}
-                          width={20}
-                          height={14}
+                          width={18}
+                          height={12}
                           className="object-cover rounded-sm"
                         />
                         {countryName}
@@ -628,10 +622,10 @@ export function ProjectDetail({
               </div>
 
               {currentUser?.role === "marketer" && (
-                <div className="flex flex-col gap-3 w-full md:w-auto shrink-0">
+                <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
                   <Button
                     size="lg"
-                    className="h-12 px-8 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-semibold text-base"
+                    className="h-10 px-6 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-semibold"
                     onClick={handleOpenApply}
                   >
                     Apply to Promote
@@ -750,7 +744,7 @@ export function ProjectDetail({
                           <span className="text-muted-foreground">Total</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <div className="w-2 h-2 rounded-full bg-orange-600" />
                           <span className="text-muted-foreground">
                             Affiliate
                           </span>

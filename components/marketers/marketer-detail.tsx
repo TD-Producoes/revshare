@@ -283,7 +283,7 @@ export function MarketerDetail({
         </div>
       ) : (
         // Public header - full hero section with breadcrumbs
-        <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-24 lg:pb-16 overflow-hidden">
+        <div className="relative border-b border-border/40 bg-muted/5 pt-24 pb-12 lg:pt-24 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.02)_50%,transparent_100%)] dark:bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.02)_50%,transparent_100%)] pointer-events-none" />
 
           <div className="mx-auto max-w-7xl px-6 relative z-10">

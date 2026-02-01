@@ -37,7 +37,7 @@ export function ProjectRewards({ projectId }: { projectId: string }) {
           return (
             <Card
               key={reward.id}
-              className="group hover:shadow-lg transition-all hover:border-primary/50"
+              className="group transition-all hover:border-primary/50"
             >
               <CardHeader className="pb-0">
                 <div className="flex items-start justify-between gap-3">

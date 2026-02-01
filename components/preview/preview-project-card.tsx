@@ -21,7 +21,7 @@ export function PreviewProjectCard({ project }: PreviewProjectCardProps) {
         onClick={() => setIsWaitlistOpen(true)}
         className="cursor-pointer"
       >
-        <Card className="group h-full transition-all hover:shadow-lg hover:border-primary/50 relative">
+        <Card className="group h-full transition-all hover:border-primary/50 relative">
           {/* Example badge */}
           <div className="absolute top-4 right-4 z-10">
             <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground border-border/40 bg-background">

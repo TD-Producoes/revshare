@@ -33,7 +33,6 @@ import { projectCategories } from "@/lib/data/categories";
 import { Info, Plus, Loader2, Sparkles, CheckCircle2, CreditCard } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
-import { AttributionKeysSetup } from "@/components/creator/attribution-keys-setup";
 
 // Helper function to map scraped category to form category
 function mapCategoryToFormCategory(scrapedCategory: string | null): string {

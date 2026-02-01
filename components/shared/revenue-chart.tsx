@@ -96,12 +96,12 @@ export function RevenueChart({
     : (value: number) => fallbackFormatter.format(value);
   const chartConfig = {
     revenue: {
-      label: primaryLabel ?? "Revenue",
-      color: "var(--chart-1)",
+      label: primaryLabel ?? "Total",
+      color: "#facc15", // yellow-400 (brighter)
     },
     affiliateRevenue: {
       label: secondaryLabel ?? "Affiliate",
-      color: "var(--chart-4)",
+      color: "#ea580c", // orange-600 (darker orange)
     },
   } satisfies ChartConfig;
 

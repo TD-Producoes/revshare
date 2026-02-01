@@ -9,7 +9,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 import type { RevenueDataPoint } from "@/lib/hooks/projects";
+
+// Chart colors - yellow/orange shades that work in both light and dark mode
+const CHART_COLORS = {
+  total: "#facc15", // yellow-400 (brighter)
+  affiliate: "#ea580c", // orange-600 (darker orange)
+};
 
 interface RevenueChartProps {
   data: RevenueDataPoint[];
@@ -39,6 +46,32 @@ function formatYAxis(value: number, currency: string): string {
   }).format(value);
 }
 
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  currency,
+}: TooltipProps<number, string> & { currency: string }) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div
+      className="rounded-lg border bg-popover p-3 text-popover-foreground shadow-md"
+      style={{ fontSize: "12px" }}
+    >
+      <p className="mb-2 font-medium">{formatDateLabel(label as string)}</p>
+      {payload.map((entry) => (
+        <p key={entry.dataKey} className="flex items-center gap-2">
+          <span style={{ color: entry.color }}>
+            {entry.dataKey === "total" ? "Total Revenue" : "Affiliate Revenue"}
+          </span>
+          <span>: {formatCurrency(entry.value as number, currency)}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function RevenueChart({ data, currency = "USD" }: RevenueChartProps) {
   // Show every 5th label to avoid crowding
   const tickInterval = Math.max(1, Math.floor(data.length / 6));
@@ -48,25 +81,25 @@ export function RevenueChart({ data, currency = "USD" }: RevenueChartProps) {
       <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
-            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+            <stop offset="5%" stopColor={CHART_COLORS.total} stopOpacity={0.2} />
+            <stop offset="95%" stopColor={CHART_COLORS.total} stopOpacity={0} />
           </linearGradient>
           <linearGradient id="colorAffiliate" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(160 84% 39%)" stopOpacity={0.2} />
-            <stop offset="95%" stopColor="hsl(160 84% 39%)" stopOpacity={0} />
+            <stop offset="5%" stopColor={CHART_COLORS.affiliate} stopOpacity={0.2} />
+            <stop offset="95%" stopColor={CHART_COLORS.affiliate} stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid
           strokeDasharray="3 3"
           vertical={false}
-          stroke="hsl(var(--border))"
+          stroke="var(--border)"
           opacity={0.4}
         />
         <XAxis
           dataKey="date"
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+          tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
           tickFormatter={formatDateLabel}
           interval={tickInterval}
           dy={5}
@@ -74,27 +107,15 @@ export function RevenueChart({ data, currency = "USD" }: RevenueChartProps) {
         <YAxis
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+          tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
           tickFormatter={(value) => formatYAxis(value, currency)}
           width={45}
         />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: "hsl(var(--card))",
-            borderColor: "hsl(var(--border))",
-            borderRadius: "0.5rem",
-            fontSize: "12px",
-          }}
-          labelFormatter={formatDateLabel}
-          formatter={(value: number, name: string) => [
-            formatCurrency(value, currency),
-            name === "total" ? "Total Revenue" : "Affiliate Revenue",
-          ]}
-        />
+        <Tooltip content={<CustomTooltip currency={currency} />} />
         <Area
           type="monotone"
           dataKey="total"
-          stroke="hsl(var(--primary))"
+          stroke={CHART_COLORS.total}
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorTotal)"
@@ -102,7 +123,7 @@ export function RevenueChart({ data, currency = "USD" }: RevenueChartProps) {
         <Area
           type="monotone"
           dataKey="affiliate"
-          stroke="hsl(160 84% 39%)"
+          stroke={CHART_COLORS.affiliate}
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorAffiliate)"
