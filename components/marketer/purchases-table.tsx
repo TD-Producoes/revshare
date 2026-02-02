@@ -76,7 +76,7 @@ export function PurchasesTable({ purchases, limit }: PurchasesTableProps) {
               {formatCurrency(purchase.amount)}
             </TableCell>
             <TableCell className="text-right">
-              {formatCurrency(purchase.commissionAmount)}
+              <span className="text-sm font-medium">{formatCurrency(purchase.commissionAmount)}</span>
             </TableCell>
             <TableCell>
               {getStatusBadge(purchase)}

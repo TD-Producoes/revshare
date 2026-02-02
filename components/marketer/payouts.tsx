@@ -223,7 +223,9 @@ export function MarketerPayouts() {
                         : "-"}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(transfer.amount, transferCurrency)}
+                      <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-sm font-semibold text-primary">
+                        {formatCurrency(transfer.amount, transferCurrency)}
+                      </span>
                     </TableCell>
                     <TableCell className="space-y-1">
                       {statusBadge(transfer.status)}

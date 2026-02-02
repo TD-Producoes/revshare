@@ -5,7 +5,7 @@ import { SignupForm } from "@/components/auth/signup-form";
 
 export default function SignupPage() {
   return (
-    <div className="bg-white flex min-h-svh flex-col items-center justify-center gap-8 p-6 md:p-10">
+    <div className="light bg-white flex min-h-svh flex-col items-center justify-center gap-8 p-6 md:p-10">
       <div className="flex w-full max-w-md flex-col gap-8">
         <Link
           href="/"

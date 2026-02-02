@@ -396,7 +396,7 @@ export function MyOffersTable({
                     </Link>
                   </TableCell>
                   <TableCell className="text-right">
-                    {commissionPercent}%
+                    <span className="text-sm font-medium">{commissionPercent}%</span>
                   </TableCell>
                   <TableCell>
                     {renderContractStatusBadge(contract.status)}

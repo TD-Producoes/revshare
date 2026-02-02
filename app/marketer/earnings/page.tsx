@@ -468,20 +468,15 @@ export default function EarningsPage() {
                         {group.entries.map((item) => {
                           return (
                             <TableRow key={`${group.currency}-${item.projectId}`}>
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium">{item.projectName}</p>
-                                  {item.commissionPercent !== null ? (
-                                    <Badge variant="secondary" className="text-xs mt-1">
-                                      {item.commissionPercent}% commission
-                                    </Badge>
-                                  ) : null}
-                                </div>
+                              <TableCell className="font-medium">
+                                {item.projectName}
                               </TableCell>
                               <TableCell className="text-right">
-                                {item.commissionPercent !== null
-                                  ? `${item.commissionPercent}%`
-                                  : "-"}
+                                <span className="text-sm font-medium">
+                                  {item.commissionPercent !== null
+                                    ? `${item.commissionPercent}%`
+                                    : "-"}
+                                </span>
                               </TableCell>
                               <TableCell className="text-right">
                                 {item.purchaseCount}
@@ -489,8 +484,10 @@ export default function EarningsPage() {
                               <TableCell className="text-right">
                                 {formatCurrency(item.totalRevenue, group.currency)}
                               </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatCurrency(item.totalEarnings, group.currency)}
+                              <TableCell className="text-right">
+                                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-sm font-semibold text-primary">
+                                  {formatCurrency(item.totalEarnings, group.currency)}
+                                </span>
                               </TableCell>
                               <TableCell className="text-right text-green-600">
                                 {formatCurrency(item.paidEarnings, group.currency)}
