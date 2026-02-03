@@ -9,3 +9,5 @@ export * from "./crypto";
 export * from "./secret";
 export * from "./ssrf";
 export * from "./manifest";
+export * from "./telegram";
+export * from "./approval";

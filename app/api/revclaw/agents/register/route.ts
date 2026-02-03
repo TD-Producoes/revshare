@@ -22,17 +22,17 @@ const inputSchema = z
     // Optional extra metadata (stored as JSON)
     metadata: z.record(z.any()).optional(),
   })
-  .superRefine((data, ctx) => {
-    const hasMarkdown = !!data.manifest_markdown;
-    const hasUrl = !!data.manifest_url;
-    if (hasMarkdown === hasUrl) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Provide exactly one of manifest_markdown or manifest_url",
-        path: ["manifest_markdown"],
-      });
-    }
-  });
+  .refine(
+    (data) => {
+      const hasMarkdown = !!data.manifest_markdown;
+      const hasUrl = !!data.manifest_url;
+      return hasMarkdown !== hasUrl;
+    },
+    {
+      message: "Provide exactly one of manifest_markdown or manifest_url",
+      path: ["manifest_markdown"],
+    },
+  );
 
 export async function POST(request: Request) {
   const parsed = inputSchema.safeParse(await request.json().catch(() => null));
