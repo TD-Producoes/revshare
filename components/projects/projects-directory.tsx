@@ -103,6 +103,8 @@ export function ProjectsDirectory({
         revenue: project.revenue,
         marketers: project.marketers,
         commission: project.commission,
+        applications: project.applications,
+        creatorName: project.creator?.name ?? null,
       })
     );
   }, [projects]);

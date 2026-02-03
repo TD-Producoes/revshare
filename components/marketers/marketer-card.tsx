@@ -18,6 +18,11 @@ export type MarketerCardData = {
   totalEarnings: number | null;
   totalRevenue: number | null;
   activeProjects: number;
+  applications?: number;
+  successRate?: number; // 0..1
+  clicks30d?: number;
+  installs30d?: number;
+  purchases30d?: number;
 };
 
 type MarketerCardProps = {
@@ -51,7 +56,7 @@ function getMarketerAvatarUrl(name: string | null, avatarUrl?: string | null): s
 export function MarketerCard({ marketer, basePath = "/marketers" }: MarketerCardProps) {
   return (
     <Link href={`${basePath}/${marketer.id}`}>
-      <Card className="group h-full transition-all hover:shadow-lg hover:border-primary/50">
+      <Card className="group h-full transition-all hover:border-primary/50">
         <CardContent className="p-6 py-2 flex flex-col h-full">
           {/* Main Content */}
           <div className="flex-1">
@@ -118,6 +123,11 @@ export function MarketerCard({ marketer, basePath = "/marketers" }: MarketerCard
                 <DollarSign className="h-4 w-4" />
                 <span>{formatCurrency(marketer.totalEarnings)} earned</span>
               </div>
+              {typeof marketer.applications === "number" && typeof marketer.successRate === "number" ? (
+                <div className="text-xs text-muted-foreground">
+                  {marketer.applications} applications • {Math.round(marketer.successRate * 100)}% approved
+                </div>
+              ) : null
             </div>
           </div>
 
@@ -128,6 +138,13 @@ export function MarketerCard({ marketer, basePath = "/marketers" }: MarketerCard
                 {marketer.activeProjects}
               </span>{" "}
               {marketer.activeProjects === 1 ? "project" : "projects"}
+              {typeof marketer.clicks30d === "number" ? (
+                <>
+                  <span className="mx-2 opacity-50">•</span>
+                  <span className="font-medium text-foreground">{marketer.clicks30d}</span>{" "}
+                  clicks (30d)
+                </>
+              ) : null}
             </div>
             <Badge
               variant="outline"

@@ -505,7 +505,7 @@ export function useMarketerTestimonials(marketerId?: string | null) {
 
 export type SearchMarketer = {
   id: string;
-  name: string;
+  name: string | null;
   bio?: string | null;
   avatarUrl?: string | null;
   location?: string | null;
@@ -514,6 +514,11 @@ export type SearchMarketer = {
   totalEarnings: number;
   totalRevenue: number;
   activeProjects: number;
+  applications?: number;
+  successRate?: number;
+  clicks30d?: number;
+  installs30d?: number;
+  purchases30d?: number;
 };
 
 export type MarketersSearchFilters = {
