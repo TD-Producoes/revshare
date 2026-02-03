@@ -169,7 +169,14 @@ function MetricAreaChart({
                 strokeWidth={2}
               />
             ) : null}
-            <ChartLegend content={<ChartLegendContent />} />
+            <ChartLegend
+              content={(props) => (
+                <ChartLegendContent
+                  payload={props.payload}
+                  verticalAlign={props.verticalAlign}
+                />
+              )}
+            />
           </AreaChart>
         </ChartContainer>
       </CardContent>

@@ -240,9 +240,13 @@ export function RevenueChart({
               />
             )}
             <ChartLegend
-              content={
-                <ChartLegendContent className="pt-4 text-sm text-foreground" />
-              }
+              content={(props) => (
+                <ChartLegendContent
+                  className="pt-4 text-sm text-foreground"
+                  payload={props.payload}
+                  verticalAlign={props.verticalAlign}
+                />
+              )}
             />
           </AreaChart>
         </ChartContainer>
