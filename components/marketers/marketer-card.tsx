@@ -123,11 +123,13 @@ export function MarketerCard({ marketer, basePath = "/marketers" }: MarketerCard
                 <DollarSign className="h-4 w-4" />
                 <span>{formatCurrency(marketer.totalEarnings)} earned</span>
               </div>
-              {typeof marketer.applications === "number" && typeof marketer.successRate === "number" ? (
+              {typeof marketer.applications === "number" &&
+              typeof marketer.successRate === "number" ? (
                 <div className="text-xs text-muted-foreground">
-                  {marketer.applications} applications • {Math.round(marketer.successRate * 100)}% approved
+                  {marketer.applications} applications • {Math.round(marketer.successRate * 100)}%
+                  approved
                 </div>
-              ) : null
+              ) : null}
             </div>
           </div>
 
