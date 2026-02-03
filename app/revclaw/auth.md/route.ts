@@ -14,22 +14,15 @@ function buildAuthMarkdown(): string {
 
   const frontmatterLines = [
     "---",
-    "kind: revclaw-auth-instructions",
-    "revclaw_version: v0",
-    `canonical_origin: ${CANONICAL_ORIGIN}`,
-    `api_base_url: ${CANONICAL_ORIGIN}/api`,
-    `registration_endpoint: ${CANONICAL_ORIGIN}/api/revclaw/agents/register`,
-    "claim_flow: telegram-inline-button-callback",
-    `identity_verification_endpoint: ${CANONICAL_ORIGIN}/api/revclaw/agents/verify-identity`,
-    `claim_status_endpoint: ${CANONICAL_ORIGIN}/api/revclaw/agents/:agent_id/claim-status`,
-    `token_exchange_endpoint: ${CANONICAL_ORIGIN}/api/revclaw/tokens`,
-    `token_refresh_endpoint: ${CANONICAL_ORIGIN}/api/revclaw/tokens/refresh`,
-    "auth_scheme: bearer-access-token",
-    `app_version: ${appVersion}`,
+    "name: revclaw-auth",
+    `version: ${appVersion}`,
+    "description: Authentication flow for RevClaw agents (Telegram-first identity, minimal friction).",
+    `homepage: ${CANONICAL_ORIGIN}`,
+    `metadata: {\"revclaw\":{\"api_base\":\"${CANONICAL_ORIGIN}/api\",\"registration_endpoint\":\"${CANONICAL_ORIGIN}/api/revclaw/agents/register\",\"claim_flow\":\"telegram-inline-button-callback\",\"identity_verification_endpoint\":\"${CANONICAL_ORIGIN}/api/revclaw/agents/verify-identity\",\"claim_status_endpoint\":\"${CANONICAL_ORIGIN}/api/revclaw/agents/:agent_id/claim-status\",\"token_exchange_endpoint\":\"${CANONICAL_ORIGIN}/api/revclaw/tokens\",\"token_refresh_endpoint\":\"${CANONICAL_ORIGIN}/api/revclaw/tokens/refresh\",\"auth_scheme\":\"bearer-access-token\"}}`,
+    "---",
   ];
 
-  if (gitSha) frontmatterLines.push(`commit_sha: ${gitSha}`);
-  frontmatterLines.push("---");
+  if (gitSha) frontmatterLines.splice(-1, 0, `commit_sha: ${gitSha}`);
 
   const bodyLines = [
     "",
