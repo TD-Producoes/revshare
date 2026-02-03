@@ -124,12 +124,16 @@ export async function POST(request: Request) {
       },
     });
 
+    const baseUrl = process.env.BASE_URL ?? "https://revshare.fast";
+    const claim_url = `${baseUrl}/revclaw/claim?claim_id=${claimId}`;
+
     // Important: agent_secret is ONLY returned here and never again.
     return NextResponse.json(
       {
         agent_id: agent.id,
         agent_secret: agentSecret,
         claim_id: claimId,
+        claim_url,
         expires_at: expiresAt.toISOString(),
       },
       { status: 201 },
