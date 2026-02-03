@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { emitRevclawEvent } from "@/lib/revclaw/events";
 import { verifyAgentSecret } from "@/lib/revclaw/secret";
 import {
   generateAccessToken,
@@ -202,6 +203,19 @@ export async function POST(request: Request) {
       agent_id,
       installation_id: exchangeCodeRecord.installationId,
       scopes: scopesSnapshot,
+    });
+
+    await emitRevclawEvent({
+      type: "REVCLAW_TOKEN_EXCHANGED",
+      agentId: agent_id,
+      userId: exchangeCodeRecord.installation.userId,
+      subjectType: "RevclawInstallation",
+      subjectId: exchangeCodeRecord.installationId,
+      installationId: exchangeCodeRecord.installationId,
+      initiatedBy: "agent",
+      data: {
+        scopes: scopesSnapshot,
+      },
     });
 
     // 10. Return token pair (ONLY time tokens are sent plaintext)

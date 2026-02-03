@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuthUser, authErrorResponse, AuthError } from "@/lib/auth";
 import { createAuditLog } from "@/lib/revclaw/intent-auth";
+import { emitRevclawEvent } from "@/lib/revclaw/events";
 
 /**
  * POST /api/revclaw/intents/:id/approve
@@ -139,6 +140,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       payload_hash: intent.payloadHash,
       approved_by_user_id: authUser.id,
       agent_name: intent.installation.agent.name,
+    },
+  });
+
+  await emitRevclawEvent({
+    type: "REVCLAW_INTENT_APPROVED",
+    agentId: intent.agentId,
+    userId: authUser.id,
+    subjectType: "RevclawIntent",
+    subjectId: intentId,
+    installationId: intent.installationId,
+    intentId,
+    initiatedBy: "user",
+    data: {
+      kind: intent.kind,
     },
   });
 

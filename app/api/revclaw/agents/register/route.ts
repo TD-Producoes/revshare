@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { fetchManifestMarkdown, MAX_MANIFEST_BYTES } from "@/lib/revclaw/manifest";
 import { generateOpaqueToken, hashAgentSecret, sha256Hex } from "@/lib/revclaw/secret";
+import { emitRevclawEvent } from "@/lib/revclaw/events";
 
 const inputSchema = z
   .object({
@@ -108,6 +109,19 @@ export async function POST(request: Request) {
         status: "PENDING",
       },
       select: { id: true },
+    });
+
+    await emitRevclawEvent({
+      type: "REVCLAW_AGENT_REGISTERED",
+      agentId: agent.id,
+      userId: null,
+      subjectType: "RevclawAgent",
+      subjectId: agent.id,
+      initiatedBy: "agent",
+      data: {
+        manifest_url: manifestUrlToStore,
+        requested_scopes: requested_scopes ?? [],
+      },
     });
 
     // Important: agent_secret is ONLY returned here and never again.

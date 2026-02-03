@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { emitRevclawEvent } from "@/lib/revclaw/events";
 import { hashPayload } from "./crypto";
 import {
   authenticateBot,
@@ -241,6 +242,22 @@ export function withIntentEnforcement<TParams = unknown>(
             undefined,
           userAgent: request.headers.get("user-agent") ?? undefined,
           payload: {
+            kind: expectedKind,
+            success,
+            error: error ?? null,
+          },
+        });
+
+        await emitRevclawEvent({
+          type: "REVCLAW_INTENT_EXECUTED",
+          agentId: context.botAuth.agentId,
+          userId: context.botAuth.userId,
+          subjectType: "RevclawIntent",
+          subjectId: context.intent.intentId,
+          installationId: context.botAuth.installationId,
+          intentId: context.intent.intentId,
+          initiatedBy: "agent",
+          data: {
             kind: expectedKind,
             success,
             error: error ?? null,

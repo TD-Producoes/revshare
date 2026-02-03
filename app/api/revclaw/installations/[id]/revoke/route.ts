@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { emitRevclawEvent } from "@/lib/revclaw/events";
 import { requireAuthUser, authErrorResponse } from "@/lib/auth";
 
 /**
@@ -108,6 +109,19 @@ export async function POST(
       agent_id: installation.agentId,
       agent_name: installation.agent.name,
       user_id: authUser.id,
+    });
+
+    await emitRevclawEvent({
+      type: "REVCLAW_INSTALLATION_REVOKED",
+      agentId: installation.agentId,
+      userId: authUser.id,
+      subjectType: "RevclawInstallation",
+      subjectId: installationId,
+      installationId,
+      initiatedBy: "user",
+      data: {
+        reason: "User initiated revocation",
+      },
     });
 
     return NextResponse.json(

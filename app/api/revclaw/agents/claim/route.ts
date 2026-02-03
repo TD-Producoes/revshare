@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { emitRevclawEvent } from "@/lib/revclaw/events";
 import { generateExchangeCode } from "@/lib/revclaw/tokens";
 
 /**
@@ -192,6 +193,19 @@ export async function processClaimInternal(params: {
       scopesSnapshot: scopesToGrant,
       status: "PENDING",
       expiresAt: exchangeCodeData.expires_at,
+    },
+  });
+
+  await emitRevclawEvent({
+    type: "REVCLAW_AGENT_CLAIMED",
+    agentId,
+    userId: user.id,
+    subjectType: "RevclawInstallation",
+    subjectId: installationId,
+    installationId,
+    initiatedBy: "user",
+    data: {
+      granted_scopes: scopesToGrant,
     },
   });
 

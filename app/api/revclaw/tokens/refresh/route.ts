@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { emitRevclawEvent } from "@/lib/revclaw/events";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -183,6 +184,19 @@ export async function POST(request: Request) {
     console.log("[RevClaw] Token refresh successful", {
       installation_id: tokenRecord.installationId,
       agent_id: tokenRecord.installation.agentId,
+    });
+
+    await emitRevclawEvent({
+      type: "REVCLAW_TOKEN_REFRESHED",
+      agentId: tokenRecord.installation.agentId,
+      userId: tokenRecord.installation.userId,
+      subjectType: "RevclawInstallation",
+      subjectId: tokenRecord.installationId,
+      installationId: tokenRecord.installationId,
+      initiatedBy: "agent",
+      data: {
+        scopes: scopesSnapshot,
+      },
     });
 
     // 10. Return new token pair

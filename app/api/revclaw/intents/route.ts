@@ -13,6 +13,7 @@ import {
   type IntentKind,
 } from "@/lib/revclaw/intent-auth";
 import { sendTelegramMessage, buildInlineKeyboard } from "@/lib/revclaw/telegram";
+import { emitRevclawEvent } from "@/lib/revclaw/events";
 
 /**
  * POST /api/revclaw/intents
@@ -274,6 +275,29 @@ export async function POST(request: NextRequest) {
       payload_hash: payloadHash,
       needs_approval: needsApproval,
       auto_approved: !needsApproval,
+    },
+  });
+
+  const projectIdFromPayload =
+    typeof payload_json.project_id === "string"
+      ? payload_json.project_id
+      : typeof payload_json.projectId === "string"
+        ? payload_json.projectId
+        : null;
+
+  await emitRevclawEvent({
+    type: "REVCLAW_INTENT_CREATED",
+    agentId: context.agentId,
+    userId: context.userId,
+    projectId: projectIdFromPayload,
+    subjectType: "RevclawIntent",
+    subjectId: intent.id,
+    installationId: context.installationId,
+    intentId: intent.id,
+    initiatedBy: "agent",
+    data: {
+      kind,
+      needs_approval: needsApproval,
     },
   });
 
