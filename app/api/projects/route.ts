@@ -66,6 +66,22 @@ export async function GET() {
           name: true,
         },
       },
+      // Lightweight aggregates for directory cards
+      _count: {
+        select: {
+          contracts: true,
+        },
+      },
+      metricsSnapshots: {
+        take: 1,
+        orderBy: { date: "desc" },
+        select: {
+          totalRevenue: true,
+          mrr: true,
+          purchasesCount: true,
+          affiliateRevenue: true,
+        },
+      },
       creatorStripeAccountId: true,
       currency: true,
       platformCommissionPercent: true,
