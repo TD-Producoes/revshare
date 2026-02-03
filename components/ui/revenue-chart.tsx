@@ -9,7 +9,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { TooltipProps } from "recharts";
+// Note: Recharts v3 types don't expose the injected `payload` cleanly on TooltipProps.
+// We'll model the props we use in CustomTooltip instead.
+
 import type { RevenueDataPoint } from "@/lib/hooks/projects";
 
 // Chart colors - yellow/orange shades that work in both light and dark mode
@@ -46,12 +48,19 @@ function formatYAxis(value: number, currency: string): string {
   }).format(value);
 }
 
+type CustomTooltipProps = {
+  active?: boolean
+  payload?: readonly any[]
+  label?: unknown
+  currency: string
+}
+
 function CustomTooltip({
   active,
   payload,
   label,
   currency,
-}: TooltipProps<number, string> & { currency: string }) {
+}: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
 
   return (
