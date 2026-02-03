@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { generateExchangeCode } from "@/lib/revclaw/tokens";
 
 /**
  * POST /api/revclaw/agents/claim
@@ -40,7 +41,7 @@ export async function processClaimInternal(params: {
   telegramUserId: string;
   grantedScopes?: string[];
 }): Promise<
-  | { success: true; installationId: string; userId: string; agentName: string }
+  | { success: true; installationId: string; userId: string; agentName: string; exchangeCode: string }
   | { success: false; error: string; status: number }
 > {
   const { agentId, claimId, telegramUserId, grantedScopes } = params;
@@ -125,7 +126,7 @@ export async function processClaimInternal(params: {
   const scopesToGrant = grantedScopes ?? registration.requestedScopes;
 
   // 10. Check if installation already exists for this agent-user pair
-  const existingInstallation = await prisma.revclawInstallation.findUnique({
+  let existingInstallation = await prisma.revclawInstallation.findUnique({
     where: {
       agentId_userId: {
         agentId,
@@ -134,8 +135,10 @@ export async function processClaimInternal(params: {
     },
   });
 
+  let installationId: string;
+
   if (existingInstallation) {
-    // Update registration as claimed but return existing installation
+    // Update registration as claimed but use existing installation
     await prisma.revclawRegistration.update({
       where: { id: registration.id },
       data: {
@@ -145,48 +148,59 @@ export async function processClaimInternal(params: {
       },
     });
 
-    return {
-      success: true,
-      installationId: existingInstallation.id,
-      userId: user.id,
-      agentName: registration.agent.name,
-    };
+    installationId = existingInstallation.id;
+  } else {
+    // 11. Create installation and mark registration as claimed in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Mark registration as claimed
+      await tx.revclawRegistration.update({
+        where: { id: registration.id },
+        data: {
+          status: "CLAIMED",
+          claimedAt: new Date(),
+          claimedByUserId: user.id,
+        },
+      });
+
+      // Create installation
+      const installation = await tx.revclawInstallation.create({
+        data: {
+          agentId,
+          userId: user.id,
+          grantedScopes: scopesToGrant,
+          status: "ACTIVE",
+          // Default policy: require approval for high-risk actions
+          requireApprovalForPublish: true,
+          requireApprovalForApply: true,
+        },
+        select: { id: true },
+      });
+
+      return installation;
+    });
+
+    installationId = result.id;
   }
 
-  // 11. Create installation and mark registration as claimed in a transaction
-  const result = await prisma.$transaction(async (tx) => {
-    // Mark registration as claimed
-    await tx.revclawRegistration.update({
-      where: { id: registration.id },
-      data: {
-        status: "CLAIMED",
-        claimedAt: new Date(),
-        claimedByUserId: user.id,
-      },
-    });
+  // 12. Generate exchange code for token issuance
+  const exchangeCodeData = generateExchangeCode();
 
-    // Create installation
-    const installation = await tx.revclawInstallation.create({
-      data: {
-        agentId,
-        userId: user.id,
-        grantedScopes: scopesToGrant,
-        status: "ACTIVE",
-        // Default policy: require approval for high-risk actions
-        requireApprovalForPublish: true,
-        requireApprovalForApply: true,
-      },
-      select: { id: true },
-    });
-
-    return installation;
+  await prisma.revclawExchangeCode.create({
+    data: {
+      installationId,
+      codeHash: exchangeCodeData.code_hash,
+      scopesSnapshot: scopesToGrant,
+      status: "PENDING",
+      expiresAt: exchangeCodeData.expires_at,
+    },
   });
 
   return {
     success: true,
-    installationId: result.id,
+    installationId,
     userId: user.id,
     agentName: registration.agent.name,
+    exchangeCode: exchangeCodeData.code,
   };
 }
 
@@ -231,6 +245,7 @@ export async function POST(request: Request) {
     {
       installation_id: result.installationId,
       user_id: result.userId,
+      exchange_code: result.exchangeCode,
     },
     { status: 201 }
   );

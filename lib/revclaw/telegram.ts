@@ -82,7 +82,7 @@ export function verifyTelegramLoginWidget(
   }
 
   // Reconstruct data for verification
-  const dataToVerify = { auth_date, id, ...rest };
+  const dataToVerify: Record<string, string> = { auth_date, id, ...rest };
   const dataCheckString = Object.keys(dataToVerify)
     .sort()
     .map((key) => `${key}=${dataToVerify[key]}`)

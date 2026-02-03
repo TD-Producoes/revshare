@@ -11,3 +11,5 @@ export * from "./ssrf";
 export * from "./manifest";
 export * from "./telegram";
 export * from "./approval";
+export * from "./intent-auth";
+export * from "./intent-enforcement";

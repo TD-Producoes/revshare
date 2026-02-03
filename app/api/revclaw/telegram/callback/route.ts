@@ -7,12 +7,13 @@ import {
   answerCallbackQuery,
   editMessageText,
 } from "@/lib/revclaw/telegram";
+import { createAuditLog } from "@/lib/revclaw/intent-auth";
 
 /**
  * POST /api/revclaw/telegram/callback
  *
  * Handles Telegram Bot API webhook callbacks for RevClaw approval buttons.
- * This is the secure entry point for claim approvals.
+ * This is the secure entry point for claim approvals AND intent approvals.
  *
  * SECURITY:
  * - Verifies Telegram signature to ensure callback is authentic
@@ -96,6 +97,207 @@ function parseClaimCallback(
   return null;
 }
 
+/**
+ * Parse callback_data to extract intent information.
+ * Format: "rintent_approve:{intent_id}" or "rintent_deny:{intent_id}"
+ */
+function parseIntentCallback(
+  data: string
+): { intentId: string; action: "approve" | "deny" } | null {
+  if (data.startsWith("rintent_approve:")) {
+    const intentId = data.slice(16);
+    if (!intentId) return null;
+    return { intentId, action: "approve" };
+  }
+  if (data.startsWith("rintent_deny:")) {
+    const intentId = data.slice(13);
+    if (!intentId) return null;
+    return { intentId, action: "deny" };
+  }
+  return null;
+}
+
+/**
+ * Handle intent approval/denial from Telegram callback.
+ */
+async function handleIntentCallback(
+  botToken: string,
+  callbackQuery: TelegramCallbackQuery,
+  intentId: string,
+  action: "approve" | "deny",
+  telegramUserId: string,
+  telegramUsername: string | undefined,
+  telegramName: string
+): Promise<void> {
+  // Find the intent with installation details
+  const intent = await prisma.revclawIntent.findUnique({
+    where: { id: intentId },
+    include: {
+      installation: {
+        select: {
+          id: true,
+          userId: true,
+          user: {
+            select: { telegramUserId: true },
+          },
+          agent: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  if (!intent) {
+    await answerCallbackQuery(botToken, callbackQuery.id, {
+      text: "❌ Intent not found or expired",
+      showAlert: true,
+    });
+    return;
+  }
+
+  // Verify the telegram user owns the installation
+  if (intent.installation.user.telegramUserId !== telegramUserId) {
+    await answerCallbackQuery(botToken, callbackQuery.id, {
+      text: "❌ You are not authorized to approve this intent",
+      showAlert: true,
+    });
+    return;
+  }
+
+  const agentName = intent.installation.agent.name;
+
+  // Handle deny
+  if (action === "deny") {
+    if (intent.status === "EXECUTED") {
+      await answerCallbackQuery(botToken, callbackQuery.id, {
+        text: "❌ Intent has already been executed",
+        showAlert: true,
+      });
+      return;
+    }
+
+    if (intent.status === "DENIED") {
+      await answerCallbackQuery(botToken, callbackQuery.id, {
+        text: "Intent was already denied",
+      });
+      return;
+    }
+
+    await prisma.revclawIntent.update({
+      where: { id: intentId },
+      data: {
+        status: "DENIED",
+        deniedAt: new Date(),
+        denyReason: "Denied via Telegram",
+      },
+    });
+
+    await createAuditLog({
+      agentId: intent.agentId,
+      userId: intent.installation.userId,
+      action: "intent.denied",
+      resourceType: "RevclawIntent",
+      resourceId: intentId,
+      payload: {
+        kind: intent.kind,
+        denied_via: "telegram",
+        denied_by_telegram_id: telegramUserId,
+      },
+    });
+
+    await answerCallbackQuery(botToken, callbackQuery.id, {
+      text: `❌ ${agentName}'s action denied`,
+    });
+
+    if (callbackQuery.message) {
+      await editMessageText(
+        botToken,
+        callbackQuery.message.chat.id,
+        callbackQuery.message.message_id,
+        [
+          `❌ **Action denied**`,
+          "",
+          `Agent: ${agentName}`,
+          `Action: ${intent.kind.toLowerCase().replace(/_/g, " ")}`,
+          `Denied by: ${telegramUsername ? `@${telegramUsername}` : telegramName}`,
+        ].join("\n"),
+        { parseMode: "Markdown" }
+      );
+    }
+    return;
+  }
+
+  // Handle approve
+  if (intent.status !== "PENDING_APPROVAL") {
+    const statusMessages: Record<string, string> = {
+      APPROVED: "Intent is already approved",
+      DENIED: "Intent was denied",
+      EXECUTED: "Intent has already been executed",
+      EXPIRED: "Intent has expired",
+    };
+    await answerCallbackQuery(botToken, callbackQuery.id, {
+      text: statusMessages[intent.status] ?? `Invalid status: ${intent.status}`,
+      showAlert: true,
+    });
+    return;
+  }
+
+  if (intent.expiresAt < new Date()) {
+    await prisma.revclawIntent.update({
+      where: { id: intentId },
+      data: { status: "EXPIRED" },
+    });
+    await answerCallbackQuery(botToken, callbackQuery.id, {
+      text: "❌ Intent has expired",
+      showAlert: true,
+    });
+    return;
+  }
+
+  await prisma.revclawIntent.update({
+    where: { id: intentId },
+    data: {
+      status: "APPROVED",
+      approvedAt: new Date(),
+      approvedPayloadHash: intent.payloadHash,
+    },
+  });
+
+  await createAuditLog({
+    agentId: intent.agentId,
+    userId: intent.installation.userId,
+    action: "intent.approved",
+    resourceType: "RevclawIntent",
+    resourceId: intentId,
+    payload: {
+      kind: intent.kind,
+      approved_via: "telegram",
+      approved_by_telegram_id: telegramUserId,
+    },
+  });
+
+  await answerCallbackQuery(botToken, callbackQuery.id, {
+    text: `✅ ${agentName}'s action approved!`,
+  });
+
+  if (callbackQuery.message) {
+    await editMessageText(
+      botToken,
+      callbackQuery.message.chat.id,
+      callbackQuery.message.message_id,
+      [
+        `✅ **Action approved**`,
+        "",
+        `Agent: ${agentName}`,
+        `Action: ${intent.kind.toLowerCase().replace(/_/g, " ")}`,
+        `Approved by: ${telegramUsername ? `@${telegramUsername}` : telegramName}`,
+        "",
+        "The agent can now execute this action.",
+      ].join("\n"),
+      { parseMode: "Markdown" }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -136,10 +338,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Parse the callback data
+  // Try to parse as intent callback first
+  const intentParsed = parseIntentCallback(callbackData);
+  if (intentParsed) {
+    const telegramUserId = callbackQuery.from.id.toString();
+    const telegramUsername = callbackQuery.from.username;
+    const telegramName =
+      `${callbackQuery.from.first_name}${callbackQuery.from.last_name ? ` ${callbackQuery.from.last_name}` : ""}`.trim();
+
+    await handleIntentCallback(
+      botToken,
+      callbackQuery,
+      intentParsed.intentId,
+      intentParsed.action,
+      telegramUserId,
+      telegramUsername,
+      telegramName
+    );
+    return NextResponse.json({ ok: true });
+  }
+
+  // Parse the callback data as claim callback
   const parsed = parseClaimCallback(callbackData);
   if (!parsed) {
-    // Not a RevClaw claim callback, ignore
+    // Not a RevClaw callback, ignore
     await answerCallbackQuery(botToken, callbackQuery.id);
     return NextResponse.json({ ok: true });
   }

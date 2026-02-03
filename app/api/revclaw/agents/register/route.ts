@@ -20,7 +20,7 @@ const inputSchema = z
     requested_scopes: z.array(z.string().min(1).max(80)).max(50).optional(),
 
     // Optional extra metadata (stored as JSON)
-    metadata: z.record(z.any()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .refine(
     (data) => {

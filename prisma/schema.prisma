@@ -896,12 +896,63 @@ model RevclawInstallation {
   agent           RevclawAgent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
   user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   intents         RevclawIntent[]
+  exchangeCodes   RevclawExchangeCode[]
+  accessTokens    RevclawAccessToken[]
 
   @@unique([agentId, userId]) // One installation per agent-user pair
   @@index([agentId])
   @@index([userId])
   @@index([status])
   @@map("revclaw_installations")
+}
+
+/// Exchange codes for token issuance (single-use, short-lived)
+model RevclawExchangeCode {
+  id              String                     @id @default(cuid())
+  installationId  String                     @map("installation_id")
+  codeHash        String                     @unique @map("code_hash") // Hashed exchange code
+  scopesSnapshot  String[]                   @map("scopes_snapshot") // Scopes at generation time
+  status          RevclawExchangeCodeStatus  @default(PENDING)
+  expiresAt       DateTime                   @map("expires_at") // Short-lived (5 minutes)
+  usedAt          DateTime?                  @map("used_at")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+
+  // Relations
+  installation    RevclawInstallation        @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([installationId])
+  @@index([codeHash])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("revclaw_exchange_codes")
+}
+
+/// Access and refresh tokens (hashed at rest)
+model RevclawAccessToken {
+  id              String                     @id @default(cuid())
+  installationId  String                     @map("installation_id")
+  tokenHash       String                     @unique @map("token_hash") // Hashed token
+  tokenType       RevclawTokenType           @map("token_type") // ACCESS or REFRESH
+  scopesSnapshot  String[]                   @map("scopes_snapshot") // Scopes at generation time
+  expiresAt       DateTime                   @map("expires_at")
+  revokedAt       DateTime?                  @map("revoked_at")
+  lastUsedAt      DateTime?                  @map("last_used_at")
+  
+  // For refresh tokens: track parent to detect reuse
+  parentTokenId   String?                    @map("parent_token_id") // Previous refresh token in chain
+  refreshedAt     DateTime?                  @map("refreshed_at") // When this refresh token was used
+  
+  createdAt       DateTime                   @default(now()) @map("created_at")
+
+  // Relations
+  installation    RevclawInstallation        @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([installationId])
+  @@index([tokenHash])
+  @@index([tokenType])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("revclaw_access_tokens")
 }
 
 /// Proposed action requiring approval (immutable payload)
@@ -1020,4 +1071,16 @@ enum RevclawIntentStatus {
   DENIED
   EXECUTED
   EXPIRED
+}
+
+enum RevclawExchangeCodeStatus {
+  PENDING
+  USED
+  EXPIRED
+  REVOKED
+}
+
+enum RevclawTokenType {
+  ACCESS
+  REFRESH
 }
