@@ -57,7 +57,9 @@ function formatEventDetails(details: Record<string, unknown> | null | undefined)
     return normalized.toFixed(2);
   };
   const entries = Object.entries(details)
-    .filter(([, value]) => value !== null && value !== undefined)
+    .filter(([key, value]) =>
+      key !== "revclaw" && value !== null && value !== undefined,
+    )
     .slice(0, 3)
     .map(([key, value]) => {
       if (typeof value === "number" && isMoneyKey(key)) {
@@ -293,6 +295,25 @@ export function EventLogPage({ expectedRole, title }: EventLogPageProps) {
                     </TableCell>
                     <TableCell>
                       {event.actor?.name ?? "System"}
+                      {(() => {
+                        const revclaw = (event.data as any)?.revclaw as
+                          | { agentName?: string; initiatedBy?: string }
+                          | undefined;
+
+                        if (!revclaw?.agentName) return null;
+
+                        const initiatedBy = revclaw.initiatedBy;
+                        const label =
+                          initiatedBy === "agent"
+                            ? `via bot ${revclaw.agentName}`
+                            : `for bot ${revclaw.agentName}`;
+
+                        return (
+                          <p className="text-xs text-muted-foreground">
+                            {label}
+                          </p>
+                        );
+                      })()}
                       {event.actor?.email ? (
                         <p className="text-xs text-muted-foreground">
                           {event.actor.email}

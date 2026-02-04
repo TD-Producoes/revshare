@@ -24,6 +24,7 @@ import {
   Bell,
   History,
   TrendingUp,
+  Bot,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
@@ -55,6 +56,7 @@ const creatorNavSections: NavSection[] = [
     label: "Manage",
     items: [
       { title: "Projects", href: "/founder/projects", icon: FolderKanban },
+      { title: "Bots", href: "/founder/bots", icon: Bot },
       { title: "Affiliates", href: "/founder/affiliates", icon: Users },
       { title: "Applications", href: "/founder/applications", icon: FileText },
     ],
@@ -169,6 +171,14 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isCollapsed, toggle } = useSidebarStore();
 
+  // Fetch signals (must not be conditional)
+  const { data: notifications } = useNotifications(authUserId);
+  const { data: contracts } = useContractsForCreator(authUserId);
+
+  const unreadNotificationsCount = notifications?.unreadCount ?? 0;
+  const pendingApplicationsCount =
+    contracts?.filter((c) => c.status === "pending").length ?? 0;
+
   if (!user) return null;
 
   const isCreator = user.role === "founder";
@@ -176,13 +186,6 @@ export function Sidebar() {
   const isActiveLink = (href: string) =>
     pathname === href ||
     (href !== "/founder" && href !== "/marketer" && pathname.startsWith(href));
-
-  // Fetch signals
-  const { data: notifications } = useNotifications(authUserId);
-  const { data: contracts } = useContractsForCreator(authUserId);
-
-  const unreadNotificationsCount = notifications?.unreadCount ?? 0;
-  const pendingApplicationsCount = contracts?.filter(c => c.status === "pending").length ?? 0;
 
   return (
     <TooltipProvider>

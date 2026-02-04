@@ -16,7 +16,9 @@ model User {
   id                       String                    @id
   role                     UserRole
   name                     String
-  email                    String                    @unique
+  email                    String?                   @unique // Made optional for Telegram-first flow
+  telegramUserId           String?                   @unique @map("telegram_user_id") // Telegram identity anchor
+  pendingEmail             String?                   @map("pending_email") // Unverified email awaiting confirmation
   stripeConnectedAccountId String?                   @unique
   stripeCustomerId         String?                   @unique
   autoChargeEnabled        Boolean                   @default(false)
@@ -46,6 +48,14 @@ model User {
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   visibility               VisibilityMode            @default(PUBLIC)
+
+  // RevClaw relations
+  revclawInstallations     RevclawInstallation[]
+  revclawPlans             RevclawPlan[]
+  revclawIntentsOnBehalf   RevclawIntent[]           @relation("IntentOnBehalfOf")
+  auditLogsOnBehalf        AuditLog[]                @relation("AuditOnBehalfOf")
+
+  @@index([telegramUserId])
 }
 
 model Project {
@@ -554,6 +564,17 @@ enum EventType {
   CONTRACT_PAUSED
   CONTRACT_RESUMED
   NOTIFICATION_SENT
+
+  // RevClaw (bot) lifecycle + intent flow
+  REVCLAW_AGENT_REGISTERED
+  REVCLAW_AGENT_CLAIMED
+  REVCLAW_TOKEN_EXCHANGED
+  REVCLAW_TOKEN_REFRESHED
+  REVCLAW_INSTALLATION_REVOKED
+  REVCLAW_INTENT_CREATED
+  REVCLAW_INTENT_APPROVED
+  REVCLAW_INTENT_DENIED
+  REVCLAW_INTENT_EXECUTED
 }
 
 enum NotificationType {
@@ -804,4 +825,326 @@ model Waitlist {
 
   @@index([email])
   @@index([createdAt])
+}
+
+// =============================================================================
+// RevClaw Models - Bot Delegation System
+// =============================================================================
+
+/// Bot/agent identity + manifest snapshot
+model RevclawAgent {
+  id                  String               @id @default(cuid())
+  name                String               // Human-readable agent name
+  manifestUrl         String?              @map("manifest_url") // Original manifest URL (validated: no private IPs)
+  manifestSnapshot    String?              @db.Text @map("manifest_snapshot") // Immutable snapshot at registration
+  manifestSnapshotHash String?             @map("manifest_snapshot_hash") // SHA-256 of snapshot for integrity
+  agentSecretHash     String               @map("agent_secret_hash") // Hashed agent_secret (bcrypt/argon2)
+  identityProofUrl    String?              @map("identity_proof_url") // Optional: URL for Moltbook-style verification
+  metadata            Json?                // Additional agent metadata
+  status              RevclawAgentStatus   @default(ACTIVE)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  registrations       RevclawRegistration[]
+  installations       RevclawInstallation[]
+  intents             RevclawIntent[]
+  auditLogs           AuditLog[]
+
+  @@index([status])
+  @@map("revclaw_agents")
+}
+
+/// Pending claim/approval (expires)
+model RevclawRegistration {
+  id              String                     @id @default(cuid())
+  agentId         String                     @map("agent_id")
+  claimId         String                     @unique @map("claim_id") // Single-use, short-lived, unguessable
+  requestedScopes String[]                   @map("requested_scopes") // Scopes the bot is requesting
+  status          RevclawRegistrationStatus  @default(PENDING)
+  expiresAt       DateTime                   @map("expires_at") // Claim expiration
+  claimedAt       DateTime?                  @map("claimed_at")
+  claimedByUserId String?                    @map("claimed_by_user_id") // Telegram-authenticated user who claimed
+  metadata        Json?                      // Additional registration context
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  // Relations
+  agent           RevclawAgent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([claimId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("revclaw_registrations")
+}
+
+/// Agent ↔ User binding with granted scopes + policy
+model RevclawInstallation {
+  id              String                     @id @default(cuid())
+  agentId         String                     @map("agent_id")
+  userId          String                     @map("user_id")
+  grantedScopes   String[]                   @map("granted_scopes") // Scopes actually granted
+  
+  // Policy settings (human-configurable guardrails)
+  requireApprovalForPublish Boolean          @default(true) @map("require_approval_for_publish")
+  requireApprovalForApply   Boolean          @default(true) @map("require_approval_for_apply")
+  dailyApplyLimit           Int?             @map("daily_apply_limit") // Optional rate limit
+  allowedCategories         String[]         @map("allowed_categories") // Optional category restrictions
+  
+  // Token management (hashed/encrypted at rest)
+  refreshTokenHash          String?          @map("refresh_token_hash") // Rotating refresh token (hashed)
+  refreshTokenVersion       Int              @default(1) @map("refresh_token_version") // For rotation invalidation
+  lastTokenIssuedAt         DateTime?        @map("last_token_issued_at")
+  
+  status          RevclawInstallationStatus  @default(ACTIVE)
+  revokedAt       DateTime?                  @map("revoked_at")
+  revokeReason    String?                    @map("revoke_reason")
+  metadata        Json?                      // Additional installation context
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  // Relations
+  agent           RevclawAgent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  intents         RevclawIntent[]
+  exchangeCodes   RevclawExchangeCode[]
+  accessTokens    RevclawAccessToken[]
+  plans           RevclawPlan[]
+
+  @@unique([agentId, userId]) // One installation per agent-user pair
+  @@index([agentId])
+  @@index([userId])
+  @@index([status])
+  @@map("revclaw_installations")
+}
+
+/// Exchange codes for token issuance (single-use, short-lived)
+model RevclawExchangeCode {
+  id              String                     @id @default(cuid())
+  installationId  String                     @map("installation_id")
+  codeHash        String                     @unique @map("code_hash") // Hashed exchange code
+  scopesSnapshot  String[]                   @map("scopes_snapshot") // Scopes at generation time
+  status          RevclawExchangeCodeStatus  @default(PENDING)
+  expiresAt       DateTime                   @map("expires_at") // Short-lived (5 minutes)
+  usedAt          DateTime?                  @map("used_at")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+
+  // Relations
+  installation    RevclawInstallation        @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([installationId])
+  @@index([codeHash])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("revclaw_exchange_codes")
+}
+
+/// Access and refresh tokens (hashed at rest)
+model RevclawAccessToken {
+  id              String                     @id @default(cuid())
+  installationId  String                     @map("installation_id")
+  tokenHash       String                     @unique @map("token_hash") // Hashed token
+  tokenType       RevclawTokenType           @map("token_type") // ACCESS or REFRESH
+  scopesSnapshot  String[]                   @map("scopes_snapshot") // Scopes at generation time
+  expiresAt       DateTime                   @map("expires_at")
+  revokedAt       DateTime?                  @map("revoked_at")
+  lastUsedAt      DateTime?                  @map("last_used_at")
+  
+  // For refresh tokens: track parent to detect reuse
+  parentTokenId   String?                    @map("parent_token_id") // Previous refresh token in chain
+  refreshedAt     DateTime?                  @map("refreshed_at") // When this refresh token was used
+  
+  createdAt       DateTime                   @default(now()) @map("created_at")
+
+  // Relations
+  installation    RevclawInstallation        @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([installationId])
+  @@index([tokenHash])
+  @@index([tokenType])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("revclaw_access_tokens")
+}
+
+/// Proposed action requiring approval (immutable payload)
+model RevclawPlan {
+  id                   String           @id @default(cuid())
+  installationId       String           @map("installation_id")
+  userId               String           @map("user_id")
+
+  status               RevclawPlanStatus @default(DRAFT)
+
+  planJson             Json             @map("plan_json")
+  planHash             String           @map("plan_hash")
+
+  version              Int              @default(1)
+  supersedesPlanId     String?          @map("supersedes_plan_id")
+
+  executeIntentId      String?          @map("execute_intent_id")
+
+  // Magic-link approval (no session required). Token is stored hashed.
+  approvalTokenHash       String?       @unique @map("approval_token_hash")
+  approvalTokenExpiresAt  DateTime?     @map("approval_token_expires_at")
+  approvalTokenUsedAt     DateTime?     @map("approval_token_used_at")
+
+  executionResult      Json?            @map("execution_result")
+  executedAt           DateTime?        @map("executed_at")
+
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  installation         RevclawInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([installationId])
+  @@index([userId])
+  @@index([status])
+  @@map("revclaw_plans")
+}
+
+model RevclawIntent {
+  id                  String              @id @default(cuid())
+  installationId      String              @map("installation_id")
+  agentId             String              @map("agent_id")
+  onBehalfOfUserId    String              @map("on_behalf_of_user_id")
+  
+  kind                RevclawIntentKind   // publish, apply, etc.
+  payloadJson         Json                @map("payload_json") // Immutable action payload
+  payloadHash         String              @map("payload_hash") // SHA-256 for integrity verification
+  idempotencyKey      String              @map("idempotency_key") // Client-provided for deduplication
+  
+  status              RevclawIntentStatus @default(PENDING_APPROVAL)
+  approvedAt          DateTime?           @map("approved_at")
+  approvedPayloadHash String?             @map("approved_payload_hash") // Hash at approval time (must match payloadHash)
+  deniedAt            DateTime?           @map("denied_at")
+  denyReason          String?             @map("deny_reason")
+  executedAt          DateTime?           @map("executed_at")
+  executionResult     Json?               @map("execution_result") // Result of execution (success/error details)
+  expiresAt           DateTime            @map("expires_at") // Intent expiration
+  
+  // Magic-link approval (no session required). Token is stored hashed.
+  approvalTokenHash   String?             @unique @map("approval_token_hash")
+  approvalTokenExpiresAt DateTime?        @map("approval_token_expires_at")
+  approvalTokenUsedAt DateTime?           @map("approval_token_used_at")
+
+  metadata            Json?               // Additional intent context
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  installation        RevclawInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  agent               RevclawAgent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  onBehalfOfUser      User                @relation("IntentOnBehalfOf", fields: [onBehalfOfUserId], references: [id], onDelete: Cascade)
+
+  @@unique([idempotencyKey, installationId]) // Idempotency per installation
+  @@index([installationId])
+  @@index([agentId])
+  @@index([onBehalfOfUserId])
+  @@index([status])
+  @@index([kind])
+  @@index([expiresAt])
+  @@map("revclaw_intents")
+}
+
+/// Tamper-evident append-only audit log with hash chaining
+model AuditLog {
+  id                  String              @id @default(cuid())
+  sequence            BigInt              @unique @default(autoincrement()) // Monotonic sequence for ordering
+  
+  // Attribution (who performed the action)
+  performedByAgentId  String?             @map("performed_by_agent_id")
+  onBehalfOfUserId    String?             @map("on_behalf_of_user_id")
+  
+  // Action details
+  action              String              // Action type (e.g., "project.publish", "application.submit")
+  resourceType        String              @map("resource_type") // Entity type (e.g., "Project", "Contract")
+  resourceId          String              @map("resource_id") // Entity ID
+  
+  // Request context
+  requestId           String?             @map("request_id") // Correlation ID
+  idempotencyKey      String?             @map("idempotency_key") // If action used idempotency
+  ipAddress           String?             @map("ip_address") // Requester IP (for security audits)
+  userAgent           String?             @map("user_agent") // Requester user-agent
+  
+  // Payload (MUST NOT include secrets)
+  payload             Json?               // Action-specific data (redacted of secrets)
+  
+  // Hash chaining for tamper evidence
+  previousHash        String?             @map("previous_hash") // Hash of previous entry (null for first)
+  entryHash           String              @map("entry_hash") // SHA-256(sequence + previous_hash + action + resource + timestamp + payload)
+  
+  createdAt           DateTime            @default(now()) @map("created_at")
+
+  // Relations (optional, for easier querying)
+  performedByAgent    RevclawAgent?       @relation(fields: [performedByAgentId], references: [id], onDelete: SetNull)
+  onBehalfOfUser      User?               @relation("AuditOnBehalfOf", fields: [onBehalfOfUserId], references: [id], onDelete: SetNull)
+
+  @@index([performedByAgentId])
+  @@index([onBehalfOfUserId])
+  @@index([action])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@index([sequence])
+  @@map("audit_logs")
+}
+
+// =============================================================================
+// RevClaw Enums
+// =============================================================================
+
+enum RevclawAgentStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum RevclawRegistrationStatus {
+  PENDING
+  CLAIMED
+  EXPIRED
+  REVOKED
+}
+
+enum RevclawInstallationStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum RevclawIntentKind {
+  PROJECT_PUBLISH
+  APPLICATION_SUBMIT
+  COUPON_TEMPLATE_CREATE
+  REWARD_CREATE
+  PLAN_EXECUTE
+}
+
+enum RevclawPlanStatus {
+  DRAFT
+  APPROVED
+  EXECUTING
+  EXECUTED
+  CANCELED
+}
+
+enum RevclawIntentStatus {
+  PENDING_APPROVAL
+  APPROVED
+  DENIED
+  EXECUTED
+  EXPIRED
+}
+
+enum RevclawExchangeCodeStatus {
+  PENDING
+  USED
+  EXPIRED
+  REVOKED
+}
+
+enum RevclawTokenType {
+  ACCESS
+  REFRESH
 }

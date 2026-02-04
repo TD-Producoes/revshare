@@ -209,6 +209,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [isDisconnectingRevenueCat, setIsDisconnectingRevenueCat] = useState(false);
   const [isStripeDisconnectDialogOpen, setIsStripeDisconnectDialogOpen] = useState(false);
   const [isDisconnectingStripe, setIsDisconnectingStripe] = useState(false);
+  const [isStripeConnectDialogOpen, setIsStripeConnectDialogOpen] = useState(false);
   const [isCreatingRevenueCatWebhook, setIsCreatingRevenueCatWebhook] = useState(false);
   const [templateForm, setTemplateForm] = useState({
     name: "",
@@ -272,7 +273,6 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (!tab) return;
     const allowedTabs = new Set([
       "overview",
       "metrics",
@@ -283,11 +283,21 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       "attribution",
       "settings",
     ]);
-    if (allowedTabs.has(tab)) {
+
+    if (tab && allowedTabs.has(tab)) {
       setActiveTab(tab);
     }
+
+    // Deep-link dialogs
+    const dialog = searchParams.get("dialog");
+    if (dialog === "stripe") {
+      // The dialog is most relevant in Settings, but we keep it usable from anywhere.
+      setActiveTab((prev) => (prev === "settings" ? prev : "settings"));
+      setIsStripeConnectDialogOpen(true);
+    }
+
     const createParam = searchParams.get("create");
-    if (createParam && allowedTabs.has(tab)) {
+    if (createParam && tab && allowedTabs.has(tab)) {
       const createKey = `${projectId}:${createParam}`;
       if (handledCreateRef.current !== createKey) {
         handledCreateRef.current = createKey;
@@ -308,7 +318,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     if (error === "stripe_account_already_connected" && !handledErrorRef.current) {
       handledErrorRef.current = true;
       toast.error(
-        "This Stripe account is already connected to another project. Please use a different Stripe account."
+        "This Stripe account is already connected to another project. Please use a different Stripe account.",
       );
       // Remove error param from URL
       const newSearchParams = new URLSearchParams(searchParams.toString());
@@ -319,6 +329,21 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       router.replace(newUrl, { scroll: false });
     }
   }, [searchParams, router]);
+
+  // Keep the Stripe connect deep-link param in sync with dialog state.
+  useEffect(() => {
+    if (!isStripeConnectDialogOpen) {
+      const dialog = searchParams.get("dialog");
+      if (dialog === "stripe") {
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        newSearchParams.delete("dialog");
+        const newUrl = newSearchParams.toString()
+          ? `${window.location.pathname}?${newSearchParams.toString()}`
+          : window.location.pathname;
+        router.replace(newUrl, { scroll: false });
+      }
+    }
+  }, [isStripeConnectDialogOpen, searchParams, router]);
 
   useEffect(() => {
     setRevenueCatProjectId(apiProject?.revenueCatProjectId ?? "");
@@ -1145,6 +1170,84 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                   {isSavingRevenueCat ? "Connecting..." : "Connect RevenueCat"}
                 </Button>
               </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isStripeConnectDialogOpen}
+        onOpenChange={setIsStripeConnectDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Stripe for this project</DialogTitle>
+            <DialogDescription>
+              Connect Stripe to enable verified revenue tracking and payouts for
+              <span className="font-medium text-foreground">
+                {" "}
+                {apiProject?.name ?? "this project"}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Status</span>
+                {isStripeConnected ? (
+                  <Badge variant="secondary">Connected</Badge>
+                ) : (
+                  <Badge variant="outline">Not connected</Badge>
+                )}
+              </div>
+              {shouldShowStripeConnect ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Stripe Connect uses OAuth. You will be redirected to Stripe to
+                  authorize access.
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Stripe Connect is unavailable while RevenueCat is connected.
+                  Disconnect RevenueCat first.
+                </p>
+              )}
+            </div>
+
+            {connectError ? (
+              <p className="text-sm text-destructive">{connectError}</p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsStripeConnectDialogOpen(false)}
+            >
+              Close
+            </Button>
+
+            {!isStripeConnected ? (
+              <Button
+                type="button"
+                onClick={() => void handleConnectStripe()}
+                disabled={!shouldShowStripeConnect}
+              >
+                Connect Stripe
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  setIsStripeConnectDialogOpen(false);
+                  setIsStripeDisconnectDialogOpen(true);
+                }}
+              >
+                Disconnect
+              </Button>
             )}
           </DialogFooter>
         </DialogContent>

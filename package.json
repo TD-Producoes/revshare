@@ -26,7 +26,12 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "email:dev": "npx react-email dev --dir emails --port 3001",
-    "postinstall": "prisma generate"
+    "test:revclaw-tokens": "dotenv -- tsx scripts/test-revclaw-token-lifecycle.ts",
+    "postinstall": "prisma generate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:revclaw": "vitest run --testPathPattern=revclaw"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.2",
@@ -75,11 +80,15 @@
     "@types/puppeteer": "^5.4.7",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.0.18",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "react-email": "^5.2.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   },
   "overrides": {
     "hono": "4.11.7",

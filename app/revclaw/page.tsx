@@ -11,7 +11,7 @@ export default function RevclawPage() {
 
   const prompt = useMemo(
     () =>
-      "Go to revshare.fast/skills.md and submit your existing projects or choose projects to sell.",
+      "Go to revshare.fast/skill.md and submit your existing projects or choose projects to sell.",
     []
   );
 

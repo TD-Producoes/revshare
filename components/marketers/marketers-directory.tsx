@@ -87,6 +87,11 @@ export function MarketersDirectory({
       totalEarnings: marketer.totalEarnings,
       totalRevenue: marketer.totalRevenue,
       activeProjects: marketer.activeProjects,
+      applications: marketer.applications,
+      successRate: marketer.successRate,
+      clicks30d: marketer.clicks30d,
+      installs30d: marketer.installs30d,
+      purchases30d: marketer.purchases30d,
     }));
   }, [marketers]);
 

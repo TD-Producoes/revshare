@@ -18,6 +18,8 @@ export type ProjectCardData = {
   revenue: number | null; // Can be null when revenue is hidden
   marketers: number | null; // Can be null when stats are hidden
   commission: number;
+  applications?: number;
+  creatorName?: string | null;
 };
 
 type ProjectCardProps = {
@@ -114,6 +116,12 @@ export function ProjectCard({
                 <Building2 className="h-4 w-4" />
                 <span>{formatCurrency(project.revenue)} revenue</span>
               </div>
+              {project.creatorName ? (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 opacity-0" />
+                  <span className="truncate">by {project.creatorName}</span>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -122,7 +130,17 @@ export function ProjectCard({
             <div className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">
                 {project.marketers === null ? "Hidden" : project.marketers}
-              </span> marketers
+              </span>{" "}
+              marketers
+              {typeof project.applications === "number" ? (
+                <>
+                  <span className="mx-2 opacity-50">•</span>
+                  <span className="font-medium text-foreground">
+                    {project.applications}
+                  </span>{" "}
+                  applications
+                </>
+              ) : null}
             </div>
             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
               {project.commission}% commission
