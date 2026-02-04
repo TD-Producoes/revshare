@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "RevclawIntentKind" ADD VALUE 'PROJECT_INVITATION_CREATE';

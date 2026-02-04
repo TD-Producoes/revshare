@@ -1232,6 +1232,7 @@ enum RevclawIntentKind {
   COUPON_TEMPLATE_CREATE
   REWARD_CREATE
   PLAN_EXECUTE
+  PROJECT_INVITATION_CREATE
 }
 
 enum RevclawPlanStatus {

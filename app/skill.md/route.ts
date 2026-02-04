@@ -247,7 +247,7 @@ function buildMarkdown(): string {
     "",
     "1) Bot creates a plan:",
     "```bash",
-    `curl -X POST ${CANONICAL_ORIGIN}/api/revclaw/plans \\\n  -H "Authorization: Bearer $AGENT_SECRET" \\\n  -H "X-RevClaw-User-Id: $USER_ID" \\\n  -H "Content-Type: application/json" \\\n  -d '{"plan_json":{"kind":"PROJECT_LAUNCH_PLAN","project":{"mode":"create","name":"My Project"},"rewards":[],"couponTemplates":[]},"idempotency_key":"..."}'`,
+    `curl -X POST ${CANONICAL_ORIGIN}/api/revclaw/plans \\\n  -H "Authorization: Bearer $AGENT_SECRET" \\\n  -H "X-RevClaw-User-Id: $USER_ID" \\\n  -H "Content-Type: application/json" \\\n  -d '{"plan_json":{"kind":"PROJECT_LAUNCH_PLAN","project":{"mode":"create","name":"My Project"},"invitations":{"enabled":true,"maxMarketers":20,"message":"Hello! We just launched {project_name} on RevShare. We offer {commission_percent}% commission with a {refund_window_days}-day refund window. If you’re interested, accept the invite to get tracking + chat access."},"rewards":[],"couponTemplates":[]},"idempotency_key":"..."}'`,
     "```",
     "2) Human opens `plan_url` and approves.",
     "3) Bot executes the approved plan:",

@@ -137,6 +137,10 @@ export async function POST(
     if ((planJson.couponTemplates ?? []).length > 0) {
       requireScope(agent, "coupons:template_write");
     }
+    if (planJson.invitations?.enabled) {
+      requireScope(agent, "marketers:read");
+      // invitations are a project-side action; still treated as part of plan execution
+    }
     if (planJson.publish?.enabled) {
       requireScope(agent, "projects:publish");
     }
@@ -231,6 +235,9 @@ export async function POST(
       select: {
         id: true,
         name: true,
+        category: true,
+        marketerCommissionPercent: true,
+        refundWindowDays: true,
         creatorStripeAccountId: true,
         visibility: true,
         userId: true,
@@ -241,7 +248,159 @@ export async function POST(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // Step 2: rewards (draft) (idempotent by client_ref)
+    // Step 2: invitations (choose up to N marketers) (best-effort, idempotent-ish)
+    if (planJson.invitations?.enabled) {
+      const already = hasStep((s) => s.kind === "invitations.send" && s.status === "ok");
+      if (!already) {
+        if (!project.category || !project.category.trim()) {
+          execution.steps.push({
+            kind: "invitations.send",
+            status: "skipped",
+            reason: "missing_project_category",
+            invited_count: 0,
+            skipped_count: 0,
+            max_marketers: Math.min(20, Math.max(1, planJson.invitations.maxMarketers ?? 20)),
+          });
+        } else {
+          const maxMarketers = Math.min(20, Math.max(1, planJson.invitations.maxMarketers ?? 20));
+
+          const marketers = await prisma.user.findMany({
+          where: {
+            role: "marketer",
+            visibility: { in: ["PUBLIC", "GHOST"] },
+          },
+          select: {
+            id: true,
+            metadata: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 250,
+        });
+
+        // lightweight scoring based on project category vs marketer specialties/focus
+        const { parseUserMetadata } = await import("@/lib/services/user-metadata");
+
+        const category = (project.category ?? "").trim().toLowerCase();
+        const score = (meta: { specialties?: string[]; focusArea?: string | null }) => {
+          if (!category) return 0;
+          const specialties = (meta.specialties ?? []).map((s) => s.toLowerCase());
+          const focus = (meta.focusArea ?? "").toLowerCase();
+          let s = 0;
+          if (specialties.some((sp) => sp.includes(category) || category.includes(sp))) s += 3;
+          if (focus && (focus.includes(category) || category.includes(focus))) s += 2;
+          return s;
+        };
+
+        const scored = marketers
+          .map((m) => {
+            const meta = parseUserMetadata(m.metadata);
+            return { marketerId: m.id, score: score(meta) };
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, maxMarketers);
+
+        const commissionPercent =
+          typeof planJson.invitations.commissionPercent === "number"
+            ? planJson.invitations.commissionPercent
+            : typeof planJson.project.marketerCommissionPercent === "number"
+              ? planJson.project.marketerCommissionPercent
+              : Math.round(Number(project.marketerCommissionPercent) * 100);
+
+        const refundWindowDays =
+          typeof planJson.invitations.refundWindowDays === "number"
+            ? planJson.invitations.refundWindowDays
+            : typeof planJson.project.refundWindowDays === "number"
+              ? planJson.project.refundWindowDays
+              : project.refundWindowDays ?? 30;
+
+        const messageBody = planJson.invitations.message;
+
+        let invitedCount = 0;
+        let skippedCount = 0;
+
+        for (const r of scored) {
+          // Skip if already has contract
+          const hasContract = await prisma.contract.findUnique({
+            where: { projectId_userId: { projectId: project.id, userId: r.marketerId } },
+            select: { id: true },
+          });
+          if (hasContract) {
+            skippedCount += 1;
+            continue;
+          }
+
+          const existingPending = await prisma.projectInvitation.findFirst({
+            where: { projectId: project.id, marketerId: r.marketerId, status: "PENDING" },
+            select: { id: true },
+          });
+          if (existingPending) {
+            skippedCount += 1;
+            continue;
+          }
+
+          await prisma.$transaction(async (tx) => {
+            await tx.projectInvitation.create({
+              data: {
+                projectId: project.id,
+                founderId: agent.userId,
+                marketerId: r.marketerId,
+                status: "PENDING",
+                message: messageBody,
+                commissionPercentSnapshot: commissionPercent / 100,
+                refundWindowDaysSnapshot: refundWindowDays,
+              },
+              select: { id: true },
+            });
+
+            const conv = await tx.conversation.upsert({
+              where: {
+                projectId_founderId_marketerId: {
+                  projectId: project.id,
+                  founderId: agent.userId,
+                  marketerId: r.marketerId,
+                },
+              },
+              create: {
+                projectId: project.id,
+                founderId: agent.userId,
+                marketerId: r.marketerId,
+                createdFrom: "INVITATION",
+              },
+              update: {},
+              select: { id: true },
+            });
+
+            const msg = await tx.conversationMessage.create({
+              data: {
+                conversationId: conv.id,
+                senderUserId: agent.userId,
+                body: messageBody,
+              },
+              select: { createdAt: true },
+            });
+
+            await tx.conversation.update({
+              where: { id: conv.id },
+              data: { lastMessageAt: msg.createdAt },
+            });
+          });
+
+          invitedCount += 1;
+        }
+
+        execution.steps.push({
+          kind: "invitations.send",
+          status: "ok",
+          invited_count: invitedCount,
+          skipped_count: skippedCount,
+          max_marketers: maxMarketers,
+        });
+        }
+      }
+    }
+
+    // Step 3: rewards (draft) (idempotent by client_ref)
     for (const reward of planJson.rewards ?? []) {
       const already = hasStep(
         (s) => s.kind === "reward.create" && s.client_ref === reward.client_ref && s.status === "ok",

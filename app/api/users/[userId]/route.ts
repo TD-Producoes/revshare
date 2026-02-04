@@ -63,6 +63,7 @@ const updateMetadataSchema = z.object({
   location: z.string().max(100).optional().nullable(),
   website: z.string().url().optional().nullable().or(z.literal("")),
   specialties: z.array(z.string().max(100)).max(10).optional().nullable(),
+  categories: z.array(z.string().max(80)).max(20).optional().nullable(),
   focusArea: z.string().max(100).optional().nullable(),
   socialMedia: z
     .object({
@@ -115,7 +116,7 @@ export async function PATCH(
   let metadata = parseUserMetadata(user.metadata);
 
   if (metadataUpdate) {
-    const { bio, location, website, specialties, focusArea, socialMedia } =
+    const { bio, location, website, specialties, categories, focusArea, socialMedia } =
       metadataUpdate;
 
     // Update basic profile fields
@@ -130,6 +131,9 @@ export async function PATCH(
     }
     if (specialties !== undefined) {
       metadata = { ...metadata, specialties: specialties || undefined };
+    }
+    if (categories !== undefined) {
+      metadata = { ...metadata, categories: categories || undefined };
     }
     if (focusArea !== undefined) {
       metadata = { ...metadata, focusArea: focusArea || undefined };

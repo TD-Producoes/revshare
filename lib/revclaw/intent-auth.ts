@@ -177,7 +177,8 @@ export type IntentKind =
   | "APPLICATION_SUBMIT"
   | "COUPON_TEMPLATE_CREATE"
   | "REWARD_CREATE"
-  | "PLAN_EXECUTE";
+  | "PLAN_EXECUTE"
+  | "PROJECT_INVITATION_CREATE";
 
 export interface IntentVerification {
   intentId: string;
