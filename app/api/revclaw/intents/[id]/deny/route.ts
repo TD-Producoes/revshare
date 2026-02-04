@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuthUser, authErrorResponse } from "@/lib/auth";
 import { createAuditLog } from "@/lib/revclaw/intent-auth";
 import { emitRevclawEvent } from "@/lib/revclaw/events";
+import { hashToken } from "@/lib/revclaw/crypto";
 
 /**
  * POST /api/revclaw/intents/:id/deny
@@ -34,12 +35,22 @@ const denyInput = z.object({
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id: intentId } = await params;
 
-  // Authenticate human user
-  let authUser;
-  try {
-    authUser = await requireAuthUser();
-  } catch (error) {
-    return authErrorResponse(error);
+  // Magic-link mode (no session): accept token via query ?token=...
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token");
+
+  let authUser: { id: string } | null = null;
+  let deniedVia: "session" | "magic_link" = "session";
+
+  if (!token) {
+    // Session-based denial
+    try {
+      authUser = await requireAuthUser();
+    } catch (error) {
+      return authErrorResponse(error);
+    }
+  } else {
+    deniedVia = "magic_link";
   }
 
   // Parse optional input
@@ -76,12 +87,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // Verify user owns the installation
-  if (intent.installation.userId !== authUser.id) {
-    return NextResponse.json(
-      { error: "You do not own this installation", code: "forbidden" },
-      { status: 403 }
-    );
+  // Verify denial authorization
+  if (token) {
+    const tokenHash = hashToken(token);
+    const validToken =
+      intent.approvalTokenHash &&
+      intent.approvalTokenHash === tokenHash &&
+      !intent.approvalTokenUsedAt &&
+      (!intent.approvalTokenExpiresAt || intent.approvalTokenExpiresAt > new Date());
+
+    if (!validToken) {
+      return NextResponse.json(
+        { error: "Invalid or expired approval token", code: "invalid_approval_token" },
+        { status: 403 }
+      );
+    }
+  } else {
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (intent.installation.userId !== authUser.id) {
+      return NextResponse.json(
+        { error: "You do not own this installation", code: "forbidden" },
+        { status: 403 }
+      );
+    }
   }
 
   // Check intent status - can deny pending or approved (but not executed)
@@ -114,13 +145,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       status: "DENIED",
       deniedAt: now,
       denyReason: reason,
+      approvalTokenUsedAt: token ? now : intent.approvalTokenUsedAt,
     },
   });
 
   // Create audit log
   await createAuditLog({
     agentId: intent.agentId,
-    userId: authUser.id,
+    userId: intent.installation.userId,
     action: "intent.denied",
     resourceType: "RevclawIntent",
     resourceId: intentId,
@@ -132,7 +164,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     payload: {
       kind: intent.kind,
       payload_hash: intent.payloadHash,
-      denied_by_user_id: authUser.id,
+      denied_via: deniedVia,
       agent_name: intent.installation.agent.name,
       reason: reason ?? null,
     },
@@ -141,7 +173,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   await emitRevclawEvent({
     type: "REVCLAW_INTENT_DENIED",
     agentId: intent.agentId,
-    userId: authUser.id,
+    userId: intent.installation.userId,
     subjectType: "RevclawIntent",
     subjectId: intentId,
     installationId: intent.installationId,
@@ -149,14 +181,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     initiatedBy: "user",
     data: {
       kind: intent.kind,
+      denied_via: deniedVia,
       reason: reason ?? null,
     },
   });
+
+  const accept = request.headers.get("accept") ?? "";
+  const wantsJson = accept.includes("application/json");
+  if (deniedVia === "magic_link" && !wantsJson) {
+    return NextResponse.redirect(new URL(`/revclaw/intents/${intentId}/denied`, request.url));
+  }
 
   return NextResponse.json({
     intent_id: intentId,
     status: "denied",
     denied_at: now.toISOString(),
+    denied_via: deniedVia,
     reason: reason ?? null,
   });
 }

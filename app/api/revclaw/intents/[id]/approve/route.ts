@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { requireAuthUser, authErrorResponse, AuthError } from "@/lib/auth";
+import { requireAuthUser, authErrorResponse } from "@/lib/auth";
 import { createAuditLog } from "@/lib/revclaw/intent-auth";
 import { emitRevclawEvent } from "@/lib/revclaw/events";
+import { hashToken } from "@/lib/revclaw/crypto";
 
 /**
  * POST /api/revclaw/intents/:id/approve
@@ -36,12 +37,22 @@ const approveInput = z.object({
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id: intentId } = await params;
 
-  // Authenticate human user
-  let authUser;
-  try {
-    authUser = await requireAuthUser();
-  } catch (error) {
-    return authErrorResponse(error);
+  // Magic-link mode (no session): accept token via query ?token=...
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token");
+
+  let authUser: { id: string } | null = null;
+  let approvedVia: "session" | "magic_link" = "session";
+
+  if (!token) {
+    // Session-based approval
+    try {
+      authUser = await requireAuthUser();
+    } catch (error) {
+      return authErrorResponse(error);
+    }
+  } else {
+    approvedVia = "magic_link";
   }
 
   // Parse optional input
@@ -76,12 +87,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // Verify user owns the installation
-  if (intent.installation.userId !== authUser.id) {
-    return NextResponse.json(
-      { error: "You do not own this installation", code: "forbidden" },
-      { status: 403 }
-    );
+  // Verify approval authorization
+  if (token) {
+    const tokenHash = hashToken(token);
+    const validToken =
+      intent.approvalTokenHash &&
+      intent.approvalTokenHash === tokenHash &&
+      !intent.approvalTokenUsedAt &&
+      (!intent.approvalTokenExpiresAt || intent.approvalTokenExpiresAt > new Date());
+
+    if (!validToken) {
+      return NextResponse.json(
+        { error: "Invalid or expired approval token", code: "invalid_approval_token" },
+        { status: 403 }
+      );
+    }
+  } else {
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (intent.installation.userId !== authUser.id) {
+      return NextResponse.json(
+        { error: "You do not own this installation", code: "forbidden" },
+        { status: 403 }
+      );
+    }
   }
 
   // Check intent status
@@ -120,13 +151,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       status: "APPROVED",
       approvedAt: now,
       approvedPayloadHash: intent.payloadHash, // Lock the payload hash at approval time
+      approvalTokenUsedAt: token ? now : intent.approvalTokenUsedAt,
     },
   });
 
   // Create audit log
   await createAuditLog({
     agentId: intent.agentId,
-    userId: authUser.id,
+    userId: intent.installation.userId,
     action: "intent.approved",
     resourceType: "RevclawIntent",
     resourceId: intentId,
@@ -138,7 +170,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     payload: {
       kind: intent.kind,
       payload_hash: intent.payloadHash,
-      approved_by_user_id: authUser.id,
+      approved_via: approvedVia,
       agent_name: intent.installation.agent.name,
     },
   });
@@ -146,7 +178,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   await emitRevclawEvent({
     type: "REVCLAW_INTENT_APPROVED",
     agentId: intent.agentId,
-    userId: authUser.id,
+    userId: intent.installation.userId,
     subjectType: "RevclawIntent",
     subjectId: intentId,
     installationId: intent.installationId,
@@ -154,12 +186,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     initiatedBy: "user",
     data: {
       kind: intent.kind,
+      approved_via: approvedVia,
     },
   });
+
+  // For magic-link usage, default to redirecting to a minimal success page.
+  // Return JSON only when the client explicitly requests JSON.
+  const accept = request.headers.get("accept") ?? "";
+  const wantsJson = accept.includes("application/json");
+  if (approvedVia === "magic_link" && !wantsJson) {
+    return NextResponse.redirect(
+      new URL(`/revclaw/intents/${intentId}/approved`, request.url),
+    );
+  }
 
   return NextResponse.json({
     intent_id: intentId,
     status: "approved",
     approved_at: now.toISOString(),
+    approved_via: approvedVia,
   });
 }

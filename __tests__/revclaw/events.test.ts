@@ -98,7 +98,8 @@ describe("RevClaw route integration (minimal)", () => {
       claimId: "claim_1",
       requestedScopes: ["scope:a"],
       status: "PENDING",
-      expiresAt: new Date("2026-02-04T00:00:00.000Z"),
+      // Keep this in the future so tests don't become time-dependent.
+      expiresAt: new Date("2026-12-31T00:00:00.000Z"),
       agent: {
         id: "agent_1",
         name: "My Bot",

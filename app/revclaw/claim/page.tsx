@@ -1,5 +1,17 @@
 import Link from "next/link";
 
+import { RevclawShell } from "@/app/revclaw/_components/revclaw-shell";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserOptional } from "@/lib/auth";
 
@@ -12,10 +24,14 @@ export default async function RevclawClaimPage({
 
   if (!claim_id) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <h1 className="text-2xl font-bold">RevClaw Claim</h1>
-        <p className="mt-4 text-muted-foreground">Missing claim_id.</p>
-      </main>
+      <RevclawShell>
+        <Alert className="border-white/10 bg-white/[0.04] text-white">
+          <AlertTitle>Missing claim_id</AlertTitle>
+          <AlertDescription className="text-white/60">
+            This claim link is invalid.
+          </AlertDescription>
+        </Alert>
+      </RevclawShell>
     );
   }
 
@@ -30,85 +46,129 @@ export default async function RevclawClaimPage({
 
   if (!registration) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <h1 className="text-2xl font-bold">RevClaw Claim</h1>
-        <p className="mt-4 text-muted-foreground">Invalid claim link.</p>
-      </main>
+      <RevclawShell>
+        <Alert className="border-white/10 bg-white/[0.04] text-white">
+          <AlertTitle>Invalid claim link</AlertTitle>
+          <AlertDescription className="text-white/60">
+            This approval link is invalid or expired.
+          </AlertDescription>
+        </Alert>
+      </RevclawShell>
     );
   }
 
   const expired = registration.expiresAt < new Date();
+  const canAct = registration.status === "PENDING" && !expired;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-2xl font-bold">Approve RevClaw Agent</h1>
-      <p className="mt-2 text-muted-foreground">
-        You are about to link a bot to your RevShare account.
-      </p>
-
-      <div className="mt-8 rounded-lg border border-border/40 bg-muted/10 p-6">
-        <div className="text-sm text-muted-foreground">Agent</div>
-        <div className="mt-1 text-lg font-semibold">{registration.agent.name}</div>
-        <div className="mt-2 text-sm text-muted-foreground">
-          Requested scopes: {registration.requestedScopes?.length ? registration.requestedScopes.join(", ") : "(none)"}
-        </div>
-        <div className="mt-2 text-sm text-muted-foreground">
-          Expires: {registration.expiresAt.toISOString()}
-        </div>
+    <RevclawShell>
+      <div className="mb-6">
+        <h1
+          className="text-balance text-3xl font-black tracking-tight"
+          style={{ fontFamily: "Clash Display, system-ui, sans-serif" }}
+        >
+          Approve RevClaw Agent
+        </h1>
+        <p className="mt-2 text-sm text-white/60">
+          You are about to link a bot to your RevShare account.
+        </p>
       </div>
 
-      {!authUser ? (
-        <div className="mt-8">
-          <p className="text-sm text-muted-foreground">
-            Please log in to approve.
-          </p>
-          <Link
-            className="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-primary-foreground"
-            href={`/login?next=/revclaw/claim?claim_id=${encodeURIComponent(claim_id)}`}
-          >
-            Log in
-          </Link>
-        </div>
-      ) : expired ? (
-        <div className="mt-8 rounded-lg border border-border/40 bg-muted/10 p-6">
-          <p className="text-muted-foreground">This claim link has expired.</p>
-        </div>
-      ) : registration.status !== "PENDING" ? (
-        <div className="mt-8 rounded-lg border border-border/40 bg-muted/10 p-6">
-          <p className="text-muted-foreground">
-            This claim is already {registration.status.toLowerCase()}.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-8 flex gap-3">
-          <form
-            method="post"
-            action={`/api/revclaw/claims/${encodeURIComponent(claim_id)}/approve`}
-          >
-            <button
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-primary-foreground"
-              type="submit"
-            >
-              Approve
-            </button>
-          </form>
-          <form
-            method="post"
-            action={`/api/revclaw/claims/${encodeURIComponent(claim_id)}/deny`}
-          >
-            <button
-              className="inline-flex items-center justify-center rounded-md border border-border/40 bg-background px-4 py-2"
-              type="submit"
-            >
-              Deny
-            </button>
-          </form>
-        </div>
-      )}
+      <Card className="border-white/10 bg-white/[0.04] text-white ring-0">
+        <CardHeader className="border-b border-white/10">
+          <CardTitle className="text-white">Review request</CardTitle>
+          <CardDescription className="text-white/60">
+            Security: never approve a bot you don’t recognize. Approval links are
+            short-lived and single-use.
+          </CardDescription>
+        </CardHeader>
 
-      <p className="mt-10 text-xs text-muted-foreground">
-        Security: never approve a bot you don’t recognize. Approval links are short-lived and single-use.
-      </p>
-    </main>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 text-sm">
+            <div>
+              <span className="font-semibold">Agent:</span>{" "}
+              <span className="text-white/80">{registration.agent.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">Status:</span>
+              <Badge variant={canAct ? "warning" : "secondary"}>
+                {registration.status}
+              </Badge>
+            </div>
+            <div>
+              <span className="font-semibold">Expires:</span>{" "}
+              <span className="text-white/70">
+                {registration.expiresAt.toISOString()}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm font-semibold">Requested scopes</div>
+            <pre className="mt-2 overflow-auto rounded-xl border border-white/10 bg-black/40 p-4 text-xs text-white/80">
+              {JSON.stringify(registration.requestedScopes ?? [], null, 2)}
+            </pre>
+          </div>
+
+          {!authUser ? (
+            <Alert className="border-white/10 bg-white/[0.04] text-white">
+              <AlertTitle>Login required</AlertTitle>
+              <AlertDescription className="text-white/60">
+                Please log in to approve.
+              </AlertDescription>
+              <div className="mt-3">
+                <Button asChild>
+                  <Link
+                    href={`/login?next=/revclaw/claim?claim_id=${encodeURIComponent(
+                      claim_id,
+                    )}`}
+                  >
+                    Log in
+                  </Link>
+                </Button>
+              </div>
+            </Alert>
+          ) : expired ? (
+            <Alert
+              variant="destructive"
+              className="border-destructive/40 bg-white/[0.04]"
+            >
+              <AlertTitle>Expired</AlertTitle>
+              <AlertDescription>This claim link has expired.</AlertDescription>
+            </Alert>
+          ) : registration.status !== "PENDING" ? (
+            <Alert className="border-white/10 bg-white/[0.04] text-white">
+              <AlertTitle>No action required</AlertTitle>
+              <AlertDescription className="text-white/60">
+                This claim is already {registration.status.toLowerCase()}.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+
+        <CardFooter className="border-t border-white/10 justify-end gap-2">
+          {authUser && canAct ? (
+            <>
+              <form
+                method="post"
+                action={`/api/revclaw/claims/${encodeURIComponent(claim_id)}/deny`}
+              >
+                <Button type="submit" variant="outline">
+                  Deny
+                </Button>
+              </form>
+              <form
+                method="post"
+                action={`/api/revclaw/claims/${encodeURIComponent(
+                  claim_id,
+                )}/approve`}
+              >
+                <Button type="submit">Approve</Button>
+              </form>
+            </>
+          ) : null}
+        </CardFooter>
+      </Card>
+    </RevclawShell>
   );
 }

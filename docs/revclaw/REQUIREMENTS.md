@@ -10,7 +10,7 @@ RevClaw lets an OpenClaw/Clawdbot agent act **on behalf of a human RevShare user
 - apply to projects as a marketer (marketer flow)
 
 **Moltbook-inspired model (adapted)**:
-- `/skills.md` is public **instructions + declaration** (no secrets)
+- `/skill.md` is public **instructions + declaration** (no secrets)
 - the bot authenticates to RevShare using a bot-held credential and/or an identity proof (RevClaw verification endpoint)
 - **nothing needs to be shared with the human** for the bot to operate
 - optional: RevShare asks the human to approve installs and/or high-risk actions
@@ -33,7 +33,7 @@ Key constraint: **Security first**.
 ## 2) Goals
 ### 2.1 Product goals
 1) **Minimal friction** delegation:
-   - bot starts from a public `/skills.md`
+   - bot starts from a public `/skill.md`
    - human approves in 1–2 taps
 2) **Human-first attribution**:
    - bot executes *on behalf of* the human
@@ -71,7 +71,7 @@ Key constraint: **Security first**.
 ---
 
 ## 5) Security invariants (MUST)
-1) **/skills.md is a declaration, not authorization**.
+1) **/skill.md is a declaration, not authorization**.
    - MUST contain zero secrets.
 2) **No bot can own funds or Stripe accounts**.
    - Stripe Connect OAuth MUST be completed by human in a browser session.
@@ -167,14 +167,14 @@ When approving a bot, allow the human to set:
 
 ---
 
-## 8) Bot surface (/skills.md + auth instructions)
+## 8) Bot surface (/skill.md + auth instructions)
 ### 8.1 Locations
-- `GET /skills.md` — public skill/instructions for bots (canonical).
+- `GET /skill.md` — public skill/instructions for bots (canonical).
 - `GET /revclaw/auth.md` — dynamic auth instructions (similar to Moltbook’s hosted instructions).
 
 Domain requirement:
 - canonical public domain for RevClaw skill docs is **https://revshare.fast**
-  - use `https://revshare.fast/skills.md`
+  - use `https://revshare.fast/skill.md`
 
 
 ### 8.2 Content requirements

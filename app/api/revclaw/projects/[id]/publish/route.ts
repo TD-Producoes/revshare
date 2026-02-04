@@ -34,7 +34,7 @@ export async function POST(
 
     const project = await prisma.project.findUnique({
       where: { id },
-      select: { id: true, userId: true, visibility: true },
+      select: { id: true, userId: true, name: true, visibility: true },
     });
 
     if (!project) {
@@ -51,7 +51,12 @@ export async function POST(
       select: { requireApprovalForPublish: true },
     });
 
-    const payloadForIntent = { project_id: id };
+    const payloadForIntent = {
+      project_id: id,
+      // Include project_name to keep payload hashing stable with the intent payload
+      // (intents may include a human-friendly name for approval UX).
+      project_name: project.name,
+    };
 
     let intentId: string | null = null;
     if (installation?.requireApprovalForPublish ?? true) {

@@ -16,7 +16,7 @@ This plan follows `docs/revclaw/REQUIREMENTS.md`.
 
 ## Phase 1 — Install & Founder Flow (minimal slice)
 1) Public bot entrypoints
-   - `GET /skills.md` (canonical)
+   - `GET /skill.md` (canonical)
    - `GET /revclaw/auth.md`
 2) Register + claim
    - `POST /api/revclaw/agents/register` -> {agent_id, agent_secret, claim_id, expires_at}

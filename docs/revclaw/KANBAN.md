@@ -3,7 +3,7 @@
 > Source of truth for RevClaw build status (until we move to GitHub Projects/Notion).
 
 ## Backlog
-- Implement canonical `/skills.md` endpoint on `revshare.fast` (public, no secrets) per requirements.
+- Implement canonical `/skill.md` endpoint on `revshare.fast` (public, no secrets) per requirements.
 - Implement `/revclaw/auth.md` (dynamic auth instructions; no secrets).
 - Define DB schema + migrations for RevClaw entities (Agent, Registration, Installation, Intent, AuditLog).
 - Implement agent register + claim flow (Telegram-first), including SSRF-safe manifest ingestion.

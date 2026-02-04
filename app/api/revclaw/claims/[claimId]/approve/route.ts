@@ -102,8 +102,13 @@ export async function POST(
       },
     });
 
-    // Redirect back to a friendly page
-    return NextResponse.redirect(new URL("/revclaw", process.env.BASE_URL ?? "https://revshare.fast"));
+    // Redirect to a friendly completion page
+    return NextResponse.redirect(
+      new URL(
+        `/revclaw/claim/approved?installation_id=${encodeURIComponent(installation.id)}`,
+        process.env.BASE_URL ?? "https://revshare.fast",
+      ),
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   hashPayload,
   generateSecureToken,
+  hashToken,
 } from "@/lib/revclaw/crypto";
 import {
   authenticateBot,
@@ -36,7 +37,13 @@ import { emitRevclawEvent } from "@/lib/revclaw/events";
 
 const INTENT_EXPIRY_MINUTES = 60; // Intents expire after 1 hour
 
-const intentKinds = ["PROJECT_PUBLISH", "APPLICATION_SUBMIT"] as const;
+const intentKinds = [
+  "PROJECT_PUBLISH",
+  "APPLICATION_SUBMIT",
+  "COUPON_TEMPLATE_CREATE",
+  "REWARD_CREATE",
+  "PLAN_EXECUTE",
+] as const;
 
 const createIntentInput = z.object({
   kind: z.enum(intentKinds),
@@ -73,8 +80,13 @@ function formatIntentKind(kind: IntentKind): string {
       return "publish a project";
     case "APPLICATION_SUBMIT":
       return "submit an application";
+    case "COUPON_TEMPLATE_CREATE":
+      return "create a coupon template";
+    case "REWARD_CREATE":
+      return "create a reward";
+    case "PLAN_EXECUTE":
+      return "execute a plan";
     default: {
-      // Fallback for any future kinds
       const kindStr = kind as string;
       return kindStr.toLowerCase().replace(/_/g, " ");
     }
@@ -169,6 +181,19 @@ function generatePayloadPreview(kind: IntentKind, payload: Record<string, unknow
       }
       return preview;
     }
+    case "COUPON_TEMPLATE_CREATE": {
+      const projectId = payload.project_id ?? "unknown";
+      const projectName = payload.project_name ?? "";
+      const templateName = payload.name ?? "";
+      const percentOff = payload.percentOff ?? payload.percent_off ?? "";
+      const headline = projectName
+        ? `Project: "${projectName}" (${projectId})`
+        : `Project ID: ${projectId}`;
+      const parts = [headline];
+      if (templateName) parts.push(`Template: ${templateName}`);
+      if (percentOff) parts.push(`Discount: ${String(percentOff)}% off`);
+      return parts.join("\n");
+    }
     default:
       return JSON.stringify(payload, null, 2).slice(0, 300);
   }
@@ -238,6 +263,10 @@ export async function POST(request: NextRequest) {
   // Calculate expiration
   const expiresAt = new Date(Date.now() + INTENT_EXPIRY_MINUTES * 60 * 1000);
 
+  // Magic-link token for approval (no session required)
+  const approvalTokenPlain = needsApproval ? generateSecureToken(32) : null;
+  const approvalTokenHash = approvalTokenPlain ? hashToken(approvalTokenPlain) : null;
+
   // Create the intent
   const intent = await prisma.revclawIntent.create({
     data: {
@@ -252,6 +281,10 @@ export async function POST(request: NextRequest) {
       approvedAt: needsApproval ? null : new Date(),
       approvedPayloadHash: needsApproval ? null : payloadHash,
       expiresAt,
+
+      approvalTokenHash,
+      approvalTokenExpiresAt: needsApproval ? expiresAt : null,
+      approvalTokenUsedAt: null,
     },
     select: {
       id: true,
@@ -301,26 +334,39 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Send approval notification if needed
+  // Build approval URLs.
+  // - approval_url is a HUMAN-FACING GET page that shows details + has Approve/Deny buttons.
+  // - approve_api_url / deny_api_url are the actual POST endpoints.
+  const requestOrigin = new URL(request.url).origin;
+
   let approvalUrl: string | undefined;
+  let approveApiUrl: string | undefined;
+  let denyApiUrl: string | undefined;
+
   if (needsApproval) {
-    approvalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/revclaw/intents/${intent.id}/approve`;
+    const tokenParam = approvalTokenPlain ? `?token=${encodeURIComponent(approvalTokenPlain)}` : "";
 
-    const payloadPreview = generatePayloadPreview(kind, payload_json);
-    const notifyResult = await sendIntentApprovalNotification({
-      userId: context.userId,
-      intentId: intent.id,
-      agentName: context.agentName,
-      kind,
-      payloadPreview,
-      expiresAt,
-    });
+    approvalUrl = `${requestOrigin}/revclaw/intents/${intent.id}${tokenParam}`;
+    approveApiUrl = `${requestOrigin}/api/revclaw/intents/${intent.id}/approve${tokenParam}`;
+    denyApiUrl = `${requestOrigin}/api/revclaw/intents/${intent.id}/deny${tokenParam}`;
 
-    if (!notifyResult.sent) {
-      console.warn(
-        `[RevClaw] Failed to send approval notification: ${notifyResult.error}`
-      );
-      // Don't fail the request - user can still approve via web
+    // Optional: notify via Telegram if configured (best-effort).
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+      const payloadPreview = generatePayloadPreview(kind, payload_json);
+      const notifyResult = await sendIntentApprovalNotification({
+        userId: context.userId,
+        intentId: intent.id,
+        agentName: context.agentName,
+        kind,
+        payloadPreview,
+        expiresAt,
+      });
+
+      if (!notifyResult.sent) {
+        console.warn(
+          `[RevClaw] Failed to send approval notification: ${notifyResult.error}`
+        );
+      }
     }
   }
 
@@ -329,6 +375,8 @@ export async function POST(request: NextRequest) {
       intent_id: intent.id,
       status: intent.status.toLowerCase(),
       approval_url: approvalUrl,
+      approve_api_url: approveApiUrl,
+      deny_api_url: denyApiUrl,
       expires_at: intent.expiresAt.toISOString(),
     },
     { status: 201 }

@@ -8,7 +8,6 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 
 import { prisma } from "@/lib/prisma";
 import { verifyAgentSecret } from "./secret";
@@ -173,7 +172,12 @@ export async function authenticateBot(
 // Intent Verification
 // =============================================================================
 
-export type IntentKind = "PROJECT_PUBLISH" | "APPLICATION_SUBMIT";
+export type IntentKind =
+  | "PROJECT_PUBLISH"
+  | "APPLICATION_SUBMIT"
+  | "COUPON_TEMPLATE_CREATE"
+  | "REWARD_CREATE"
+  | "PLAN_EXECUTE";
 
 export interface IntentVerification {
   intentId: string;
