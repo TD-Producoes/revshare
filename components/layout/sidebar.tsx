@@ -90,6 +90,7 @@ const marketerNavSections: NavSection[] = [
     label: "Manage",
     items: [
       { title: "Applications", href: "/marketer/applications", icon: FileText },
+      { title: "Invitations", href: "/marketer/invitations", icon: Users },
     ],
   },
   {
