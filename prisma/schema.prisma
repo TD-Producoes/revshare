@@ -55,6 +55,15 @@ model User {
   revclawIntentsOnBehalf   RevclawIntent[]           @relation("IntentOnBehalfOf")
   auditLogsOnBehalf        AuditLog[]                @relation("AuditOnBehalfOf")
 
+  // Invitations
+  invitationsSent          ProjectInvitation[]       @relation("InvitationFounder")
+  invitationsReceived      ProjectInvitation[]       @relation("InvitationMarketer")
+  invitationMessages       InvitationMessage[]
+
+  conversationsAsFounder   Conversation[]            @relation("ConversationFounder")
+  conversationsAsMarketer  Conversation[]            @relation("ConversationMarketer")
+  conversationMessages     ConversationMessage[]
+
   @@index([telegramUserId])
 }
 
@@ -93,6 +102,8 @@ model Project {
   logoUrl                   String?
   imageUrls                 String[]                  @default([])
   couponTemplates           CouponTemplate[]
+  invitations               ProjectInvitation[]
+  conversations             Conversation[]
   coupons                   Coupon[]
   purchases                 Purchase[]
   contracts                 Contract[]
@@ -223,6 +234,95 @@ model AttributionDeferredToken {
   @@index([createdAt])
 }
 
+model ProjectInvitation {
+  id                       String                 @id @default(cuid())
+  projectId                 String                 @map("project_id")
+  founderId                 String                 @map("founder_id")
+  marketerId                String                 @map("marketer_id")
+
+  status                    ProjectInvitationStatus @default(PENDING)
+
+  // Initial invite message (immutable)
+  message                   String                 @db.Text
+
+  // Terms snapshot (immutable)
+  commissionPercentSnapshot Decimal                @db.Decimal(5, 2) @map("commission_percent_snapshot")
+  refundWindowDaysSnapshot  Int                    @map("refund_window_days_snapshot")
+
+  // Link to contract created on accept
+  contractId                String?                @unique @map("contract_id")
+
+  createdAt                 DateTime               @default(now()) @map("created_at")
+  updatedAt                 DateTime               @updatedAt @map("updated_at")
+
+  project                   Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  founder                   User                   @relation("InvitationFounder", fields: [founderId], references: [id], onDelete: Cascade)
+  marketer                  User                   @relation("InvitationMarketer", fields: [marketerId], references: [id], onDelete: Cascade)
+  contract                  Contract?              @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  messages                  InvitationMessage[]
+
+  @@index([projectId])
+  @@index([founderId])
+  @@index([marketerId])
+  @@index([status])
+  @@unique([projectId, marketerId, status], map: "uniq_project_marketer_status")
+  @@map("project_invitations")
+}
+
+model InvitationMessage {
+  id            String            @id @default(cuid())
+  invitationId  String            @map("invitation_id")
+  senderUserId  String            @map("sender_user_id")
+  body          String            @db.Text
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  invitation    ProjectInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  sender        User              @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@index([invitationId, createdAt])
+  @@index([senderUserId])
+  @@map("invitation_messages")
+}
+
+model Conversation {
+  id          String               @id @default(cuid())
+  projectId   String               @map("project_id")
+  founderId   String               @map("founder_id")
+  marketerId  String               @map("marketer_id")
+
+  createdFrom ConversationOrigin   @map("created_from")
+
+  lastMessageAt DateTime?          @map("last_message_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  founder      User                @relation("ConversationFounder", fields: [founderId], references: [id], onDelete: Cascade)
+  marketer     User                @relation("ConversationMarketer", fields: [marketerId], references: [id], onDelete: Cascade)
+  messages     ConversationMessage[]
+
+  @@unique([projectId, founderId, marketerId])
+  @@index([founderId])
+  @@index([marketerId])
+  @@index([projectId])
+  @@map("conversations")
+}
+
+model ConversationMessage {
+  id             String        @id @default(cuid())
+  conversationId String        @map("conversation_id")
+  senderUserId   String        @map("sender_user_id")
+  body           String        @db.Text
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User          @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderUserId])
+  @@map("conversation_messages")
+}
+
 model Contract {
   id                String         @id @default(cuid())
   projectId         String
@@ -237,6 +337,7 @@ model Contract {
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   testimonial Testimonial?
+  invitation  ProjectInvitation?
 
   @@unique([projectId, userId])
   @@index([projectId])
@@ -485,6 +586,18 @@ enum ContractStatus {
   APPROVED
   REJECTED
   PAUSED
+}
+
+enum ProjectInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+}
+
+enum ConversationOrigin {
+  INVITATION
+  CONTRACT
 }
 
 enum RewardStatus {

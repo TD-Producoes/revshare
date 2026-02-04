@@ -6,6 +6,7 @@ import { ProjectMarketersTab } from "@/components/creator/project-tabs/marketers
 import { ProjectMetricsTab } from "@/components/creator/project-tabs/metrics-tab";
 import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-tab";
 import { ProjectRewardsTab } from "@/components/creator/project-tabs/rewards-tab";
+import { ProjectInvitationsTab } from "@/components/creator/project-tabs/invitations-tab";
 import { ProjectSettingsTab } from "@/components/creator/project-tabs/settings-tab";
 import { AttributionKeysSetup } from "@/components/creator/attribution-keys-setup";
 import { Button } from "@/components/ui/button";
@@ -514,11 +515,6 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     clickMap,
     installMap,
   );
-
-  // Calculate commission owed per marketer
-  const getCommissionOwed = (earnings: number) => {
-    return earnings; // Already calculated with rev share
-  };
 
   const handleConnectStripe = async () => {
     setConnectError("");
@@ -1348,6 +1344,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <TabsTrigger className="px-3 py-2 text-sm" value="rewards">
               Rewards
             </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="invitations">
+              Invitations
+            </TabsTrigger>
             <TabsTrigger className="px-3 py-2 text-sm" value="activity">
               Activity
             </TabsTrigger>
@@ -1414,6 +1413,19 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             projectCurrency={projectCurrency}
             autoOpenCreate={shouldOpenReward}
             onAutoOpenHandled={() => setShouldOpenReward(false)}
+          />
+        </TabsContent>
+
+        <TabsContent value="invitations">
+          <ProjectInvitationsTab
+            projectId={projectId}
+            defaultCommissionPercent={
+              typeof apiProject?.marketerCommissionPercent === "number" ||
+              typeof apiProject?.marketerCommissionPercent === "string"
+                ? Math.round(Number(apiProject.marketerCommissionPercent) * 100)
+                : resolvedProject.revSharePercent ?? 20
+            }
+            defaultRefundWindowDays={apiProject?.refundWindowDays ?? 30}
           />
         </TabsContent>
 

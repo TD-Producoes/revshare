@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
@@ -28,6 +29,7 @@ import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead 
 import { toast } from "sonner";
 import { CreateProjectForm } from "@/components/creator/create-project-form";
 import { useSetupGuide } from "@/components/creator/setup-guide-context";
+import { ChatDrawer } from "@/components/chat/chat-drawer";
 import {
   ChevronDown,
   Bell,
@@ -37,6 +39,7 @@ import {
   Plus,
   TicketPercent,
   Gift,
+  MessageSquareText,
 } from "lucide-react";
 
 export function Header() {
@@ -47,6 +50,8 @@ export function Header() {
   const [logoutError, setLogoutError] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatLastSeenAt, setChatLastSeenAt] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackError, setFeedbackError] = useState("");
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
@@ -69,7 +74,68 @@ export function Header() {
   const settingsPath =
     user?.role === "founder" ? "/founder/settings" : "/marketer/settings";
 
-  if (!authUserId || !user) return null;
+  const chatLastSeenStorageKey = useMemo(
+    () => (user?.id ? `revshare:chat:lastSeenAt:${user.id}` : null),
+    [user?.id],
+  );
+
+  useEffect(() => {
+    if (!chatLastSeenStorageKey) return;
+    const raw = window.localStorage.getItem(chatLastSeenStorageKey);
+    const n = raw ? Number(raw) : NaN;
+    const fallback = Date.now();
+    const value = Number.isFinite(n) ? n : fallback;
+    setChatLastSeenAt(value);
+
+    if (!Number.isFinite(n)) {
+      window.localStorage.setItem(chatLastSeenStorageKey, String(value));
+    }
+  }, [chatLastSeenStorageKey]);
+
+  const viewerId = user?.id ?? "";
+
+  const chatUnreadQuery = useQuery<{ unreadCount: number }>({
+    queryKey: ["chat-unread-count", viewerId, chatLastSeenAt ?? "none"],
+    enabled: Boolean(viewerId) && chatLastSeenAt !== null,
+    queryFn: async () => {
+      const res = await fetch("/api/chat/conversations");
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error || "Failed to load conversations");
+      const list = Array.isArray(json?.data) ? (json.data as any[]) : [];
+      const lastSeen = chatLastSeenAt ?? 0;
+
+      // Count conversations where the last message is newer than lastSeen and is not from me.
+      let count = 0;
+      for (const c of list) {
+        const lastMessageAt = c?.lastMessageAt
+          ? new Date(c.lastMessageAt).getTime()
+          : NaN;
+        const last = c?.messages?.[0];
+        const lastSender = last?.senderUserId as string | undefined;
+        if (
+          Number.isFinite(lastMessageAt) &&
+          lastMessageAt > lastSeen &&
+          lastSender &&
+          lastSender !== viewerId
+        ) {
+          count += 1;
+        }
+      }
+
+      return { unreadCount: count };
+    },
+    refetchInterval: 15000,
+  });
+
+  const chatUnreadCount = chatUnreadQuery.data?.unreadCount ?? 0;
+
+  useEffect(() => {
+    if (!chatOpen) return;
+    if (!chatLastSeenStorageKey) return;
+    const now = Date.now();
+    window.localStorage.setItem(chatLastSeenStorageKey, String(now));
+    setChatLastSeenAt(now);
+  }, [chatOpen, chatLastSeenStorageKey]);
 
   useEffect(() => {
     let isActive = true;
@@ -96,6 +162,8 @@ export function Header() {
       isActive = false;
     };
   }, [authUserId]);
+
+  if (!authUserId || !user) return null;
 
   const getInitials = (name: string) => {
     return name
@@ -168,6 +236,11 @@ export function Header() {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            <ChatDrawer
+              open={chatOpen}
+              onOpenChange={setChatOpen}
+              viewerUserId={user.id}
+            />
             {isFounder ? (
               <>
                 <DropdownMenu>
@@ -302,6 +375,21 @@ export function Header() {
             >
               <Settings className="h-4 w-4" />
               <span className="sr-only">Settings</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-8 w-8"
+              onClick={() => setChatOpen(true)}
+              aria-label="Open chat"
+            >
+              <MessageSquareText className="h-4 w-4" />
+              {chatUnreadCount > 0 ? (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground text-white">
+                  {chatUnreadCount > 9 ? "9+" : chatUnreadCount}
+                </span>
+              ) : null}
             </Button>
 
             <DropdownMenu>
