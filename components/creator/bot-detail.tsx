@@ -101,6 +101,17 @@ export function BotDetail({ installationId }: { installationId: string }) {
 
   const bot = data?.data;
 
+  if (!bot) {
+    return (
+      <div className="space-y-3">
+        <div className="text-muted-foreground">Bot not found.</div>
+        <Button asChild variant="outline">
+          <Link href="/founder/bots">Back</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {/* Header (match project detail header style) */}

@@ -103,7 +103,7 @@ export async function GET(
         };
 
         const redacted = redactMarketerData(
-          base as unknown as Record<string, unknown>,
+          base,
           false,
         );
         if (!redacted) return null;

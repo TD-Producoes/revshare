@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { EventType, VisibilityMode } from "@prisma/client";
+import { EventType, VisibilityMode, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -373,7 +373,7 @@ export async function POST(
         where: { id: plan.id },
         data: {
           status: "EXECUTING",
-          executionResult: execution,
+          executionResult: execution as Prisma.JsonObject,
         },
       });
 
@@ -517,14 +517,13 @@ export async function POST(
       data: {
         status: "EXECUTED",
         executedAt: new Date(),
-        executionResult: execution,
+        executionResult: execution as Prisma.JsonObject,
       },
     });
 
     await markIntentExecuted(intentId, {
       success: true,
       data: { planId: plan.id, projectId: project.id },
-      execution,
     });
 
     return NextResponse.json(

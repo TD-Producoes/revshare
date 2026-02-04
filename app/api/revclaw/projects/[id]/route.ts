@@ -26,8 +26,8 @@ const updateProjectSchema = z
     message: "Provide at least one field to update",
   });
 
-function normalizePercent(value: number | null | undefined): number | null {
-  if (value === null || value === undefined) return null;
+function normalizePercent(value: number | null | undefined): number | undefined {
+  if (value === null || value === undefined) return undefined;
   if (value > 1) return value / 100;
   return value;
 }
@@ -76,7 +76,7 @@ export async function PATCH(
         website: input.website === null ? null : input.website,
         country: input.country === null ? null : input.country,
         refundWindowDays:
-          input.refundWindowDays === null ? null : input.refundWindowDays,
+          input.refundWindowDays === null ? undefined : input.refundWindowDays,
         marketerCommissionPercent:
           input.marketerCommissionPercent === undefined
             ? undefined
