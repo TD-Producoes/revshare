@@ -43,6 +43,7 @@ const intentKinds = [
   "COUPON_TEMPLATE_CREATE",
   "REWARD_CREATE",
   "PLAN_EXECUTE",
+  "PROJECT_INVITATION_CREATE",
 ] as const;
 
 const createIntentInput = z.object({
@@ -86,6 +87,8 @@ function formatIntentKind(kind: IntentKind): string {
       return "create a reward";
     case "PLAN_EXECUTE":
       return "execute a plan";
+    case "PROJECT_INVITATION_CREATE":
+      return "send a marketer invitation";
     default: {
       const kindStr = kind as string;
       return kindStr.toLowerCase().replace(/_/g, " ");
@@ -192,6 +195,25 @@ function generatePayloadPreview(kind: IntentKind, payload: Record<string, unknow
       const parts = [headline];
       if (templateName) parts.push(`Template: ${templateName}`);
       if (percentOff) parts.push(`Discount: ${String(percentOff)}% off`);
+      return parts.join("\n");
+    }
+    case "PROJECT_INVITATION_CREATE": {
+      const projectId = payload.project_id ?? payload.projectId ?? "unknown";
+      const projectName = payload.project_name ?? payload.projectName ?? "";
+      const marketerId = payload.marketer_id ?? payload.marketerId ?? "";
+      const commissionPercent = payload.commissionPercent ?? payload.commission_percent ?? "";
+      const refundWindowDays = payload.refundWindowDays ?? payload.refund_window_days ?? "";
+      const message = payload.message ?? "";
+
+      const header = projectName
+        ? `Project: "${projectName}" (${projectId})`
+        : `Project ID: ${projectId}`;
+
+      const parts = [header];
+      if (marketerId) parts.push(`Marketer: ${String(marketerId)}`);
+      if (commissionPercent !== "") parts.push(`Commission: ${String(commissionPercent)}%`);
+      if (refundWindowDays !== "") parts.push(`Refund window: ${String(refundWindowDays)} days`);
+      if (message) parts.push(`Message: "${String(message).slice(0, 120)}${String(message).length > 120 ? "..." : ""}"`);
       return parts.join("\n");
     }
     default:

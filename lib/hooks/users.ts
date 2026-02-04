@@ -55,6 +55,7 @@ export type UpdateUserMetadataPayload = {
   location?: string | null;
   website?: string | null;
   specialties?: string[] | null;
+  categories?: string[] | null;
   focusArea?: string | null;
   socialMedia?: {
     x?: { handle: string; followerCount?: number; verified?: boolean } | null;

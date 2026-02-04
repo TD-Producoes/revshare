@@ -35,6 +35,7 @@ export interface UserMetadata {
   website?: string;
   timezone?: string;
   specialties?: string[]; // For marketers: array of specialties
+  categories?: string[]; // For marketers: preferred project categories (matches project category enum list)
   focusArea?: string; // For marketers: focus area text
   [key: string]: unknown; // Allow for future extensibility
 }

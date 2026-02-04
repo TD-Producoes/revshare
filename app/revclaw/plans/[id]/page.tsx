@@ -203,6 +203,42 @@ export default async function RevclawPlanReviewPage(props: {
                       </div>
                     </div>
 
+                    {planJson.invitations?.enabled ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-base font-semibold">Invitations</h3>
+                          <span className="text-xs text-white/50">
+                            up to {planJson.invitations.maxMarketers ?? 20}
+                          </span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-sm space-y-3">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            {typeof planJson.invitations.commissionPercent === "number" ? (
+                              <div className="grid gap-1">
+                                <div className="text-xs text-white/60">Commission</div>
+                                <div className="text-white/80">{planJson.invitations.commissionPercent}%</div>
+                              </div>
+                            ) : null}
+                            {typeof planJson.invitations.refundWindowDays === "number" ? (
+                              <div className="grid gap-1">
+                                <div className="text-xs text-white/60">Refund window</div>
+                                <div className="text-white/80">{planJson.invitations.refundWindowDays} days</div>
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="grid gap-1">
+                            <div className="text-xs text-white/60">Message (sent automatically)</div>
+                            <pre className="whitespace-pre-wrap rounded-lg border border-white/10 bg-black/40 p-3 text-xs text-white/80">
+{planJson.invitations.message}
+                            </pre>
+                          </div>
+                          <p className="text-xs text-white/60">
+                            The bot will choose up to {planJson.invitations.maxMarketers ?? 20} marketers that fit your project and send this message.
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-base font-semibold">Rewards</h3>

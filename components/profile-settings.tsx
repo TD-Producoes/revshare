@@ -2,19 +2,32 @@
 
 import { useState, useEffect } from "react";
 import { useUpdateUserMetadata, type ApiUser } from "@/lib/hooks/users";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FeaturesInput } from "@/components/ui/features-input";
+import { projectCategories } from "@/lib/data/categories";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   formatFollowerCount,
   type SocialMediaPlatform,
   type UserMetadata,
 } from "@/lib/services/user-metadata";
 import {
+  Check,
   CheckCircle,
+  ChevronsUpDown,
   Github,
   Instagram,
   Linkedin,
@@ -87,6 +100,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
   const [location, setLocation] = useState(metadata.location ?? "");
   const [website, setWebsite] = useState(metadata.website ?? "");
   const [specialties, setSpecialties] = useState<string[]>(metadata.specialties ?? []);
+  const [categories, setCategories] = useState<string[]>(metadata.categories ?? []);
   const [focusArea, setFocusArea] = useState(metadata.focusArea ?? "");
   const [socialHandles, setSocialHandles] = useState<
     Record<SocialMediaPlatform, string>
@@ -101,6 +115,8 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+
   // Update form when user data changes
   useEffect(() => {
     const meta = (user.metadata ?? {}) as UserMetadata;
@@ -108,6 +124,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
     setLocation(meta.location ?? "");
     setWebsite(meta.website ?? "");
     setSpecialties(meta.specialties ?? []);
+    setCategories(meta.categories ?? []);
     setFocusArea(meta.focusArea ?? "");
     setSocialHandles({
       x: meta.socialMedia?.x?.handle ?? "",
@@ -157,6 +174,7 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
         location: location.trim() || null,
         website: website.trim() || null,
         specialties: user.role === "marketer" ? (specialties.length > 0 ? specialties : null) : undefined,
+        categories: user.role === "marketer" ? (categories.length > 0 ? categories : null) : undefined,
         focusArea: user.role === "marketer" ? (focusArea.trim() || null) : undefined,
         socialMedia,
       });
@@ -255,6 +273,65 @@ export function ProfileSettings({ user }: ProfileSettingsProps) {
               />
               <p className="text-xs text-muted-foreground">
                 Your primary area of expertise or focus
+              </p>
+            </div>
+
+            {/* Categories */}
+            <div className="space-y-2">
+              <Label>Categories</Label>
+              <Popover open={categoriesOpen} onOpenChange={setCategoriesOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={categoriesOpen}
+                    className="w-full justify-between"
+                  >
+                    {categories.length === 0
+                      ? "Select categories"
+                      : categories.length <= 3
+                        ? categories.join(", ")
+                        : `${categories.slice(0, 2).join(", ")} +${categories.length - 2}`}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search categories..." />
+                    <CommandList>
+                      <CommandEmpty>No categories found.</CommandEmpty>
+                      <CommandGroup>
+                        {projectCategories.map((cat) => {
+                          const isSelected = categories.includes(cat);
+                          return (
+                            <CommandItem
+                              key={cat}
+                              value={cat}
+                              onSelect={() => {
+                                setCategories((prev) =>
+                                  prev.includes(cat)
+                                    ? prev.filter((c) => c !== cat)
+                                    : [...prev, cat],
+                                );
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "ml-2 mr-2 h-4 w-4",
+                                  isSelected ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              {cat}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">
+                Choose the project categories you’re best at promoting.
               </p>
             </div>
 

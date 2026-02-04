@@ -50,18 +50,42 @@ export const planRewardSchema = z.object({
   allowedMarketerIds: z.array(z.string().min(1)).optional().nullable(),
 });
 
-export const revclawPlanSchema = z.object({
-  kind: z.literal("PROJECT_LAUNCH_PLAN"),
-  project: planProjectSchema,
-  couponTemplates: z.array(planCouponTemplateSchema).optional().default([]),
-  rewards: z.array(planRewardSchema).optional().default([]),
-  publish: z
-    .object({
-      enabled: z.boolean(),
-    })
-    .optional(),
-  notes: z.string().max(5000).optional().nullable(),
-});
+export const planInvitationsSchema = z
+  .object({
+    enabled: z.boolean(),
+    maxMarketers: z.number().int().min(1).max(20).default(20),
+    // Generic message to send (no names).
+    message: z.string().min(1).max(5000),
+    commissionPercent: z.number().min(0).max(100).optional().nullable(),
+    refundWindowDays: z.number().int().min(0).max(365).optional().nullable(),
+  })
+  .optional();
+
+export const revclawPlanSchema = z
+  .object({
+    kind: z.literal("PROJECT_LAUNCH_PLAN"),
+    project: planProjectSchema,
+    couponTemplates: z.array(planCouponTemplateSchema).optional().default([]),
+    rewards: z.array(planRewardSchema).optional().default([]),
+    invitations: planInvitationsSchema,
+    publish: z
+      .object({
+        enabled: z.boolean(),
+      })
+      .optional(),
+    notes: z.string().max(5000).optional().nullable(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.invitations?.enabled) {
+      if (!val.project.category || !val.project.category.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["project", "category"],
+          message: "project.category is required when invitations.enabled=true",
+        });
+      }
+    }
+  });
 
 export type RevclawPlanJson = z.infer<typeof revclawPlanSchema>;
 
