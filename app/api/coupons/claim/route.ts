@@ -113,13 +113,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const existingCoupon = await prisma.coupon.findUnique({
+  const existingCoupon = await prisma.coupon.findFirst({
     where: {
-      templateId_marketerId: {
-        templateId: template.id,
-        marketerId: marketer.id,
-      },
+      templateId: template.id,
+      marketerId: marketer.id,
+      status: "ACTIVE",
     },
+    orderBy: { claimedAt: "desc" },
     select: {
       id: true,
       code: true,

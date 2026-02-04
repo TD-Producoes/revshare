@@ -303,6 +303,7 @@ function buildMarkdown(): string {
     "- `rewards:write`",
     "- `marketers:read`",
     "- `outreach:draft`", 
+    "- `coupons:claim`",
     "- (UI) invitations + chat are handled in the dashboard (no bot-send by default)",
     "",
     "## Security notes (non-negotiable)",

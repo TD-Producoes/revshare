@@ -361,7 +361,7 @@ model Coupon {
   marketer              User           @relation(fields: [marketerId], references: [id], onDelete: Cascade)
   purchases             Purchase[]
 
-  @@unique([templateId, marketerId])
+  @@index([templateId, marketerId])
   @@index([projectId])
   @@index([templateId])
   @@index([marketerId])
