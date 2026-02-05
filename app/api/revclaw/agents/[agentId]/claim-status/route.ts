@@ -125,6 +125,9 @@ export async function GET(
   return NextResponse.json(
     {
       status: "claimed",
+      user_id: registration.claimedByUserId,
+      installation_id: installation.id,
+      granted_scopes: installation.grantedScopes,
       exchange_code: code.code,
     },
     { status: 200 },

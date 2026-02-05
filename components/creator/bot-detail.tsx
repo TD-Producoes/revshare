@@ -62,7 +62,7 @@ function statusVariant(
   return "destructive";
 }
 
-export function BotDetail({ installationId }: { installationId: string }) {
+export function BotDetail({ installationId, baseHref = "/founder/bots" }: { installationId: string; baseHref?: string }) {
   const [activeTab, setActiveTab] = useState<"overview" | "activity" | "plans">(
     "overview",
   );
@@ -93,7 +93,7 @@ export function BotDetail({ installationId }: { installationId: string }) {
           {error instanceof Error ? error.message : null}
         </div>
         <Button asChild variant="outline">
-          <Link href="/founder/bots">Back</Link>
+          <Link href={baseHref}>Back</Link>
         </Button>
       </div>
     );
@@ -106,7 +106,7 @@ export function BotDetail({ installationId }: { installationId: string }) {
       <div className="space-y-3">
         <div className="text-muted-foreground">Bot not found.</div>
         <Button asChild variant="outline">
-          <Link href="/founder/bots">Back</Link>
+          <Link href={baseHref}>Back</Link>
         </Button>
       </div>
     );
@@ -120,7 +120,7 @@ export function BotDetail({ installationId }: { installationId: string }) {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/founder/bots">Bots</BreadcrumbLink>
+                <BreadcrumbLink href={baseHref}>Bots</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
@@ -131,7 +131,7 @@ export function BotDetail({ installationId }: { installationId: string }) {
 
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/founder/bots">
+              <Link href={baseHref}>
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
@@ -160,11 +160,11 @@ export function BotDetail({ installationId }: { installationId: string }) {
             <TabsTrigger className="px-3 py-2 text-sm" value="overview">
               Overview
             </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="activity">
-              Activity
-            </TabsTrigger>
             <TabsTrigger className="px-3 py-2 text-sm" value="plans">
               Plans
+            </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="activity">
+              Activity
             </TabsTrigger>
           </TabsList>
         </div>

@@ -58,8 +58,10 @@ function statusVariant(
 
 export function BotsTable({
   installations,
+  baseHref = "/founder/bots",
 }: {
   installations: RevclawInstallationListItem[];
+  baseHref?: string;
 }) {
   const queryClient = useQueryClient();
 
@@ -147,7 +149,7 @@ export function BotsTable({
                 <TableRow key={installation.id}>
                   <TableCell className="font-medium">
                     <Link
-                      href={`/founder/bots/${installation.id}`}
+                      href={`${baseHref}/${installation.id}`}
                       className="hover:underline"
                     >
                       {installation.agent?.name ?? installation.agent?.id}
@@ -208,7 +210,7 @@ export function BotsTable({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/founder/bots/${installation.id}`}>
+                          <Link href={`${baseHref}/${installation.id}`}>
                             <ExternalLink className="mr-2 h-4 w-4" />
                             View details
                           </Link>

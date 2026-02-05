@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { EventType, VisibilityMode, Prisma } from "@prisma/client";
+import crypto from "crypto";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -10,6 +11,8 @@ import {
 import { emitRevclawEvent } from "@/lib/revclaw/events";
 import { markIntentExecuted, verifyIntent } from "@/lib/revclaw/intent-auth";
 import { revclawPlanSchema, type RevclawPlanJson } from "@/lib/revclaw/plan";
+import { generatePromoCode } from "@/lib/codes";
+import { platformStripe } from "@/lib/stripe";
 
 function normalizePercent(value: number | null | undefined): number | null {
   if (value === null || value === undefined) return null;
@@ -45,6 +48,11 @@ function parseOptionalDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return { date: null, valid: false };
   return { date, valid: true };
+}
+
+function derivePrefix(name: string) {
+  const sanitized = name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
+  return sanitized.length > 0 ? sanitized : "REV";
 }
 
 /**
@@ -129,7 +137,329 @@ export async function POST(
 
     const planJson = parsedPlan.data as RevclawPlanJson;
 
-    // Require scopes based on plan contents
+    // MARKETER_PROMO_PLAN / MARKETER_BATCH_PROMO_PLAN execution (apply → coupon → attribution → promo drafts)
+    if (planJson.kind === "MARKETER_PROMO_PLAN" || planJson.kind === "MARKETER_BATCH_PROMO_PLAN") {
+      const items =
+        planJson.kind === "MARKETER_BATCH_PROMO_PLAN"
+          ? planJson.items
+          : [
+              {
+                project: planJson.project,
+                application: planJson.application,
+                coupon: planJson.coupon,
+                promo: planJson.promo,
+                notes: planJson.notes,
+              },
+            ];
+      requireScope(agent, "applications:submit");
+      requireScope(agent, "coupons:claim");
+      requireScope(agent, "projects:read");
+      requireScope(agent, "outreach:draft");
+
+      const now = new Date();
+
+      await prisma.revclawPlan.update({ where: { id: plan.id }, data: { status: "EXECUTING" } });
+
+      const execution: {
+        started_at: string;
+        items: Array<{
+          project_id: string;
+          project_name?: string | null;
+          steps: Array<Record<string, unknown>>;
+          next?: string;
+          coupon?: unknown;
+          extraCoupons?: unknown[];
+          attribution?: unknown;
+          promo?: unknown;
+        }>;
+        summary: {
+          total: number;
+          ready: number;
+          pending: number;
+          skipped: number;
+          errors: number;
+        };
+      } = {
+        started_at: now.toISOString(),
+        items: [],
+        summary: { total: items.length, ready: 0, pending: 0, skipped: 0, errors: 0 },
+      };
+
+      for (const item of items) {
+        const itemExec: {
+          project_id: string;
+          project_name?: string | null;
+          steps: Array<Record<string, unknown>>;
+          next?: string;
+          coupon?: unknown;
+          extraCoupons?: unknown[];
+          attribution?: unknown;
+          promo?: unknown;
+        } = {
+          project_id: item.project.id,
+          project_name: item.project.name ?? null,
+          steps: [],
+        };
+
+        // Step: apply (contract)
+        const existingContract = await prisma.contract.findUnique({
+          where: {
+            projectId_userId: { projectId: item.project.id, userId: agent.userId },
+          },
+          select: { id: true, status: true, commissionPercent: true },
+        });
+
+        if (!existingContract) {
+          const created = await prisma.contract.create({
+            data: {
+              projectId: item.project.id,
+              userId: agent.userId,
+              commissionPercent:
+                normalizePercent(item.application?.commissionPercent ?? 20)?.toString() ?? "0.2",
+              message: item.application?.message?.trim() || null,
+              refundWindowDays:
+                item.application?.refundWindowDays !== undefined
+                  ? item.application?.refundWindowDays ?? null
+                  : null,
+              status: "PENDING",
+            },
+            select: { id: true, status: true },
+          });
+
+          itemExec.steps.push({
+            kind: "application.submit",
+            status: "ok",
+            contract_id: created.id,
+            contract_status: created.status,
+          });
+          itemExec.next = "await_contract_approval";
+          execution.summary.pending += 1;
+          execution.items.push(itemExec);
+          continue;
+        }
+
+        if (existingContract.status !== "APPROVED") {
+          itemExec.steps.push({
+            kind: "application.status",
+            status: "pending",
+            contract_id: existingContract.id,
+          });
+          itemExec.next = "await_contract_approval";
+          execution.summary.pending += 1;
+          execution.items.push(itemExec);
+          continue;
+        }
+
+        itemExec.steps.push({
+          kind: "application.status",
+          status: "ok",
+          contract_id: existingContract.id,
+        });
+
+        // Step: coupon
+        const project = await prisma.project.findUnique({
+          where: { id: item.project.id },
+          select: { creatorStripeAccountId: true, name: true, description: true, website: true, category: true },
+        });
+
+        if (!project?.creatorStripeAccountId) {
+          itemExec.steps.push({
+            kind: "coupon.claim",
+            status: "skipped",
+            reason: "founder_stripe_not_connected",
+          });
+          itemExec.next = "await_founder_stripe_connect";
+          execution.summary.skipped += 1;
+          execution.items.push(itemExec);
+          continue;
+        }
+
+        const template = await prisma.couponTemplate.findUnique({
+          where: { id: item.coupon.templateId },
+          select: {
+            id: true,
+            projectId: true,
+            name: true,
+            percentOff: true,
+            stripeCouponId: true,
+            status: true,
+            startAt: true,
+            endAt: true,
+            allowedMarketerIds: true,
+          },
+        });
+
+        if (!template || template.projectId !== item.project.id || template.status !== "ACTIVE") {
+          itemExec.steps.push({ kind: "coupon.claim", status: "error", error: "invalid_template" });
+          execution.summary.errors += 1;
+          execution.items.push(itemExec);
+          continue;
+        }
+
+        const allowed = Array.isArray(template.allowedMarketerIds)
+          ? template.allowedMarketerIds
+          : [];
+        if (allowed.length > 0 && !allowed.includes(agent.userId)) {
+          itemExec.steps.push({ kind: "coupon.claim", status: "error", error: "not_allowed" });
+          execution.summary.errors += 1;
+          execution.items.push(itemExec);
+          continue;
+        }
+
+        const stripe = platformStripe();
+        const stripeAccount = project.creatorStripeAccountId;
+
+        let coupon:
+          | { id: string; code: string; percentOff: number; claimedAt: Date }
+          | null = null;
+
+        try {
+          let lastError: unknown = null;
+          for (let attempt = 0; attempt < 5; attempt += 1) {
+            const code =
+              attempt === 0 && item.coupon.code
+                ? item.coupon.code
+                : generatePromoCode(derivePrefix(template.name));
+
+            try {
+              const promotionCode = await stripe.promotionCodes.create(
+                {
+                  promotion: { type: "coupon", coupon: template.stripeCouponId },
+                  code,
+                  metadata: {
+                    projectId: item.project.id,
+                    templateId: template.id,
+                    marketerId: agent.userId,
+                  },
+                },
+                { stripeAccount },
+              );
+
+              coupon = await prisma.coupon.create({
+                data: {
+                  projectId: item.project.id,
+                  templateId: template.id,
+                  marketerId: agent.userId,
+                  code,
+                  stripeCouponId: template.stripeCouponId,
+                  stripePromotionCodeId: promotionCode.id,
+                  percentOff: template.percentOff,
+                  commissionPercent: existingContract.commissionPercent.toString(),
+                },
+                select: { id: true, code: true, percentOff: true, claimedAt: true },
+              });
+
+              break;
+            } catch (err) {
+              lastError = err;
+              continue;
+            }
+          }
+
+          if (!coupon) {
+            throw lastError ?? new Error("Unable to generate coupon");
+          }
+        } catch (err) {
+          itemExec.steps.push({
+            kind: "coupon.generate",
+            status: "error",
+            error: err instanceof Error ? err.message : String(err),
+          });
+          execution.summary.errors += 1;
+          execution.items.push(itemExec);
+          continue;
+        }
+
+        itemExec.coupon = coupon;
+        itemExec.steps.push({ kind: "coupon.generate", status: "ok", coupon_id: coupon.id });
+
+        // Attribution
+        const existingLink = await prisma.attributionShortLink.findUnique({
+          where: {
+            projectId_marketerId: { projectId: item.project.id, marketerId: agent.userId },
+          },
+          select: { code: true },
+        });
+
+        let shortCode = existingLink?.code ?? null;
+        if (!shortCode) {
+          for (let attempt = 0; attempt < 5; attempt += 1) {
+            const raw = crypto.randomBytes(6).toString("base64url");
+            const compact = raw.replace(/[^a-zA-Z0-9]/g, "");
+            const candidate = (compact.slice(0, 6) || raw.slice(0, 6)).slice(0, 6);
+            try {
+              const rec = await prisma.attributionShortLink.create({
+                data: { projectId: item.project.id, marketerId: agent.userId, code: candidate },
+                select: { code: true },
+              });
+              shortCode = rec.code;
+              break;
+            } catch (e) {
+              if ((e as { code?: string }).code === "P2002") continue;
+              throw e;
+            }
+          }
+        }
+
+        if (!shortCode) {
+          itemExec.steps.push({ kind: "attribution", status: "error" });
+          execution.summary.errors += 1;
+          execution.items.push(itemExec);
+          continue;
+        }
+
+        const origin = new URL(request.url).origin;
+        const attributionUrl = `${origin}/a/${shortCode}`;
+        itemExec.attribution = { code: shortCode, url: attributionUrl };
+        itemExec.steps.push({ kind: "attribution", status: "ok", code: shortCode });
+
+        // Promo drafts
+        const angle = item.promo?.angle ?? "short";
+        const name = item.project.name ?? project.name ?? "Project";
+        const variants = {
+          short: `Hello! ${name} is offering ${coupon.percentOff}% off. Use code ${coupon.code}. Link: ${attributionUrl}`,
+          twitter: `Hello! ${name} is offering ${coupon.percentOff}% off. Use code ${coupon.code} ✅\n\n${attributionUrl}`,
+          linkedin: `Hello! Sharing a deal: ${name} — ${coupon.percentOff}% off with coupon code ${coupon.code}.\n\n${attributionUrl}`,
+          reddit: `Hello! Discount for ${name}: ${coupon.percentOff}% off with code ${coupon.code}.\n\n${attributionUrl}`,
+          email: `Subject: ${name} — ${coupon.percentOff}% discount\n\nCoupon code: ${coupon.code}\nLink: ${attributionUrl}`,
+        };
+
+        itemExec.promo = {
+          headline: `Promo: ${coupon.percentOff}% off with code ${coupon.code}`,
+          variants,
+          recommended: { angle, body: (variants as any)[angle] },
+        };
+        itemExec.steps.push({ kind: "promo.draft", status: "ok", angle });
+
+        execution.summary.ready += 1;
+        execution.items.push(itemExec);
+      }
+
+      const anyPending = execution.items.some((it) => it.next === "await_contract_approval");
+      const anyStripePending = execution.items.some(
+        (it) => it.next === "await_founder_stripe_connect",
+      );
+
+      const next = anyPending
+        ? "await_contract_approval"
+        : anyStripePending
+          ? "await_founder_stripe_connect"
+          : "ready_to_promote";
+
+      await prisma.revclawPlan.update({
+        where: { id: plan.id },
+        data: {
+          status: anyPending || anyStripePending ? "APPROVED" : "EXECUTED",
+          ...(anyPending || anyStripePending ? {} : { executedAt: new Date() }),
+          executionResult: execution as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      await markIntentExecuted(intentId, { success: true, data: { next } });
+      return NextResponse.json({ data: { ...execution, next } }, { status: 200 });
+    }
+
+    // Require scopes based on plan contents (PROJECT_LAUNCH_PLAN)
     requireScope(agent, "projects:draft_write");
     if ((planJson.rewards ?? []).length > 0) {
       requireScope(agent, "rewards:write");

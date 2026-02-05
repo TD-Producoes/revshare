@@ -63,6 +63,32 @@ export default async function RevclawPlanReviewPage(props: {
     },
   });
 
+  const parsedPlan = plan ? revclawPlanSchema.safeParse(plan.planJson) : null;
+
+  const marketerCouponTemplate =
+    parsedPlan?.success && parsedPlan.data.kind === "MARKETER_PROMO_PLAN"
+      ? await prisma.couponTemplate.findUnique({
+          where: { id: parsedPlan.data.coupon.templateId },
+          select: { id: true, name: true, percentOff: true },
+        })
+      : null;
+
+  const batchCouponTemplates =
+    parsedPlan?.success && parsedPlan.data.kind === "MARKETER_BATCH_PROMO_PLAN"
+      ? await prisma.couponTemplate.findMany({
+          where: {
+            id: {
+              in: parsedPlan.data.items.map((it) => it.coupon.templateId),
+            },
+          },
+          select: { id: true, name: true, percentOff: true },
+        })
+      : [];
+
+  const batchCouponTemplateById = new Map(
+    (batchCouponTemplates ?? []).map((t) => [t.id, t]),
+  );
+
   return (
     <RevclawShell>
       {!plan ? (
@@ -103,8 +129,11 @@ export default async function RevclawPlanReviewPage(props: {
               </div>
 
               {(() => {
-                const parsed = revclawPlanSchema.safeParse(plan.planJson);
-                if (!parsed.success) {
+                if (!parsedPlan) {
+                  return null;
+                }
+
+                if (!parsedPlan.success) {
                   return (
                     <Alert variant="destructive" className="border-destructive/40 bg-white/[0.04]">
                       <AlertTitle>Invalid plan</AlertTitle>
@@ -113,7 +142,205 @@ export default async function RevclawPlanReviewPage(props: {
                   );
                 }
 
-                const planJson = parsed.data;
+                const planJson = parsedPlan.data;
+
+                if (planJson.kind === "MARKETER_BATCH_PROMO_PLAN") {
+                  return (
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-base font-semibold">Marketer promo plan</h3>
+                          <Badge
+                            variant="outline"
+                            className="px-2 py-0 text-[10px] font-semibold uppercase tracking-wide border-white/15 text-white/80 bg-white/[0.04]"
+                          >
+                            Draft
+                          </Badge>
+                        </div>
+
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-sm">
+                          <div className="mb-3 flex items-center justify-between">
+                            <div className="text-xs text-white/60">Projects</div>
+                            <div className="text-xs text-white/50">{planJson.items.length} item(s)</div>
+                          </div>
+
+                          <div className="mb-4 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                            <div className="text-xs text-white/70">
+                              This batch will apply to <span className="font-semibold text-white">{planJson.items.length}</span> projects.
+                              For each project that auto-approves your application, the bot will generate a coupon code, fetch an attribution link, and prepare promo drafts.
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-[11px] text-white/60">
+                              <span>
+                                <span className="font-semibold text-white/80">Apply</span> → <span className="font-semibold text-white/80">Coupon</span> → <span className="font-semibold text-white/80">Attribution</span> → <span className="font-semibold text-white/80">Promo</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            {planJson.items.map((item, idx) => {
+                              const template = batchCouponTemplateById.get(item.coupon.templateId);
+                              return (
+                                <div key={`${item.project.id}-${idx}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <div className="font-semibold text-white">
+                                        {item.project.name ?? item.project.id}
+                                      </div>
+                                      <div className="text-xs text-white/60 font-mono">{item.project.id}</div>
+                                    </div>
+                                    {template ? (
+                                      <Badge className="uppercase tracking-wide text-white/90 border-white/15 bg-white/[0.06]" variant="outline">
+                                        {template.percentOff}% OFF
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+
+                                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    <div className="grid gap-1">
+                                      <div className="text-xs text-white/60">Apply</div>
+                                      <div className="text-white/80">
+                                        {item.application ? (
+                                          <>
+                                            {item.application.commissionPercent}%
+                                            {typeof item.application.refundWindowDays === "number"
+                                              ? ` · ${item.application.refundWindowDays}d`
+                                              : ""}
+                                          </>
+                                        ) : (
+                                          <span className="text-white/60">(none)</span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="grid gap-1">
+                                      <div className="text-xs text-white/60">Coupon</div>
+                                      <div className="text-white/80">
+                                        {template ? (
+                                          <>
+                                            <span className="font-semibold">{template.percentOff}% off</span>
+                                            {template.name ? (
+                                              <span className="text-white/60"> · {template.name}</span>
+                                            ) : null}
+                                          </>
+                                        ) : (
+                                          <>
+                                            Template: <span className="font-mono">{item.coupon.templateId}</span>
+                                          </>
+                                        )}
+                                        {item.coupon.extraCoupons ? ` · Extra: ${item.coupon.extraCoupons}` : ""}
+                                      </div>
+                                    </div>
+
+                                    <div className="grid gap-1">
+                                      <div className="text-xs text-white/60">Promo drafts</div>
+                                      <div className="text-white/80">Angle: {item.promo?.angle ?? "short"}</div>
+                                    </div>
+                                  </div>
+
+                                  {item.application?.message ? (
+                                    <div className="mt-3 grid gap-1">
+                                      <div className="text-xs text-white/60">Application message</div>
+                                      <div className="text-white/80 whitespace-pre-wrap">{item.application.message}</div>
+                                    </div>
+                                  ) : null}
+
+                                  {item.notes ? (
+                                    <div className="mt-3 text-xs text-white/60">{item.notes}</div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {planJson.notes ? (
+                            <div className="mt-4 text-xs text-white/60">{planJson.notes}</div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (planJson.kind === "MARKETER_PROMO_PLAN") {
+                  return (
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-base font-semibold">Marketer promo plan</h3>
+                          <Badge
+                            variant="outline"
+                            className="px-2 py-0 text-[10px] font-semibold uppercase tracking-wide border-white/15 text-white/80 bg-white/[0.04]"
+                          >
+                            Draft
+                          </Badge>
+                        </div>
+
+                        <div className="grid gap-3 rounded-xl border border-white/10 bg-black/40 p-4 text-sm">
+                          <div className="grid gap-1">
+                            <div className="text-xs text-white/60">Project</div>
+                            <div className="font-semibold text-white">
+                              {planJson.project.name ?? planJson.project.id}
+                            </div>
+                          </div>
+
+                          {planJson.application ? (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <div className="grid gap-1">
+                                <div className="text-xs text-white/60">Apply</div>
+                                <div className="text-white/80">
+                                  Commission: {planJson.application.commissionPercent}%
+                                  {typeof planJson.application.refundWindowDays === "number"
+                                    ? ` · Refund window: ${planJson.application.refundWindowDays}d`
+                                    : ""}
+                                </div>
+                              </div>
+                              {planJson.application.message ? (
+                                <div className="grid gap-1">
+                                  <div className="text-xs text-white/60">Application message</div>
+                                  <div className="text-white/80">{planJson.application.message}</div>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="grid gap-1">
+                              <div className="text-xs text-white/60">Coupon</div>
+                              <div className="text-white/80">
+                                {marketerCouponTemplate ? (
+                                  <>
+                                    <span className="font-semibold">{marketerCouponTemplate.percentOff}% off</span>
+                                    {marketerCouponTemplate.name ? (
+                                      <span className="text-white/60"> · {marketerCouponTemplate.name}</span>
+                                    ) : null}
+                                  </>
+                                ) : (
+                                  <>
+                                    Template: <span className="font-mono">{planJson.coupon.templateId}</span>
+                                  </>
+                                )}
+                                {planJson.coupon.extraCoupons ? ` · Extra: ${planJson.coupon.extraCoupons}` : ""}
+                              </div>
+                            </div>
+                            <div className="grid gap-1">
+                              <div className="text-xs text-white/60">Promo drafts</div>
+                              <div className="text-white/80">
+                                Angle: {planJson.promo?.angle ?? "short"}
+                              </div>
+                            </div>
+                          </div>
+
+                          {planJson.notes ? (
+                            <div className="grid gap-1">
+                              <div className="text-xs text-white/60">Notes</div>
+                              <div className="text-white/80">{planJson.notes}</div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div className="space-y-6">
