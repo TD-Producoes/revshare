@@ -61,7 +61,55 @@ export const planInvitationsSchema = z
   })
   .optional();
 
-export const revclawPlanSchema = z
+const marketerApplicationSchema = z.object({
+  commissionPercent: z.number().min(0).max(100),
+  refundWindowDays: z.number().int().min(0).max(3650).optional().nullable(),
+  message: z.string().max(2000).optional().nullable(),
+});
+
+const marketerCouponSchema = z.object({
+  templateId: z.string().min(1),
+  code: z.string().min(3).optional().nullable(),
+  extraCoupons: z.number().int().min(0).max(5).optional().default(0),
+});
+
+const marketerPromoSchema = z.object({
+  angle: z.enum(["short", "twitter", "linkedin", "reddit", "email"]).optional().default("short"),
+});
+
+export const marketerPromoPlanSchema = z.object({
+  kind: z.literal("MARKETER_PROMO_PLAN"),
+  project: z.object({
+    id: z.string().min(1),
+    name: z.string().min(1).max(120).optional().nullable(),
+  }),
+  application: marketerApplicationSchema.optional(),
+  coupon: marketerCouponSchema,
+  promo: marketerPromoSchema.optional(),
+  notes: z.string().max(5000).optional().nullable(),
+});
+
+export const marketerBatchPromoPlanSchema = z.object({
+  kind: z.literal("MARKETER_BATCH_PROMO_PLAN"),
+  items: z
+    .array(
+      z.object({
+        project: z.object({
+          id: z.string().min(1),
+          name: z.string().min(1).max(120).optional().nullable(),
+        }),
+        application: marketerApplicationSchema.optional(),
+        coupon: marketerCouponSchema,
+        promo: marketerPromoSchema.optional(),
+        notes: z.string().max(5000).optional().nullable(),
+      }),
+    )
+    .min(1)
+    .max(20),
+  notes: z.string().max(5000).optional().nullable(),
+});
+
+export const projectLaunchPlanSchema = z
   .object({
     kind: z.literal("PROJECT_LAUNCH_PLAN"),
     project: planProjectSchema,
@@ -86,6 +134,12 @@ export const revclawPlanSchema = z
       }
     }
   });
+
+export const revclawPlanSchema = z.discriminatedUnion("kind", [
+  projectLaunchPlanSchema,
+  marketerPromoPlanSchema,
+  marketerBatchPromoPlanSchema,
+]);
 
 export type RevclawPlanJson = z.infer<typeof revclawPlanSchema>;
 

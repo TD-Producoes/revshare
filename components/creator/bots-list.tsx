@@ -27,7 +27,7 @@ export type RevclawInstallationListItem = {
   };
 };
 
-export function BotsList() {
+export function BotsList({ baseHref = "/founder/bots" }: { baseHref?: string } = {}) {
   const { data, isLoading, isError } = useQuery<{ data: RevclawInstallationListItem[] }>(
     {
       queryKey: ["revclaw-installations"],
@@ -69,7 +69,7 @@ export function BotsList() {
         </p>
       </div>
 
-      <BotsTable installations={installations} />
+      <BotsTable installations={installations} baseHref={baseHref} />
     </div>
   );
 }

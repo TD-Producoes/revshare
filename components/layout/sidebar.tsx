@@ -56,9 +56,9 @@ const creatorNavSections: NavSection[] = [
     label: "Manage",
     items: [
       { title: "Projects", href: "/founder/projects", icon: FolderKanban },
-      { title: "Bots", href: "/founder/bots", icon: Bot },
       { title: "Affiliates", href: "/founder/affiliates", icon: Users },
       { title: "Applications", href: "/founder/applications", icon: FileText },
+      { title: "Bots", href: "/founder/bots", icon: Bot },
     ],
   },
   {
@@ -91,6 +91,7 @@ const marketerNavSections: NavSection[] = [
     items: [
       { title: "Applications", href: "/marketer/applications", icon: FileText },
       { title: "Invitations", href: "/marketer/invitations", icon: Users },
+      { title: "Bots", href: "/marketer/bots", icon: Bot },
     ],
   },
   {

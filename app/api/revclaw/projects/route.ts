@@ -30,6 +30,53 @@ function normalizePercent(value: number | null | undefined): number | null {
 }
 
 /**
+ * GET /api/revclaw/projects
+ *
+ * Marketer-bot discovery endpoint.
+ * Returns PUBLIC projects that a marketer could apply to.
+ *
+ * Scope: projects:read
+ * Query params:
+ * - category (optional)
+ * - limit (optional, default 20, max 50)
+ */
+export async function GET(request: Request) {
+  try {
+    const agent = await authenticateAgent(request);
+    requireScope(agent, "projects:read");
+
+    const url = new URL(request.url);
+    const category = url.searchParams.get("category");
+    const limit = Math.min(
+      Math.max(Number(url.searchParams.get("limit") ?? 20) || 20, 1),
+      50,
+    );
+
+    const projects = await prisma.project.findMany({
+      where: {
+        visibility: VisibilityMode.PUBLIC,
+        ...(category ? { category } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        website: true,
+        description: true,
+        marketerCommissionPercent: true,
+        refundWindowDays: true,
+      },
+    });
+
+    return NextResponse.json({ data: projects }, { status: 200 });
+  } catch (err) {
+    return authErrorResponse(err);
+  }
+}
+
+/**
  * RevClaw wrapper: create a project in "draft" state.
  *
  * We model "draft" as visibility=PRIVATE by default.
