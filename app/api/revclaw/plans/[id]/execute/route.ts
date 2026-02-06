@@ -13,6 +13,11 @@ import { markIntentExecuted, verifyIntent } from "@/lib/revclaw/intent-auth";
 import { revclawPlanSchema, type RevclawPlanJson } from "@/lib/revclaw/plan";
 import { generatePromoCode } from "@/lib/codes";
 import { platformStripe } from "@/lib/stripe";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  PLAN_EXECUTE_LIMIT,
+} from "@/lib/revclaw/rate-limit";
 
 function normalizePercent(value: number | null | undefined): number | null {
   if (value === null || value === undefined) return null;
@@ -69,6 +74,10 @@ export async function POST(
 ) {
   try {
     const agent = await authenticateAgent(request);
+
+    // Rate limit per installation
+    const rl = checkRateLimit(`plan_exec:${agent.installationId}`, PLAN_EXECUTE_LIMIT);
+    if (!rl.allowed) return rateLimitResponse(rl.retryAfterSeconds!);
 
     const intentId = request.headers.get("X-RevClaw-Intent-Id");
     if (!intentId) {

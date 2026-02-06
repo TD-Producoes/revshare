@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { emitRevclawEvent } from "@/lib/revclaw/events";
 import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  TOKEN_REFRESH_LIMIT,
+} from "@/lib/revclaw/rate-limit";
+import {
   generateAccessToken,
   generateRefreshToken,
   hashToken,
@@ -24,6 +30,10 @@ import {
  * Security: Detects refresh token reuse and invalidates entire chain.
  */
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rl = checkRateLimit(`token_refresh:${ip}`, TOKEN_REFRESH_LIMIT);
+  if (!rl.allowed) return rateLimitResponse(rl.retryAfterSeconds!);
+
   try {
     const authHeader = request.headers.get("Authorization");
     const refreshToken = extractBearerToken(authHeader);

@@ -5,6 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { fetchManifestMarkdown, MAX_MANIFEST_BYTES } from "@/lib/revclaw/manifest";
 import { generateOpaqueToken, hashAgentSecret, sha256Hex } from "@/lib/revclaw/secret";
 import { emitRevclawEvent } from "@/lib/revclaw/events";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  REGISTER_LIMIT,
+} from "@/lib/revclaw/rate-limit";
 
 const inputSchema = z
   .object({
@@ -36,6 +42,10 @@ const inputSchema = z
   );
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rl = checkRateLimit(`register:${ip}`, REGISTER_LIMIT);
+  if (!rl.allowed) return rateLimitResponse(rl.retryAfterSeconds!);
+
   const parsed = inputSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(

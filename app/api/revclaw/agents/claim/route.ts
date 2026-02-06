@@ -1,36 +1,19 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { emitRevclawEvent } from "@/lib/revclaw/events";
 import { generateExchangeCode } from "@/lib/revclaw/tokens";
 
 /**
- * POST /api/revclaw/agents/claim
+ * POST /api/revclaw/agents/claim — BLOCKED (see POST handler below).
  *
- * Claims a pending registration and creates an installation binding the agent to a user.
+ * processClaimInternal() is the only safe way to process claims.
+ * It is imported directly by:
+ *   - app/api/revclaw/telegram/callback/route.ts (Telegram approval)
+ *   - app/api/revclaw/claims/[claimId]/approve/route.ts (web fallback)
  *
- * SECURITY: This endpoint should ONLY be called from the Telegram approval callback handler,
- * which derives telegram_user_id from verified Telegram callback data.
- * The telegram_user_id MUST NEVER come from untrusted JSON input.
- *
- * This is an internal endpoint - the public interface is the Telegram callback handler.
+ * SECURITY: telegram_user_id MUST NEVER come from untrusted JSON input.
  */
-
-const inputSchema = z.object({
-  // agent_id is provided for validation (must match registration)
-  agent_id: z.string().min(1),
-
-  // claim_id is the single-use token from registration
-  claim_id: z.string().min(1),
-
-  // CRITICAL: telegram_user_id MUST be derived from Telegram-authenticated context
-  // This field is set by the callback handler, NOT from external JSON
-  telegram_user_id: z.string().min(1),
-
-  // Scopes to grant (subset of requested scopes)
-  granted_scopes: z.array(z.string().min(1).max(80)).max(50).optional(),
-});
 
 /**
  * Internal claim processing function.
@@ -219,48 +202,20 @@ export async function processClaimInternal(params: {
 }
 
 /**
- * POST handler - This is an internal endpoint.
- * In production, this should only be callable from the Telegram callback handler.
- * The telegram_user_id MUST be derived from verified Telegram callback data.
+ * POST handler - BLOCKED.
+ *
+ * This HTTP route is intentionally disabled. All legitimate callers
+ * (Telegram callback, web claim approval) import processClaimInternal()
+ * directly as a function — they never HTTP-call this route.
+ *
+ * Exposing a public POST that accepts telegram_user_id from JSON would
+ * allow identity spoofing, so we reject unconditionally.
  */
-export async function POST(request: Request) {
-  // Check for internal caller header (set by callback handler)
-  const internalCaller = request.headers.get("X-RevClaw-Internal-Caller");
-  if (internalCaller !== "telegram-callback") {
-    // In production, reject direct calls without internal header
-    // For now, log a warning but allow (for testing)
-    console.warn(
-      "[RevClaw] Direct call to /api/revclaw/agents/claim without internal header"
-    );
-  }
-
-  const parsed = inputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid payload", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const { agent_id, claim_id, telegram_user_id, granted_scopes } = parsed.data;
-
-  const result = await processClaimInternal({
-    agentId: agent_id,
-    claimId: claim_id,
-    telegramUserId: telegram_user_id,
-    grantedScopes: granted_scopes,
-  });
-
-  if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
-  }
-
+export async function POST() {
   return NextResponse.json(
     {
-      installation_id: result.installationId,
-      user_id: result.userId,
-      exchange_code: result.exchangeCode,
+      error: "Direct calls to this endpoint are not allowed. Claims must be processed through the Telegram approval flow or the web claim approval page.",
     },
-    { status: 201 }
+    { status: 403 }
   );
 }

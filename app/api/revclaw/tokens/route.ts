@@ -5,6 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { emitRevclawEvent } from "@/lib/revclaw/events";
 import { verifyAgentSecret } from "@/lib/revclaw/secret";
 import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  TOKEN_EXCHANGE_LIMIT,
+} from "@/lib/revclaw/rate-limit";
+import {
   generateAccessToken,
   generateRefreshToken,
   hashToken,
@@ -33,6 +39,10 @@ const exchangeSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rl = checkRateLimit(`token_exchange:${ip}`, TOKEN_EXCHANGE_LIMIT);
+  if (!rl.allowed) return rateLimitResponse(rl.retryAfterSeconds!);
+
   try {
     const body = await request.json().catch(() => null);
     const parsed = exchangeSchema.safeParse(body);

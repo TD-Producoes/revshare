@@ -15,6 +15,11 @@ import {
 } from "@/lib/revclaw/intent-auth";
 import { sendTelegramMessage, buildInlineKeyboard } from "@/lib/revclaw/telegram";
 import { emitRevclawEvent } from "@/lib/revclaw/events";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  INTENT_CREATE_LIMIT,
+} from "@/lib/revclaw/rate-limit";
 
 /**
  * POST /api/revclaw/intents
@@ -229,6 +234,10 @@ export async function POST(request: NextRequest) {
   }
 
   const { context } = authResult;
+
+  // Rate limit per installation
+  const rl = checkRateLimit(`intent:${context.installationId}`, INTENT_CREATE_LIMIT);
+  if (!rl.allowed) return rateLimitResponse(rl.retryAfterSeconds!);
 
   // Parse input
   const body = await request.json().catch(() => null);

@@ -8,6 +8,11 @@ import {
 } from "@/lib/revclaw/crypto";
 import { authenticateBot, botAuthErrorResponse } from "@/lib/revclaw/intent-auth";
 import { computePlanHash, revclawPlanSchema } from "@/lib/revclaw/plan";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  PLAN_CREATE_LIMIT,
+} from "@/lib/revclaw/rate-limit";
 
 const PLAN_EXPIRY_MINUTES = 60;
 
@@ -36,6 +41,10 @@ export async function POST(request: NextRequest) {
   if (!auth.success) {
     return botAuthErrorResponse(auth);
   }
+
+  // Rate limit per installation
+  const rl = checkRateLimit(`plan:${auth.context.installationId}`, PLAN_CREATE_LIMIT);
+  if (!rl.allowed) return rateLimitResponse(rl.retryAfterSeconds!);
 
   const planParsed = revclawPlanSchema.safeParse(parsed.data.plan_json);
   if (!planParsed.success) {
