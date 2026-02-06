@@ -10,6 +10,11 @@ type PurchaseRow = {
   refundEligibleAt: Date | null;
 };
 
+type AttributionRow = {
+  deviceId: string;
+  createdAt: Date;
+};
+
 const aggregateRows = (rows: PurchaseRow[]) => {
   const customers = new Set<string>();
   let revenue = 0;
@@ -22,6 +27,21 @@ const aggregateRows = (rows: PurchaseRow[]) => {
     }
   });
   return { revenue, sales, customers: customers.size };
+};
+
+const getAttributionTotals = (rows: AttributionRow[]) => {
+  let clicks = 0;
+  let installs = 0;
+  rows.forEach((row) => {
+    if (row.deviceId?.startsWith("click:")) {
+      clicks += 1;
+      return;
+    }
+    if (row.deviceId?.startsWith("install:")) {
+      installs += 1;
+    }
+  });
+  return { clicks, installs };
 };
 
 export async function GET(
@@ -67,7 +87,7 @@ export async function GET(
     return NextResponse.json({ error: "Contract not found" }, { status: 404 });
   }
 
-  const [rewards, earnedRows, purchases] = await Promise.all([
+  const [rewards, earnedRows, purchases, attributionRows] = await Promise.all([
     prisma.reward.findMany({
       where: {
         projectId,
@@ -99,6 +119,13 @@ export async function GET(
         refundEligibleAt: true,
       },
     }),
+    prisma.attributionClick.findMany({
+      where: { projectId, marketerId },
+      select: {
+        deviceId: true,
+        createdAt: true,
+      },
+    }),
   ]);
 
   const earnedByReward = new Map<string, typeof earnedRows>();
@@ -125,23 +152,27 @@ export async function GET(
     const eligible = relevant.filter(
       (row) => row.refundEligibleAt && row.refundEligibleAt <= now,
     );
+    const relevantAttribution = attributionRows.filter(
+      (row) => row.createdAt >= rewardStart,
+    );
 
     const eligibleTotals = aggregateRows(eligible);
     const totalTotals = aggregateRows(relevant);
+    const attributionTotals = getAttributionTotals(relevantAttribution);
 
-    const metricEligible =
-      reward.milestoneType === "NET_REVENUE"
-        ? eligibleTotals.revenue
-        : reward.milestoneType === "COMPLETED_SALES"
-          ? eligibleTotals.sales
-          : eligibleTotals.customers;
+    const metricEligible = (() => {
+      if (reward.milestoneType === "NET_REVENUE") return eligibleTotals.revenue;
+      if (reward.milestoneType === "COMPLETED_SALES") return eligibleTotals.sales;
+      if (reward.milestoneType === "CLICKS") return attributionTotals.clicks;
+      return attributionTotals.installs;
+    })();
 
-    const metricTotal =
-      reward.milestoneType === "NET_REVENUE"
-        ? totalTotals.revenue
-        : reward.milestoneType === "COMPLETED_SALES"
-          ? totalTotals.sales
-          : totalTotals.customers;
+    const metricTotal = (() => {
+      if (reward.milestoneType === "NET_REVENUE") return totalTotals.revenue;
+      if (reward.milestoneType === "COMPLETED_SALES") return totalTotals.sales;
+      if (reward.milestoneType === "CLICKS") return attributionTotals.clicks;
+      return attributionTotals.installs;
+    })();
 
     const earned = earnedByReward.get(reward.id) ?? [];
     const earnedCount = earned.length;
@@ -150,6 +181,9 @@ export async function GET(
     const milestoneValue = reward.milestoneValue;
     const achievedEligible = Math.floor(metricEligible / milestoneValue);
     const achievedTotal = Math.floor(metricTotal / milestoneValue);
+    const hasRefundWindow =
+      reward.milestoneType === "NET_REVENUE" ||
+      reward.milestoneType === "COMPLETED_SALES";
 
     const nextTarget =
       reward.earnLimit === "ONCE_PER_MARKETER"
@@ -172,7 +206,7 @@ export async function GET(
       achievedEligible >= 1
     ) {
       status = "UNLOCKED";
-    } else if (achievedTotal > achievedEligible) {
+    } else if (hasRefundWindow && achievedTotal > achievedEligible) {
       status = "PENDING_REFUND";
     }
 

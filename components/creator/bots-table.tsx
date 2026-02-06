@@ -41,11 +41,18 @@ import { Label } from "@/components/ui/label";
 
 import type { RevclawInstallationListItem } from "@/components/creator/bots-list";
 
-function formatDate(value: string | null | undefined) {
+function renderDateTime(value: string | null | undefined) {
   if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "-";
-  return d.toISOString().replace(".000Z", "Z");
+  return (
+    <div className="flex flex-col items-start leading-tight">
+      <span>{d.toLocaleDateString()}</span>
+      <span className="text-xs text-muted-foreground">
+        {d.toLocaleTimeString()}
+      </span>
+    </div>
+  );
 }
 
 function statusVariant(
@@ -194,11 +201,11 @@ export function BotsTable({
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(installation.createdAt)}
+                  <TableCell>
+                    {renderDateTime(installation.createdAt)}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(installation.lastTokenIssuedAt)}
+                  <TableCell>
+                    {renderDateTime(installation.lastTokenIssuedAt)}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>

@@ -10,6 +10,12 @@ type PurchaseRow = {
   projectId: string;
 };
 
+type AttributionRow = {
+  projectId: string;
+  deviceId: string;
+  createdAt: Date;
+};
+
 const aggregateRows = (rows: PurchaseRow[]) => {
   const customers = new Set<string>();
   let revenue = 0;
@@ -22,6 +28,21 @@ const aggregateRows = (rows: PurchaseRow[]) => {
     }
   });
   return { revenue, sales, customers: customers.size };
+};
+
+const getAttributionTotals = (rows: AttributionRow[]) => {
+  let clicks = 0;
+  let installs = 0;
+  rows.forEach((row) => {
+    if (row.deviceId?.startsWith("click:")) {
+      clicks += 1;
+      return;
+    }
+    if (row.deviceId?.startsWith("install:")) {
+      installs += 1;
+    }
+  });
+  return { clicks, installs };
 };
 
 export async function GET(request: Request) {
@@ -74,7 +95,7 @@ export async function GET(request: Request) {
   }
 
   // Fetch rewards, earned records, and purchases for all projects
-  const [rewards, earnedRows, purchases] = await Promise.all([
+  const [rewards, earnedRows, purchases, attributionRows] = await Promise.all([
     prisma.reward.findMany({
       where: {
         projectId: { in: projectIds },
@@ -118,6 +139,17 @@ export async function GET(request: Request) {
         projectId: true,
       },
     }),
+    prisma.attributionClick.findMany({
+      where: {
+        projectId: { in: projectIds },
+        marketerId,
+      },
+      select: {
+        projectId: true,
+        deviceId: true,
+        createdAt: true,
+      },
+    }),
   ]);
 
   const earnedByReward = new Map<string, typeof earnedRows>();
@@ -145,23 +177,27 @@ export async function GET(request: Request) {
       const eligible = relevant.filter(
         (row) => row.refundEligibleAt && row.refundEligibleAt <= now,
       );
+      const projectAttribution = attributionRows.filter(
+        (row) => row.projectId === reward.projectId && row.createdAt >= rewardStart,
+      );
 
       const eligibleTotals = aggregateRows(eligible);
       const totalTotals = aggregateRows(relevant);
+      const attributionTotals = getAttributionTotals(projectAttribution);
 
-      const metricEligible =
-        reward.milestoneType === "NET_REVENUE"
-          ? eligibleTotals.revenue
-          : reward.milestoneType === "COMPLETED_SALES"
-            ? eligibleTotals.sales
-            : eligibleTotals.customers;
+      const metricEligible = (() => {
+        if (reward.milestoneType === "NET_REVENUE") return eligibleTotals.revenue;
+        if (reward.milestoneType === "COMPLETED_SALES") return eligibleTotals.sales;
+        if (reward.milestoneType === "CLICKS") return attributionTotals.clicks;
+        return attributionTotals.installs;
+      })();
 
-      const metricTotal =
-        reward.milestoneType === "NET_REVENUE"
-          ? totalTotals.revenue
-          : reward.milestoneType === "COMPLETED_SALES"
-            ? totalTotals.sales
-            : totalTotals.customers;
+      const metricTotal = (() => {
+        if (reward.milestoneType === "NET_REVENUE") return totalTotals.revenue;
+        if (reward.milestoneType === "COMPLETED_SALES") return totalTotals.sales;
+        if (reward.milestoneType === "CLICKS") return attributionTotals.clicks;
+        return attributionTotals.installs;
+      })();
 
       const earned = earnedByReward.get(reward.id) ?? [];
       const earnedCount = earned.length;
@@ -170,6 +206,9 @@ export async function GET(request: Request) {
       const milestoneValue = reward.milestoneValue;
       const achievedEligible = Math.floor(metricEligible / milestoneValue);
       const achievedTotal = Math.floor(metricTotal / milestoneValue);
+      const hasRefundWindow =
+        reward.milestoneType === "NET_REVENUE" ||
+        reward.milestoneType === "COMPLETED_SALES";
 
       const nextTarget = milestoneValue;
 
@@ -189,7 +228,7 @@ export async function GET(request: Request) {
         achievedEligible >= 1
       ) {
         status = "UNLOCKED";
-      } else if (achievedTotal > achievedEligible) {
+      } else if (hasRefundWindow && achievedTotal > achievedEligible) {
         status = "PENDING_REFUND";
       }
 

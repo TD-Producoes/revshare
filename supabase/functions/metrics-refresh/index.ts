@@ -135,6 +135,11 @@ Deno.serve(async (request) => {
   const mrrByProject = new Map<string, number>();
   const totalRevenueByProjectDate = new Map<string, number>();
   const totalRevenueByProject = new Map<string, number>();
+  const stripeErrors: Array<{
+    projectId: string;
+    stage: "subscriptions" | "charges";
+    message: string;
+  }> = [];
   for (const project of projects ?? []) {
     if (!project.creatorStripeAccountId) {
       continue;
@@ -142,64 +147,90 @@ Deno.serve(async (request) => {
     let startingAfter: string | undefined = undefined;
     let total = 0;
 
-    while (true) {
-      const subscriptions = await stripe.subscriptions.list(
-        {
-          status: "active",
-          limit: 100,
-          starting_after: startingAfter,
-        },
-        { stripeAccount: project.creatorStripeAccountId },
-      );
+    try {
+      while (true) {
+        const subscriptions = await stripe.subscriptions.list(
+          {
+            status: "active",
+            limit: 100,
+            starting_after: startingAfter,
+          },
+          { stripeAccount: project.creatorStripeAccountId },
+        );
 
-      subscriptions.data.forEach((subscription) => {
-        subscription.items.data.forEach((item) => {
-          const price = item.price;
-          const unitAmount = price.unit_amount ?? 0;
-          const quantity = item.quantity ?? 1;
-          if (price.recurring?.interval === "month") {
-            total += unitAmount * quantity;
-          } else if (price.recurring?.interval === "year") {
-            total += Math.round((unitAmount * quantity) / 12);
-          }
+        subscriptions.data.forEach((subscription) => {
+          subscription.items.data.forEach((item) => {
+            const price = item.price;
+            const unitAmount = price.unit_amount ?? 0;
+            const quantity = item.quantity ?? 1;
+            if (price.recurring?.interval === "month") {
+              total += unitAmount * quantity;
+            } else if (price.recurring?.interval === "year") {
+              total += Math.round((unitAmount * quantity) / 12);
+            }
+          });
         });
-      });
 
-      if (!subscriptions.has_more) break;
-      startingAfter = subscriptions.data.at(-1)?.id;
-      if (!startingAfter) break;
+        if (!subscriptions.has_more) break;
+        startingAfter = subscriptions.data.at(-1)?.id;
+        if (!startingAfter) break;
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown Stripe subscriptions error";
+      console.error(
+        `[metrics-refresh] Stripe subscriptions failed for project ${project.id}: ${message}`,
+      );
+      stripeErrors.push({
+        projectId: project.id,
+        stage: "subscriptions",
+        message,
+      });
     }
 
     mrrByProject.set(project.id, total);
 
     let revenueStartingAfter: string | undefined = undefined;
-    while (true) {
-      const charges = await stripe.charges.list(
-        {
-          limit: 100,
-          starting_after: revenueStartingAfter,
-        },
-        { stripeAccount: project.creatorStripeAccountId },
-      );
-
-      charges.data.forEach((charge) => {
-        if (!charge.paid || charge.refunded) return;
-        const amount = charge.amount ?? 0;
-        totalRevenueByProject.set(
-          project.id,
-          (totalRevenueByProject.get(project.id) ?? 0) + amount,
+    try {
+      while (true) {
+        const charges = await stripe.charges.list(
+          {
+            limit: 100,
+            starting_after: revenueStartingAfter,
+          },
+          { stripeAccount: project.creatorStripeAccountId },
         );
-        if (charge.created >= sinceUnix && charge.created <= nowUnix) {
-          const dateKey = getDateKeyFromUnix(charge.created);
-          const key = `${project.id}:${dateKey}`;
-          const current = totalRevenueByProjectDate.get(key) ?? 0;
-          totalRevenueByProjectDate.set(key, current + amount);
-        }
-      });
 
-      if (!charges.has_more) break;
-      revenueStartingAfter = charges.data.at(-1)?.id;
-      if (!revenueStartingAfter) break;
+        charges.data.forEach((charge) => {
+          if (!charge.paid || charge.refunded) return;
+          const amount = charge.amount ?? 0;
+          totalRevenueByProject.set(
+            project.id,
+            (totalRevenueByProject.get(project.id) ?? 0) + amount,
+          );
+          if (charge.created >= sinceUnix && charge.created <= nowUnix) {
+            const dateKey = getDateKeyFromUnix(charge.created);
+            const key = `${project.id}:${dateKey}`;
+            const current = totalRevenueByProjectDate.get(key) ?? 0;
+            totalRevenueByProjectDate.set(key, current + amount);
+          }
+        });
+
+        if (!charges.has_more) break;
+        revenueStartingAfter = charges.data.at(-1)?.id;
+        if (!revenueStartingAfter) break;
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown Stripe charges error";
+      console.error(
+        `[metrics-refresh] Stripe charges failed for project ${project.id}: ${message}`,
+      );
+      stripeErrors.push({
+        projectId: project.id,
+        stage: "charges",
+        message,
+      });
     }
   }
 
@@ -431,7 +462,14 @@ Deno.serve(async (request) => {
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, count: upserts.length }), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      count: upserts.length,
+      stripeErrors: stripeErrors.length,
+    }),
+    {
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 });

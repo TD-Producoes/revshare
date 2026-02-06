@@ -132,6 +132,10 @@ export type CreatorRewardPayoutItem = {
   status: "UNLOCKED" | "PAID" | "CLAIMED" | "PENDING_REFUND";
 };
 
+export type CreatorBlockedRewardPayoutItem = CreatorRewardPayoutItem & {
+  reason: "MISSING_STRIPE_ACCOUNT";
+};
+
 export type CreatorRewardPayoutGroup = {
   currency: string;
   totalAmount: number;
@@ -141,6 +145,13 @@ export type CreatorRewardPayoutGroup = {
 
 export type CreatorRewardPayoutsResponse = {
   groups: CreatorRewardPayoutGroup[];
+  blockedGroups?: Array<{
+    currency: string;
+    totalAmount: number;
+    rewardCount: number;
+    items: CreatorBlockedRewardPayoutItem[];
+  }>;
+  blockedCount?: number;
 };
 
 export type CreatorMarketerMetrics = {

@@ -265,6 +265,8 @@ export default function PayoutsPage() {
         },
       ];
   const rewardGroups = rewardPayouts?.groups ?? [];
+  const blockedRewardGroups = rewardPayouts?.blockedGroups ?? [];
+  const blockedRewardCount = rewardPayouts?.blockedCount ?? 0;
   const paidRewardTotalsByCurrency = payments.reduce(
     (acc, payment) => {
       if (payment.type !== "reward" || payment.status !== "paid") {
@@ -1030,6 +1032,17 @@ export default function PayoutsPage() {
           </div>
           <div className="space-y-3">
             <h3 className="text-base font-semibold">Reward Payouts</h3>
+            {blockedRewardCount > 0 ? (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Some unlocked rewards can’t be paid yet</AlertTitle>
+                <AlertDescription>
+                  {blockedRewardCount} unlocked cash reward
+                  {blockedRewardCount === 1 ? "" : "s"} {blockedRewardCount === 1 ? "is" : "are"} blocked
+                  because the marketer has no connected Stripe payout account.
+                </AlertDescription>
+              </Alert>
+            ) : null}
             {rewardGroups.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
                 No cash rewards ready to pay.
@@ -1107,6 +1120,67 @@ export default function PayoutsPage() {
                 ))}
               </div>
             )}
+            {blockedRewardGroups.length > 0 ? (
+              <div className="space-y-6 pt-4">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  Blocked Rewards (missing marketer payout account)
+                </h4>
+                {blockedRewardGroups.map((group) => (
+                  <div key={`blocked-${group.currency}`} className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {group.currency.toUpperCase()} blocked rewards
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {group.rewardCount} rewards ·{" "}
+                          {formatCurrency(group.totalAmount, group.currency)}
+                        </p>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Marketer</TableHead>
+                          <TableHead>Project</TableHead>
+                          <TableHead>Reward</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Earned</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.items.map((item) => (
+                          <TableRow key={`blocked-${item.id}`}>
+                            <TableCell className="font-medium">
+                              {item.marketerName}
+                              {item.marketerEmail ? (
+                                <p className="text-xs text-muted-foreground">
+                                  {item.marketerEmail}
+                                </p>
+                              ) : null}
+                            </TableCell>
+                            <TableCell>{item.projectName}</TableCell>
+                            <TableCell>{item.rewardName}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(item.amount, item.currency)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                Missing payout account
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {renderDateTime(item.earnedAt, "right")}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </TabsContent>
       </Tabs>

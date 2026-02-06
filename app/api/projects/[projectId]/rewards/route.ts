@@ -7,7 +7,7 @@ import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 const rewardInput = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
-  milestoneType: z.enum(["NET_REVENUE", "COMPLETED_SALES", "ACTIVE_CUSTOMERS"]),
+  milestoneType: z.enum(["NET_REVENUE", "COMPLETED_SALES", "CLICKS", "INSTALLS"]),
   milestoneValue: z.number().int().min(1),
   startsAt: z.string().optional().nullable(),
   rewardType: z.enum([

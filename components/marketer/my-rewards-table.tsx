@@ -25,9 +25,21 @@ export function MyRewardsTable({ rewards }: MyRewardsTableProps) {
 
   // Filter out paid/claimed for "Active" view if needed, 
   // but usually "Active Rewards" section implies ongoing ones.
-  const activeRewards = rewards.filter(
-    (item) => item.status !== "PAID" && item.status !== "CLAIMED"
-  );
+  const statusPriority: Record<MarketerProjectReward["status"], number> = {
+    IN_PROGRESS: 0,
+    PENDING_REFUND: 1,
+    UNLOCKED: 2,
+    CLAIMED: 3,
+    PAID: 4,
+  };
+
+  const activeRewards = [...rewards]
+    .filter((item) => item.status !== "PAID" && item.status !== "CLAIMED")
+    .sort((a, b) => {
+      const priorityDelta = statusPriority[a.status] - statusPriority[b.status];
+      if (priorityDelta !== 0) return priorityDelta;
+      return b.progress.percent - a.progress.percent;
+    });
 
   if (activeRewards.length === 0) {
     return null;
@@ -95,7 +107,11 @@ export function MyRewardsTable({ rewards }: MyRewardsTableProps) {
                 <span className="text-sm font-medium">
                   {item.reward.milestoneType === "NET_REVENUE"
                     ? formatCurrency(item.progress.goal, reward.currency || "USD")
-                    : `${item.progress.goal} ${item.reward.milestoneType.replace("_", " ").toLowerCase()}`}
+                    : item.reward.milestoneType === "COMPLETED_SALES"
+                      ? `${item.progress.goal} completed sales`
+                      : item.reward.milestoneType === "CLICKS"
+                        ? `${item.progress.goal} clicks`
+                        : `${item.progress.goal} installs`}
                 </span>
               </TableCell>
               <TableCell>

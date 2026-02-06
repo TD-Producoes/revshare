@@ -29,7 +29,7 @@ export const planRewardSchema = z.object({
   client_ref: z.string().min(1).max(80),
   name: z.string().min(2).max(120),
   description: z.string().max(2000).optional().nullable(),
-  milestoneType: z.enum(["NET_REVENUE", "COMPLETED_SALES", "ACTIVE_CUSTOMERS"]),
+  milestoneType: z.enum(["NET_REVENUE", "COMPLETED_SALES", "CLICKS", "INSTALLS"]),
   milestoneValue: z.number().int().min(1),
   startsAt: z.string().optional().nullable(),
   rewardType: z.enum([

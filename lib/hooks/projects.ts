@@ -525,7 +525,7 @@ export type Reward = {
   id: string;
   name: string;
   description?: string | null;
-  milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
+  milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "CLICKS" | "INSTALLS";
   milestoneValue: number;
   startsAt?: string | null;
   rewardType:

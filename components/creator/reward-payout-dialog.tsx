@@ -222,42 +222,39 @@ export function RewardPayoutDialog({
                       </AlertDescription>
                     </Alert>
                   ) : null}
-
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Marketer</TableHead>
-                          <TableHead>Project</TableHead>
-                          <TableHead>Reward</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead className="text-right">Earned</TableHead>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Marketer</TableHead>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Reward</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Earned</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group?.items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            {item.marketerName}
+                            {item.marketerEmail ? (
+                              <p className="text-xs text-muted-foreground">
+                                {item.marketerEmail}
+                              </p>
+                            ) : null}
+                          </TableCell>
+                          <TableCell>{item.projectName}</TableCell>
+                          <TableCell>{item.rewardName}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(item.amount, item.currency)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {renderDateTime(item.earnedAt)}
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {group?.items.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">
-                              {item.marketerName}
-                              {item.marketerEmail ? (
-                                <p className="text-xs text-muted-foreground">
-                                  {item.marketerEmail}
-                                </p>
-                              ) : null}
-                            </TableCell>
-                            <TableCell>{item.projectName}</TableCell>
-                            <TableCell>{item.rewardName}</TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(item.amount, item.currency)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {renderDateTime(item.earnedAt)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                      ))}
+                    </TableBody>
+                  </Table>
 
                   <div className="rounded-md border bg-muted/30 p-4">
                     <p className="text-sm font-medium mb-3">

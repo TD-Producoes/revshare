@@ -610,7 +610,8 @@ enum RewardStatus {
 enum RewardMilestoneType {
   NET_REVENUE
   COMPLETED_SALES
-  ACTIVE_CUSTOMERS
+  CLICKS
+  INSTALLS
 }
 
 enum RewardType {

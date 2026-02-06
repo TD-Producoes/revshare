@@ -34,7 +34,10 @@ const getMilestoneCopy = (
   if (reward.milestoneType === "COMPLETED_SALES") {
     return `${reward.milestoneValue} completed sales`;
   }
-  return `${reward.milestoneValue} customers`;
+  if (reward.milestoneType === "CLICKS") {
+    return `${reward.milestoneValue} clicks`;
+  }
+  return `${reward.milestoneValue} installs`;
 };
 
 const getRewardCopy = (reward: MarketerProjectReward["reward"], currency: string) => {
@@ -126,7 +129,7 @@ export function MarketerRewardsTab({
       <div>
         <h2 className="text-lg font-semibold">Performance Rewards</h2>
         <p className="text-sm text-muted-foreground">
-          Earn additional rewards by hitting revenue milestones after refunds clear.
+          Earn additional rewards by hitting revenue, sales, click, or install milestones.
           For repeatable rewards, progress resets after each milestone.
         </p>
       </div>

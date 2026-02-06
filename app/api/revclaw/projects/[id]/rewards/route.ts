@@ -18,7 +18,7 @@ const rewardInput = z.object({
   name: z.string().min(2).max(120),
   description: z.string().max(2000).optional().nullable(),
 
-  milestoneType: z.enum(["NET_REVENUE", "COMPLETED_SALES", "ACTIVE_CUSTOMERS"]),
+  milestoneType: z.enum(["NET_REVENUE", "COMPLETED_SALES", "CLICKS", "INSTALLS"]),
   milestoneValue: z.number().int().min(1),
   startsAt: z.string().optional().nullable(),
 

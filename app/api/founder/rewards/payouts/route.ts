@@ -5,6 +5,7 @@ import { authErrorResponse, requireAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   createRewardTransfers,
+  fetchBlockedRewardPayoutRows,
   fetchRewardPayoutRows,
 } from "@/lib/rewards/payouts";
 
@@ -25,6 +26,10 @@ type RewardPayoutRow = {
   currency: string;
   earnedAt: Date;
   status: "UNLOCKED" | "PAID" | "CLAIMED" | "PENDING_REFUND";
+};
+
+type BlockedRewardPayoutRow = RewardPayoutRow & {
+  reason: "MISSING_STRIPE_ACCOUNT";
 };
 
 const groupByCurrency = (rows: RewardPayoutRow[]) => {
@@ -73,6 +78,9 @@ export async function GET(request: Request) {
   const { rows } = await fetchRewardPayoutRows({
     creatorId: userId,
   });
+  const { rows: blockedRows } = await fetchBlockedRewardPayoutRows({
+    creatorId: userId,
+  });
 
   const rowsForResponse: RewardPayoutRow[] = rows.map((row) => ({
     id: row.id,
@@ -88,10 +96,29 @@ export async function GET(request: Request) {
     earnedAt: row.earnedAt,
     status: row.status,
   }));
+  const blockedRowsForResponse: BlockedRewardPayoutRow[] = blockedRows.map(
+    (row) => ({
+      id: row.id,
+      rewardId: row.rewardId,
+      rewardName: row.rewardName,
+      projectId: row.projectId,
+      projectName: row.projectName,
+      marketerId: row.marketerId,
+      marketerName: row.marketerName,
+      marketerEmail: row.marketerEmail,
+      amount: row.amount,
+      currency: row.currency,
+      earnedAt: row.earnedAt,
+      status: row.status,
+      reason: row.reason,
+    }),
+  );
 
   return NextResponse.json({
     data: {
       groups: groupByCurrency(rowsForResponse),
+      blockedGroups: groupByCurrency(blockedRowsForResponse),
+      blockedCount: blockedRowsForResponse.length,
     },
   });
 }

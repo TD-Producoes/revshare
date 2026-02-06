@@ -18,6 +18,22 @@ type RewardPayoutRow = {
   status: "UNLOCKED" | "PAID" | "CLAIMED" | "PENDING_REFUND";
 };
 
+type BlockedRewardPayoutRow = {
+  id: string;
+  rewardId: string;
+  rewardName: string;
+  projectId: string;
+  projectName: string;
+  marketerId: string;
+  marketerName: string;
+  marketerEmail: string | null;
+  amount: number;
+  currency: string;
+  earnedAt: Date;
+  status: "UNLOCKED" | "PAID" | "CLAIMED" | "PENDING_REFUND";
+  reason: "MISSING_STRIPE_ACCOUNT";
+};
+
 type RewardPayoutParams = {
   creatorId: string;
   currency?: string;
@@ -67,7 +83,7 @@ export async function fetchRewardPayoutRows(params: RewardPayoutParams) {
         select: { id: true, name: true, email: true, stripeConnectedAccountId: true },
       },
     },
-    orderBy: { earnedAt: "asc" },
+    orderBy: { earnedAt: "desc" },
   });
 
   const rows: RewardPayoutRow[] = earned
@@ -97,6 +113,66 @@ export async function fetchRewardPayoutRows(params: RewardPayoutParams) {
 
   const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0);
   return { rows, totalAmount, currency: currency ?? null };
+}
+
+export async function fetchBlockedRewardPayoutRows(params: RewardPayoutParams) {
+  const currency = params.currency ? params.currency.toUpperCase() : null;
+  const earned = await prisma.rewardEarned.findMany({
+    where: {
+      status: "UNLOCKED",
+      ...(params.cutoff ? { earnedAt: { lte: params.cutoff } } : {}),
+      reward: { rewardType: "MONEY", project: { userId: params.creatorId } },
+      marketer: { stripeConnectedAccountId: null },
+      ...(currency
+        ? {
+            OR: [
+              { rewardCurrency: currency },
+              { rewardCurrency: null, reward: { rewardCurrency: currency } },
+            ],
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+      rewardId: true,
+      rewardAmount: true,
+      rewardCurrency: true,
+      earnedAt: true,
+      status: true,
+      reward: { select: { name: true, rewardAmount: true, rewardCurrency: true } },
+      project: { select: { id: true, name: true } },
+      marketer: {
+        select: { id: true, name: true, email: true },
+      },
+    },
+    orderBy: { earnedAt: "desc" },
+  });
+
+  const rows: BlockedRewardPayoutRow[] = earned
+    .map((row) => {
+      const amount = row.rewardAmount ?? row.reward.rewardAmount ?? 0;
+      const resolvedCurrency =
+        row.rewardCurrency ?? row.reward.rewardCurrency ?? currency ?? "USD";
+      if (!amount || !resolvedCurrency) return null;
+      return {
+        id: row.id,
+        rewardId: row.rewardId,
+        rewardName: row.reward.name ?? "Reward",
+        projectId: row.project.id,
+        projectName: row.project.name,
+        marketerId: row.marketer.id,
+        marketerName: row.marketer.name ?? "Marketer",
+        marketerEmail: row.marketer.email ?? null,
+        amount,
+        currency: resolvedCurrency.toUpperCase(),
+        earnedAt: row.earnedAt,
+        status: row.status,
+        reason: "MISSING_STRIPE_ACCOUNT" as const,
+      };
+    })
+    .filter(Boolean) as BlockedRewardPayoutRow[];
+
+  return { rows };
 }
 
 export async function createRewardTransfers(params: RewardTransferParams) {

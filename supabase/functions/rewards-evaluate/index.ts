@@ -23,7 +23,7 @@ type RewardRow = {
   name: string;
   startsAt: string | null;
   createdAt: string;
-  milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
+  milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "CLICKS" | "INSTALLS";
   milestoneValue: number;
   rewardType: "DISCOUNT_COUPON" | "FREE_SUBSCRIPTION" | "PLAN_UPGRADE" | "ACCESS_PERK" | "MONEY";
   rewardAmount: number | null;
@@ -44,6 +44,13 @@ type PurchaseRow = {
   coupon: { marketerId: string | null } | null;
 };
 
+type AttributionRow = {
+  projectId: string;
+  marketerId: string;
+  deviceId: string;
+  createdAt: string;
+};
+
 type EarnedRow = {
   id: string;
   rewardId: string;
@@ -53,11 +60,17 @@ type EarnedRow = {
 
 const getMetricValue = (
   reward: RewardRow,
-  totals: { revenue: number; sales: number; customers: number },
+  totals: {
+    revenue: number;
+    sales: number;
+    clicks: number;
+    installs: number;
+  },
 ) => {
   if (reward.milestoneType === "NET_REVENUE") return totals.revenue;
   if (reward.milestoneType === "COMPLETED_SALES") return totals.sales;
-  return totals.customers;
+  if (reward.milestoneType === "CLICKS") return totals.clicks;
+  return totals.installs;
 };
 
 const createId = () => crypto.randomUUID();
@@ -130,6 +143,15 @@ Deno.serve(async (request) => {
     return new Response(purchasesError.message, { status: 500 });
   }
 
+  const { data: attributionRows, error: attributionError } = await supabase
+    .from("AttributionClick")
+    .select("projectId,marketerId,deviceId,createdAt")
+    .in("projectId", projectIds);
+
+  if (attributionError) {
+    return new Response(attributionError.message, { status: 500 });
+  }
+
   const purchasesByProjectMarketer = new Map<string, PurchaseRow[]>();
 
   for (const row of (purchases ?? []) as PurchaseRow[]) {
@@ -139,6 +161,15 @@ Deno.serve(async (request) => {
     const existing = purchasesByProjectMarketer.get(key) ?? [];
     existing.push(row);
     purchasesByProjectMarketer.set(key, existing);
+  }
+
+  const attributionByProjectMarketer = new Map<string, AttributionRow[]>();
+  for (const row of (attributionRows ?? []) as AttributionRow[]) {
+    if (!row.projectId || !row.marketerId) continue;
+    const key = `${row.projectId}:${row.marketerId}`;
+    const existing = attributionByProjectMarketer.get(key) ?? [];
+    existing.push(row);
+    attributionByProjectMarketer.set(key, existing);
   }
 
   const { data: earnedRows, error: earnedError } = await supabase
@@ -172,7 +203,19 @@ Deno.serve(async (request) => {
     const rewardStart = new Date(reward.startsAt ?? reward.createdAt);
     const earnedMarketers =
       earnedMarketersByReward.get(reward.id) ?? new Set<string>();
-    for (const [key, rows] of purchasesByProjectMarketer.entries()) {
+    const projectKeys = new Set<string>();
+    for (const key of purchasesByProjectMarketer.keys()) {
+      if (key.startsWith(`${reward.projectId}:`)) {
+        projectKeys.add(key);
+      }
+    }
+    for (const key of attributionByProjectMarketer.keys()) {
+      if (key.startsWith(`${reward.projectId}:`)) {
+        projectKeys.add(key);
+      }
+    }
+
+    for (const key of projectKeys) {
       const [projectId, marketerId] = key.split(":");
       if (projectId !== reward.projectId) continue;
       const allowed = Array.isArray(reward.allowedMarketerIds)
@@ -182,23 +225,37 @@ Deno.serve(async (request) => {
         continue;
       }
 
-      const totals = { revenue: 0, sales: 0, customers: new Set<string>() };
-      for (const row of rows) {
+      const purchaseRows = purchasesByProjectMarketer.get(key) ?? [];
+      const attributionRowsForKey = attributionByProjectMarketer.get(key) ?? [];
+      const totals = { revenue: 0, sales: 0, clicks: 0, installs: 0 };
+      for (const row of purchaseRows) {
         const createdAt = new Date(row.createdAt);
         if (Number.isNaN(createdAt.getTime()) || createdAt < rewardStart) {
           continue;
         }
         totals.revenue += Number(row.amount) || 0;
         totals.sales += 1;
-        if (row.customerEmail) {
-          totals.customers.add(row.customerEmail.toLowerCase());
+      }
+
+      for (const row of attributionRowsForKey) {
+        const createdAt = new Date(row.createdAt);
+        if (Number.isNaN(createdAt.getTime()) || createdAt < rewardStart) {
+          continue;
+        }
+        if (row.deviceId?.startsWith("click:")) {
+          totals.clicks += 1;
+          continue;
+        }
+        if (row.deviceId?.startsWith("install:")) {
+          totals.installs += 1;
         }
       }
 
       const metricValue = getMetricValue(reward, {
         revenue: totals.revenue,
         sales: totals.sales,
-        customers: totals.customers.size,
+        clicks: totals.clicks,
+        installs: totals.installs,
       });
       if (reward.milestoneValue <= 0) continue;
       const achieved = Math.floor(metricValue / reward.milestoneValue);
@@ -284,7 +341,8 @@ Deno.serve(async (request) => {
     .insert(events)
     .select("id,projectId,actorId,data");
   if (eventError) {
-    return new Response(eventError.message, { status: 500 });
+    // Do not block marketer notifications if event insertion fails.
+    console.error("Failed to insert REWARD_EARNED events:", eventError.message);
   }
 
   const eventIdByKey = new Map<string, string>();
@@ -317,6 +375,8 @@ Deno.serve(async (request) => {
       data: {
         rewardId,
         projectId,
+        milestoneType: reward?.milestoneType ?? null,
+        milestoneValue: reward?.milestoneValue ?? null,
       },
     };
 

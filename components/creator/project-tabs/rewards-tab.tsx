@@ -69,7 +69,7 @@ type Reward = {
   id: string;
   name: string;
   description?: string | null;
-  milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "ACTIVE_CUSTOMERS";
+  milestoneType: "NET_REVENUE" | "COMPLETED_SALES" | "CLICKS" | "INSTALLS";
   milestoneValue: number;
   startsAt?: string | null;
   rewardType:
@@ -112,7 +112,10 @@ const getMilestoneLabel = (reward: Reward, currency: string) => {
   if (reward.milestoneType === "COMPLETED_SALES") {
     return `${reward.milestoneValue} completed sales`;
   }
-  return `${reward.milestoneValue} active customers`;
+  if (reward.milestoneType === "CLICKS") {
+    return `${reward.milestoneValue} clicks`;
+  }
+  return `${reward.milestoneValue} installs`;
 };
 
 const getRewardTypeLabel = (reward: Reward, currency: string) => {
@@ -544,7 +547,7 @@ export function ProjectRewardsTab({
               {editingRewardId ? "Edit reward" : "Create reward"}
             </DialogTitle>
             <DialogDescription>
-              Configure a milestone reward that unlocks after refunds clear.
+              Configure a milestone reward for revenue, sales, clicks, or installs.
             </DialogDescription>
           </DialogHeader>
           {createError ? (
@@ -599,8 +602,11 @@ export function ProjectRewardsTab({
                       <SelectItem value="COMPLETED_SALES">
                         Number of completed sales
                       </SelectItem>
-                      <SelectItem value="ACTIVE_CUSTOMERS">
-                        Active customers after X days
+                      <SelectItem value="CLICKS">
+                        Number of clicks
+                      </SelectItem>
+                      <SelectItem value="INSTALLS">
+                        Number of installs
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -640,7 +646,7 @@ export function ProjectRewardsTab({
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Milestones are evaluated after the refund window ends.
+                Click/install milestones unlock immediately when reached.
               </p>
             </div>
 
@@ -754,7 +760,7 @@ export function ProjectRewardsTab({
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   {formState.rewardType === "MONEY"
-                    ? "Cash rewards are paid manually after the refund window."
+                    ? "Cash rewards are paid manually once the milestone is reached."
                     : "Auto coupons are delivered instantly. Manual fulfillment is for perks outside Stripe."}
                 </p>
               </div>
@@ -933,7 +939,9 @@ export function ProjectRewardsTab({
                         )} net revenue`
                       : formState.milestoneType === "COMPLETED_SALES"
                         ? `${formState.milestoneValue || 0} completed sales`
-                        : `${formState.milestoneValue || 0} active customers`}
+                        : formState.milestoneType === "CLICKS"
+                          ? `${formState.milestoneValue || 0} clicks`
+                          : `${formState.milestoneValue || 0} installs`}
                   </span>
                 </p>
                 <p>
@@ -965,7 +973,7 @@ export function ProjectRewardsTab({
                 />
                 <Label htmlFor="rewardConfirm" className="text-xs">
                   I understand this reward becomes claimable once the milestone
-                  is reached and refunds clear.
+                  is reached.
                 </Label>
               </div>
             </div>
