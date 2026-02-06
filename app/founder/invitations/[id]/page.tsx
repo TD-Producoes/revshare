@@ -7,14 +7,13 @@ export default async function FounderInvitationDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  let user;
   try {
-    user = await requireAuthUser();
+    await requireAuthUser();
   } catch {
     redirect("/login");
   }
 
   const { id } = await params;
 
-  return <FounderInvitationThread invitationId={id} currentUserId={user.id} />;
+  return <FounderInvitationThread invitationId={id} />;
 }

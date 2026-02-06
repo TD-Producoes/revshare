@@ -2,11 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { getSafeNextPath } from "@/lib/utils/safe-redirect";
+
+const POST_AUTH_INTENT_COOKIE = "post_auth_intent";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const roleParam = searchParams.get("role");
+  const safeNextFromQuery = getSafeNextPath(searchParams.get("next"));
+  const safeNextFromCookie = getSafeNextPath(
+    request.cookies.get(POST_AUTH_INTENT_COOKIE)?.value
+  );
   let redirectUrl = origin;
   const cookiesToApply: Array<{
     name: string;
@@ -24,7 +31,7 @@ export async function GET(request: NextRequest) {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
+            cookiesToSet.forEach(({ name, value }) =>
               request.cookies.set(name, value)
             );
             cookiesToApply.push(...cookiesToSet);
@@ -75,10 +82,12 @@ export async function GET(request: NextRequest) {
         select: { role: true },
       });
 
-      redirectUrl =
+      const roleHome =
         updatedUser.role === "marketer"
-          ? `${origin}/marketer`
-          : `${origin}/founder`;
+          ? "/marketer"
+          : "/founder";
+      const redirectPath = safeNextFromQuery ?? safeNextFromCookie ?? roleHome;
+      redirectUrl = `${origin}${redirectPath}`;
     }
   }
 
@@ -86,6 +95,7 @@ export async function GET(request: NextRequest) {
   cookiesToApply.forEach(({ name, value, options }) =>
     response.cookies.set(name, value, options)
   );
+  response.cookies.delete(POST_AUTH_INTENT_COOKIE);
 
   return response;
 }

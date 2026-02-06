@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,7 +16,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
   PopoverContent,
@@ -40,6 +37,11 @@ import {
   SendHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { ChatDrawerOpenDetail } from "@/lib/chat/events";
+import {
+  useRealtimeMessages,
+  useRealtimeUserChannel,
+} from "@/lib/hooks/use-realtime-messages";
 
 type ConversationRow = {
   id: string;
@@ -93,21 +95,61 @@ export function ChatDrawer({
   open,
   onOpenChange,
   viewerUserId,
+  openTarget,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   viewerUserId: string;
+  openTarget?: ChatDrawerOpenDetail | null;
 }) {
   const queryClient = useQueryClient();
+  const handledOpenRequestRef = useRef<number | null>(null);
+  const inFlightOpenRequestRef = useRef<number | null>(null);
 
   const [q, setQ] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
 
+  // Ref for auto-scrolling to bottom on new messages
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Per-conversation read tracking (localStorage-backed)
+  const readAtStorageKey = `revshare:chat:readAt:${viewerUserId}`;
+  const [conversationReadAt, setConversationReadAt] = useState<
+    Record<string, number>
+  >(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem(readAtStorageKey);
+      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Mark active conversation as read whenever it changes
+  useEffect(() => {
+    if (!activeId || !open) return;
+    setConversationReadAt((prev) => {
+      const next = { ...prev, [activeId]: Date.now() };
+      try {
+        window.localStorage.setItem(readAtStorageKey, JSON.stringify(next));
+      } catch {
+        /* quota exceeded — ignore */
+      }
+      return next;
+    });
+  }, [activeId, open, readAtStorageKey]);
+
   // Start conversation selector state (shadcn combobox style)
   const [startOpen, setStartOpen] = useState(false);
   const [startNeedle, setStartNeedle] = useState("");
+
+  // Realtime: instant messages for the active conversation
+  useRealtimeMessages(activeId, open);
+  // Realtime: refresh conversation list & unread counts on any new message
+  useRealtimeUserChannel(viewerUserId, open);
 
   const conversationsQuery = useQuery<{ data: ConversationRow[] }>({
     queryKey: ["chat-conversations"],
@@ -176,6 +218,13 @@ export function ChatDrawer({
 
   const messages = messagesQuery.data?.data ?? [];
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0 && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
   const startOptions = useMemo(() => {
     const list = startOptionsQuery.data?.data ?? [];
     const needle = startNeedle.trim().toLowerCase();
@@ -226,7 +275,7 @@ export function ChatDrawer({
     }
   };
 
-  const handleStartConversation = async (o: StartOptionRow) => {
+  const handleStartConversation = useCallback(async (o: StartOptionRow) => {
     try {
       const res = await fetch("/api/chat/conversations/start", {
         method: "POST",
@@ -246,7 +295,7 @@ export function ChatDrawer({
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to start conversation");
     }
-  };
+  }, [queryClient]);
 
   const selectedStartSummary = useMemo(() => {
     // Not keeping a selected state; we just start a conversation and focus it.
@@ -256,25 +305,80 @@ export function ChatDrawer({
     return "Choose a person (per project)…";
   }, [startOptionsQuery.data]);
 
+  useEffect(() => {
+    if (!open || !openTarget) return;
+    if (handledOpenRequestRef.current === openTarget.requestId) return;
+    if (inFlightOpenRequestRef.current === openTarget.requestId) return;
+
+    const { projectId, counterpartyId, requestId } = openTarget;
+    if (!projectId || !counterpartyId) {
+      handledOpenRequestRef.current = requestId;
+      return;
+    }
+
+    const conversations = conversationsQuery.data?.data;
+    if (Array.isArray(conversations)) {
+      const existing = conversations.find((c) => {
+        if (c.project.id !== projectId) return false;
+        const otherUserId =
+          c.founderId === viewerUserId ? c.marketerId : c.founderId;
+        return otherUserId === counterpartyId;
+      });
+      if (existing) {
+        setActiveId(existing.id);
+        handledOpenRequestRef.current = requestId;
+        return;
+      }
+    }
+
+    if (!startOptionsQuery.isSuccess) return;
+
+    const option = (startOptionsQuery.data?.data ?? []).find(
+      (o) =>
+        o.projectId === projectId &&
+        o.counterpartyId === counterpartyId,
+    );
+    if (!option) {
+      handledOpenRequestRef.current = requestId;
+      return;
+    }
+
+    inFlightOpenRequestRef.current = requestId;
+    void handleStartConversation(option).finally(() => {
+      handledOpenRequestRef.current = requestId;
+      if (inFlightOpenRequestRef.current === requestId) {
+        inFlightOpenRequestRef.current = null;
+      }
+    });
+  }, [
+    open,
+    openTarget,
+    conversationsQuery.data,
+    startOptionsQuery.data,
+    startOptionsQuery.isSuccess,
+    viewerUserId,
+    handleStartConversation,
+  ]);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="p-0 data-[side=right]:w-[92vw] data-[side=right]:sm:w-[960px] data-[side=right]:sm:max-w-none"
+        className="p-0 flex flex-col data-[side=right]:w-[92vw] data-[side=right]:sm:w-[960px] data-[side=right]:sm:max-w-none"
         showCloseButton={true}
       >
-        <SheetHeader className="border-b px-5 py-4">
+        <SheetHeader className="border-b px-5 py-4 shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <MessageSquareText className="h-4 w-4" />
             Chat
           </SheetTitle>
           <SheetDescription>
-            Conversations are per project. Start a conversation with someone you’re
+            Conversations are per project. Start a conversation with someone you're
             connected to through an invite or an approved contract.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex h-full min-h-0">
+        <div className="flex flex-1 min-h-0">
           {/* Left: conversations */}
           <div className="w-[320px] border-r flex flex-col min-h-0">
             <div className="p-4 space-y-3">
@@ -352,13 +456,8 @@ export function ChatDrawer({
                       When you invite a marketer (or accept an invite), you can start chatting
                       here — conversations stay scoped to a specific project.
                     </div>
-                    <div className="mt-3 flex flex-col gap-2">
-                      <div className="text-xs text-muted-foreground">
-                        Tip: use <span className="font-medium text-foreground">Start conversation</span> above.
-                      </div>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href="/founder/projects">Go to projects</Link>
-                      </Button>
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      Tip: use <span className="font-medium text-foreground">Start conversation</span> above.
                     </div>
                   </div>
                 ) : (
@@ -366,6 +465,16 @@ export function ChatDrawer({
                     const other = c.founderId === viewerUserId ? c.marketer : c.founder;
                     const preview = c.messages?.[0]?.body ?? "";
                     const isActive = c.id === activeId;
+                    const lastMsg = c.messages?.[0];
+                    const lastMsgTime = c.lastMessageAt
+                      ? new Date(c.lastMessageAt).getTime()
+                      : 0;
+                    const readAt = conversationReadAt[c.id] ?? 0;
+                    const hasUnread =
+                      !isActive &&
+                      lastMsg &&
+                      lastMsg.senderUserId !== viewerUserId &&
+                      lastMsgTime > readAt;
                     return (
                       <button
                         key={c.id}
@@ -377,12 +486,17 @@ export function ChatDrawer({
                         )}
                       >
                         <div className="flex items-start gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback>{initials(other.name)}</AvatarFallback>
-                          </Avatar>
+                          <div className="relative">
+                            <Avatar className="h-9 w-9">
+                              <AvatarFallback>{initials(other.name)}</AvatarFallback>
+                            </Avatar>
+                            {hasUnread ? (
+                              <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-background" />
+                            ) : null}
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <div className="truncate font-semibold">
+                              <div className={cn("truncate", hasUnread ? "font-bold" : "font-semibold")}>
                                 {other.name ?? other.email ?? other.id}
                               </div>
                               <div className="shrink-0 text-[10px] text-muted-foreground">
@@ -393,7 +507,7 @@ export function ChatDrawer({
                               {c.project.name}
                             </div>
                             {preview ? (
-                              <div className="truncate text-[11px] text-muted-foreground">
+                              <div className={cn("truncate text-[11px]", hasUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
                                 {preview}
                               </div>
                             ) : null}
@@ -415,7 +529,7 @@ export function ChatDrawer({
               </div>
             ) : (
               <>
-                <div className="border-b p-4 flex items-center justify-between">
+                <div className="border-b p-4 flex items-center justify-between shrink-0">
                   <div className="min-w-0">
                     <div className="truncate font-semibold">
                       {activeConversation.project.name}
@@ -428,7 +542,7 @@ export function ChatDrawer({
                   </div>
                 </div>
 
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 min-h-0">
                   <div className="space-y-3 p-4">
                     {messagesQuery.isLoading ? (
                       <div className="text-muted-foreground">Loading…</div>
@@ -473,26 +587,30 @@ export function ChatDrawer({
                         );
                       })
                     )}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
 
-                <div className="border-t p-4">
-                  <div className="grid gap-2">
-                    <Textarea
+                <div className="border-t p-4 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Input
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder="Write a message…"
-                      className="min-h-[88px]"
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter" || e.shiftKey) return;
+                        e.preventDefault();
+                        void handleSend();
+                      }}
                     />
-                    <div className="flex justify-end">
-                      <Button
-                        onClick={() => void handleSend()}
-                        disabled={sending || !draft.trim()}
-                      >
-                        <SendHorizontal className="mr-2 h-4 w-4" />
-                        {sending ? "Sending…" : "Send"}
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={() => void handleSend()}
+                      disabled={sending || !draft.trim()}
+                      size="icon"
+                      aria-label={sending ? "Sending message" : "Send message"}
+                    >
+                      <SendHorizontal className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </>

@@ -100,8 +100,6 @@ export function InvitationsInbox() {
         <p className="text-sm text-destructive">
           {error instanceof Error ? error.message : "Failed to load invitations"}
         </p>
-      ) : invitations.length === 0 ? (
-        <p className="text-muted-foreground">No invitations.</p>
       ) : (
         <Table>
           <TableHeader>
@@ -115,38 +113,49 @@ export function InvitationsInbox() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {invitations.map((inv) => (
-              <TableRow key={inv.id}>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/marketer/invitations/${inv.id}`}
-                    className="hover:underline"
-                  >
-                    {inv.project.name}
-                  </Link>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(inv.createdAt).toLocaleDateString()}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusVariant(inv.status)} className="uppercase">
-                    {inv.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  {percentDisplay(inv.commissionPercentSnapshot)}%
-                </TableCell>
-                <TableCell className="text-right">
-                  {inv.refundWindowDaysSnapshot}d
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {inv.founder.name ?? inv.founder.email ?? inv.founder.id}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {inv._count?.messages ?? 0}
+            {invitations.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  No invitations yet.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              invitations.map((inv) => (
+                <TableRow key={inv.id}>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/marketer/invitations/${inv.id}`}
+                      className="hover:underline"
+                    >
+                      {inv.project.name}
+                    </Link>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(inv.createdAt).toLocaleDateString()}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant(inv.status)} className="uppercase">
+                      {inv.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {percentDisplay(inv.commissionPercentSnapshot)}%
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {inv.refundWindowDaysSnapshot}d
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {inv.founder.name ?? inv.founder.email ?? inv.founder.id}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {inv._count?.messages ?? 0}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       )}

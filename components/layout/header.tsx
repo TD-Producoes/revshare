@@ -31,6 +31,11 @@ import { CreateProjectForm } from "@/components/creator/create-project-form";
 import { useSetupGuide } from "@/components/creator/setup-guide-context";
 import { ChatDrawer } from "@/components/chat/chat-drawer";
 import {
+  CHAT_DRAWER_OPEN_EVENT,
+  type ChatDrawerOpenDetail,
+} from "@/lib/chat/events";
+import { useRealtimeUserChannel } from "@/lib/hooks/use-realtime-messages";
+import {
   ChevronDown,
   Bell,
   Settings,
@@ -42,6 +47,11 @@ import {
   MessageSquareText,
 } from "lucide-react";
 
+type ChatConversationPreview = {
+  lastMessageAt?: string | null;
+  messages?: Array<{ senderUserId?: string | null }>;
+};
+
 export function Header() {
   const router = useRouter();
   const { data: authUserId } = useAuthUserId();
@@ -51,6 +61,8 @@ export function Header() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpenTarget, setChatOpenTarget] =
+    useState<ChatDrawerOpenDetail | null>(null);
   const [chatLastSeenAt, setChatLastSeenAt] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackError, setFeedbackError] = useState("");
@@ -92,6 +104,9 @@ export function Header() {
     }
   }, [chatLastSeenStorageKey]);
 
+  // Realtime: refresh unread counts & conversation lists on any new message
+  useRealtimeUserChannel(user?.id);
+
   const viewerId = user?.id ?? "";
 
   const chatUnreadQuery = useQuery<{ unreadCount: number }>({
@@ -101,7 +116,9 @@ export function Header() {
       const res = await fetch("/api/chat/conversations");
       const json = await res.json().catch(() => null);
       if (!res.ok) throw new Error(json?.error || "Failed to load conversations");
-      const list = Array.isArray(json?.data) ? (json.data as any[]) : [];
+      const list: ChatConversationPreview[] = Array.isArray(json?.data)
+        ? (json.data as ChatConversationPreview[])
+        : [];
       const lastSeen = chatLastSeenAt ?? 0;
 
       // Count conversations where the last message is newer than lastSeen and is not from me.
@@ -124,7 +141,7 @@ export function Header() {
 
       return { unreadCount: count };
     },
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
 
   const chatUnreadCount = chatUnreadQuery.data?.unreadCount ?? 0;
@@ -136,6 +153,18 @@ export function Header() {
     window.localStorage.setItem(chatLastSeenStorageKey, String(now));
     setChatLastSeenAt(now);
   }, [chatOpen, chatLastSeenStorageKey]);
+
+  useEffect(() => {
+    const handleOpenChat = (event: Event) => {
+      const detail = (event as CustomEvent<ChatDrawerOpenDetail>).detail;
+      setChatOpenTarget(detail ?? null);
+      setChatOpen(true);
+    };
+    window.addEventListener(CHAT_DRAWER_OPEN_EVENT, handleOpenChat);
+    return () => {
+      window.removeEventListener(CHAT_DRAWER_OPEN_EVENT, handleOpenChat);
+    };
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -240,6 +269,7 @@ export function Header() {
               open={chatOpen}
               onOpenChange={setChatOpen}
               viewerUserId={user.id}
+              openTarget={chatOpenTarget}
             />
             {isFounder ? (
               <>

@@ -8,6 +8,7 @@ import { ProjectOverviewTab } from "@/components/creator/project-tabs/overview-t
 import { ProjectRewardsTab } from "@/components/creator/project-tabs/rewards-tab";
 import { ProjectInvitationsTab } from "@/components/creator/project-tabs/invitations-tab";
 import { ProjectSettingsTab } from "@/components/creator/project-tabs/settings-tab";
+import { ProjectDistributionTab } from "@/components/creator/project-tabs/distribution-tab";
 import { AttributionKeysSetup } from "@/components/creator/attribution-keys-setup";
 import { Button } from "@/components/ui/button";
 import {
@@ -264,6 +265,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     marketers: "Marketers",
     rewards: "Rewards",
     activity: "Activity",
+    distribution: "Distribution",
     attribution: "Attribution",
     settings: "Settings",
   }[activeTab] ?? "Overview";
@@ -281,6 +283,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       "marketers",
       "rewards",
       "activity",
+      "distribution",
       "attribution",
       "settings",
     ]);
@@ -1350,6 +1353,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <TabsTrigger className="px-3 py-2 text-sm" value="activity">
               Activity
             </TabsTrigger>
+            <TabsTrigger className="px-3 py-2 text-sm" value="distribution">
+              Distribution
+            </TabsTrigger>
             <TabsTrigger className="px-3 py-2 text-sm" value="attribution">
               Attribution
             </TabsTrigger>
@@ -1431,6 +1437,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
         <TabsContent value="activity">
           <ProjectActivityTab projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="distribution">
+          <ProjectDistributionTab
+            projectId={projectId}
+            projectName={resolvedProject.name}
+          />
         </TabsContent>
 
         <TabsContent value="attribution">

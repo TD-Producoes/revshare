@@ -274,7 +274,7 @@ export default function RootLayout({
         </ThemeProvider>
         <SpeedInsights />
         <Analytics/>
-        <SmoothScroll />
+        {/* <SmoothScroll /> */}
       </body>
     </html>
   );

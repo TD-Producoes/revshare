@@ -18,6 +18,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Table,
   TableBody,
   TableCell,
@@ -32,7 +45,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MessageSquare, MoreHorizontal, ShieldOff } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  MessageSquare,
+  MoreHorizontal,
+  ShieldOff,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 type InvitationRow = {
@@ -96,7 +116,8 @@ export function ProjectInvitationsTab({
   // Dialog state
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [selectedMarketer, setSelectedMarketer] = useState<MarketerSearchRow | null>(null);
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [selectedMarketers, setSelectedMarketers] = useState<MarketerSearchRow[]>([]);
   const [message, setMessage] = useState("");
   const [commission, setCommission] = useState(String(defaultCommissionPercent));
   const [refundWindowDays, setRefundWindowDays] = useState(String(defaultRefundWindowDays));
@@ -125,6 +146,20 @@ export function ProjectInvitationsTab({
     [marketersQuery.data],
   );
 
+  const selectedMarketerIds = useMemo(
+    () => new Set(selectedMarketers.map((m) => m.id)),
+    [selectedMarketers],
+  );
+
+  const toggleMarketer = (marketer: MarketerSearchRow) => {
+    setSelectedMarketers((current) => {
+      if (current.some((m) => m.id === marketer.id)) {
+        return current.filter((m) => m.id !== marketer.id);
+      }
+      return [...current, marketer];
+    });
+  };
+
   const handleRevoke = async (invitationId: string) => {
     try {
       const res = await fetch(`/api/founder/invitations/${invitationId}/revoke`, { method: "POST" });
@@ -138,33 +173,73 @@ export function ProjectInvitationsTab({
   };
 
   const handleSend = async () => {
-    if (!selectedMarketer) return;
+    if (selectedMarketers.length === 0) return;
 
     const commissionNum = Number(commission);
     const refundNum = Number(refundWindowDays);
 
     try {
-      const res = await fetch(`/api/founder/projects/${projectId}/invitations`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          marketerId: selectedMarketer.id,
-          message,
-          commissionPercent: commissionNum,
-          refundWindowDays: refundNum,
+      const results = await Promise.allSettled(
+        selectedMarketers.map(async (marketer) => {
+          const res = await fetch(`/api/founder/projects/${projectId}/invitations`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              marketerId: marketer.id,
+              message,
+              commissionPercent: commissionNum,
+              refundWindowDays: refundNum,
+            }),
+          });
+          const json = await res.json().catch(() => null);
+          if (!res.ok) {
+            throw new Error(
+              json?.error
+                ? `${marketer.name ?? marketer.id}: ${json.error}`
+                : `${marketer.name ?? marketer.id}: Failed to send invitation`,
+            );
+          }
+          return marketer.id;
         }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error || "Failed to send invitation");
+      );
 
-      toast.success("Invitation sent");
-      setOpen(false);
-      setSelectedMarketer(null);
-      setSearch("");
-      setMessage("");
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter(
+        (r): r is PromiseRejectedResult => r.status === "rejected",
+      );
+
+      if (successCount > 0 && failed.length === 0) {
+        toast.success(
+          successCount === 1 ? "Invitation sent" : `${successCount} invitations sent`,
+        );
+      } else if (successCount > 0) {
+        toast.warning(
+          `${successCount} sent, ${failed.length} failed. Check errors and retry.`,
+        );
+      } else {
+        throw new Error(
+          failed[0]?.reason instanceof Error
+            ? failed[0].reason.message
+            : "Failed to send invitations",
+        );
+      }
+
+      failed.slice(0, 3).forEach((err) => {
+        const text =
+          err.reason instanceof Error ? err.reason.message : "Failed to send invitation";
+        toast.error(text);
+      });
+
+      if (successCount > 0) {
+        setOpen(false);
+        setSelectedMarketers([]);
+        setSearch("");
+        setMessage("");
+        setSelectorOpen(false);
+      }
       await queryClient.invalidateQueries({ queryKey: ["project-invitations", projectId] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to send invitation");
+      toast.error(e instanceof Error ? e.message : "Failed to send invitations");
     }
   };
 
@@ -260,75 +335,104 @@ export function ProjectInvitationsTab({
           <DialogHeader>
             <DialogTitle>Invite marketer</DialogTitle>
             <DialogDescription>
-              Invite a marketer to apply to this project. You can override the
+              Invite one or more marketers to apply to this project. You can override the
               default commission and refund window.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="marketer-search">Search marketers</Label>
-              <Input
-                id="marketer-search"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setSelectedMarketer(null);
-                }}
-                placeholder="Type a name, bio, or specialty (min 2 chars)"
-              />
-              {selectedMarketer ? (
-                <div className="text-sm">
-                  Selected: <span className="font-semibold">{selectedMarketer.name ?? selectedMarketer.id}</span>
+              <Label>Select marketers</Label>
+              <Popover open={selectorOpen} onOpenChange={setSelectorOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={selectorOpen}
+                    className="w-full justify-between"
+                  >
+                    <span className="truncate">
+                      {selectedMarketers.length > 0
+                        ? `${selectedMarketers.length} marketer${selectedMarketers.length > 1 ? "s" : ""} selected`
+                        : "Search and select marketers"}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Type a name, bio, or specialty (min 2 chars)"
+                      value={search}
+                      onValueChange={setSearch}
+                    />
+                    <CommandList>
+                      {search.trim().length < 2 ? (
+                        <CommandEmpty>Type at least 2 characters.</CommandEmpty>
+                      ) : marketersQuery.isLoading ? (
+                        <CommandEmpty>Searching...</CommandEmpty>
+                      ) : marketersQuery.error ? (
+                        <CommandEmpty>Failed to search marketers.</CommandEmpty>
+                      ) : marketerResults.length === 0 ? (
+                        <CommandEmpty>No matches.</CommandEmpty>
+                      ) : (
+                        <CommandGroup heading="Marketers">
+                          {marketerResults.slice(0, 20).map((m) => {
+                            const selected = selectedMarketerIds.has(m.id);
+                            return (
+                              <CommandItem
+                                key={m.id}
+                                value={`${m.name ?? ""} ${m.bio ?? ""} ${(m.specialties ?? []).join(" ")}`}
+                                onSelect={() => toggleMarketer(m)}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate font-medium">
+                                    {m.name ?? "(Hidden)"}
+                                  </div>
+                                  <div className="truncate text-[11px] text-muted-foreground">
+                                    {m.focusArea ?? "No focus area"} · {(m.specialties ?? []).slice(0, 3).join(", ") || "No specialties"}
+                                  </div>
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              {selectedMarketers.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {selectedMarketers.map((marketer) => (
+                    <Badge key={marketer.id} variant="secondary" className="gap-1 pr-1">
+                      <span className="max-w-[220px] truncate">
+                        {marketer.name ?? marketer.id}
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded-sm p-0.5 hover:bg-black/10"
+                        onClick={() => toggleMarketer(marketer)}
+                        aria-label={`Remove ${marketer.name ?? marketer.id}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedMarketers([])}
+                  >
+                    Clear all
+                  </Button>
                 </div>
               ) : null}
-
-              {search.trim().length >= 2 ? (
-                marketersQuery.isLoading ? (
-                  <p className="text-sm text-muted-foreground">Searching...</p>
-                ) : marketersQuery.error ? (
-                  <p className="text-sm text-destructive">Failed to search marketers.</p>
-                ) : marketerResults.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No results.</p>
-                ) : (
-                  <div className="max-h-56 overflow-auto rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Focus</TableHead>
-                          <TableHead>Specialties</TableHead>
-                          <TableHead className="w-[88px]" />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {marketerResults.slice(0, 20).map((m) => (
-                          <TableRow key={m.id}>
-                            <TableCell className="font-medium">{m.name ?? "(Hidden)"}</TableCell>
-                            <TableCell className="text-muted-foreground">{m.focusArea ?? "-"}</TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {(m.specialties ?? []).slice(0, 3).join(", ") || "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant={selectedMarketer?.id === m.id ? "secondary" : "outline"}
-                                onClick={() => setSelectedMarketer(m)}
-                              >
-                                Select
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Start typing to search.
-                </p>
-              )}
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -391,9 +495,9 @@ export function ProjectInvitationsTab({
             </Button>
             <Button
               onClick={handleSend}
-              disabled={!selectedMarketer || message.trim().length < 1}
+              disabled={selectedMarketers.length === 0 || message.trim().length < 1}
             >
-              Send invite
+              Send invite{selectedMarketers.length > 1 ? "s" : ""}
             </Button>
           </DialogFooter>
         </DialogContent>

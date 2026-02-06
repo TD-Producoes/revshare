@@ -146,6 +146,9 @@ export function ProjectDetail({
     currentUser?.role === "marketer" ? currentUser?.id : null
   );
   const createContract = useCreateContract();
+  const canSeeApplyCta = isPrivate
+    ? currentUser?.role === "marketer"
+    : !currentUser || currentUser.role === "marketer";
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -244,8 +247,13 @@ export function ProjectDetail({
   // Handle opening the apply dialog
   const handleOpenApply = () => {
     if (!isPrivate) {
-      // Public page: redirect to marketer dashboard with query param
-      router.push(`/marketer/projects/${projectId}?apply=true`);
+      const intent = searchParams?.get("intent") ?? "affiliate_apply";
+      const src = searchParams?.get("src") ?? "founder_site";
+      router.push(
+        `/apply/${encodeURIComponent(
+          projectId
+        )}?intent=${encodeURIComponent(intent)}&src=${encodeURIComponent(src)}`
+      );
       return;
     }
 
@@ -639,19 +647,21 @@ export function ProjectDetail({
                 </div>
               </div>
 
-              {currentUser?.role === "marketer" && (
+              {canSeeApplyCta && (
                 <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
                   <Button
                     size="lg"
-                    className="h-10 px-6 rounded-full shadow-lg shadow-primary/20 hover:scale-105 transition-transform font-semibold"
+                    className="h-10 px-6 rounded-full hover:scale-105 transition-transform font-semibold"
                     onClick={handleOpenApply}
                   >
-                    Apply to Promote
+                    Become an Affiliate
                     <ArrowUpRight className="ml-2 h-4 w-4" />
                   </Button>
-                  <p className="text-xs text-center text-muted-foreground">
-                    Usually responds in 24h
-                  </p>
+                  {!isPrivate && (
+                    <p className="text-xs text-center text-muted-foreground">
+                      Apply in under 2 minutes
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -935,18 +945,22 @@ export function ProjectDetail({
                   </div>
                 )}
 
-                {currentUser?.role === "marketer" && (
+                {canSeeApplyCta && (
                   <Button
                     className="w-full h-11 rounded-xl shadow-md"
                     size="lg"
                     onClick={handleOpenApply}
                     disabled={
-                      !currentUser ||
-                      getContractStatus() === "approved" ||
-                      getContractStatus() === "pending"
+                      !isPrivate
+                        ? false
+                        : !currentUser ||
+                          getContractStatus() === "approved" ||
+                          getContractStatus() === "pending"
                     }
                   >
-                    {getContractStatus() === "approved"
+                    {!isPrivate
+                      ? "Become an Affiliate"
+                      : getContractStatus() === "approved"
                       ? "Already Promoting"
                       : getContractStatus() === "pending"
                       ? "Application Pending"

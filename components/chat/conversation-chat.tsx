@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Send, MessageSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useRealtimeMessages } from "@/lib/hooks/use-realtime-messages";
 
 type MessageRow = {
   id: string;
@@ -87,6 +88,9 @@ export function ConversationChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Realtime: instant messages without polling
+  useRealtimeMessages(conversationId);
+
   const messagesQuery = useQuery<{ data: MessageRow[] }>({
     queryKey: ["chat-messages", conversationId],
     queryFn: async () => {
@@ -95,7 +99,7 @@ export function ConversationChat({
       if (!res.ok) throw new Error(json?.error || "Failed to load messages");
       return json;
     },
-    refetchInterval: 10000,
+    refetchInterval: 60000,
   });
 
   const messages = useMemo(

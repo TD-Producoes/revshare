@@ -2,21 +2,27 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FormInput } from "@/components/shared/form-input";
 import { Label } from "@/components/ui/label";
+import { getSafeNextPath } from "@/lib/utils/safe-redirect";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const safeNextPath = getSafeNextPath(searchParams.get("next"));
+  const signupHref = safeNextPath
+    ? `/signup?next=${encodeURIComponent(safeNextPath)}`
+    : "/signup";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,19 +44,25 @@ export function LoginForm({
       data.user?.user_metadata?.role === "founder"
         ? data.user.user_metadata.role
         : undefined;
+    const roleHome = role === "marketer" ? "/marketer" : "/founder";
 
-    router.push(role === "marketer" ? "/marketer" : "/founder");
+    router.push(safeNextPath ?? roleHome);
     router.refresh();
   };
 
   const handleGoogleLogin = async () => {
-    const redirectUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    const redirectUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     setError("");
     const supabase = createClient();
+    const callbackUrl = new URL("/auth/callback", redirectUrl);
+    if (safeNextPath) {
+      callbackUrl.searchParams.set("next", safeNextPath);
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${redirectUrl}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     });
 
@@ -132,7 +144,10 @@ export function LoginForm({
             </div>
             <div className="text-center text-sm text-black/60">
               Don&apos;t have an account?{" "}
-              <Link href="/signup" className="font-semibold underline underline-offset-4">
+              <Link
+                href={signupHref}
+                className="font-semibold underline underline-offset-4"
+              >
                 Sign up
               </Link>
             </div>

@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getSafeNextPath } from "@/lib/utils/safe-redirect";
 
 export function SignupForm({
   className,
@@ -25,20 +26,31 @@ export function SignupForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
+  const safeNextPath = getSafeNextPath(searchParams.get("next"));
+
   // Initialize role from URL parameter
   const roleParam = searchParams.get("role");
-  const initialRole = (roleParam === "marketer" || roleParam === "founder") ? roleParam : "founder";
+  const initialRole =
+    roleParam === "marketer" || roleParam === "founder"
+      ? roleParam
+      : "founder";
   const [role, setRole] = useState<"founder" | "marketer">(initialRole);
   const [error, setError] = useState("");
+  const loginHref = safeNextPath
+    ? `/login?next=${encodeURIComponent(safeNextPath)}`
+    : "/login";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     const supabase = createClient();
-    const redirectUrl = new URL("/auth/callback", window.location.origin);
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const redirectUrl = new URL("/auth/callback", baseUrl);
     redirectUrl.searchParams.set("role", role);
+    if (safeNextPath) {
+      redirectUrl.searchParams.set("next", safeNextPath);
+    }
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -76,7 +88,8 @@ export function SignupForm({
         }
       }
 
-      router.push(role === "marketer" ? "/marketer" : "/founder");
+      const roleHome = role === "marketer" ? "/marketer" : "/founder";
+      router.push(safeNextPath ?? roleHome);
       router.refresh();
       return;
     }
@@ -87,8 +100,12 @@ export function SignupForm({
   const handleGoogleSignup = async () => {
     setError("");
     const supabase = createClient();
-    const redirectTo = new URL("/auth/callback", window.location.origin);
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const redirectTo = new URL("/auth/callback", baseUrl);
     redirectTo.searchParams.set("role", role);
+    if (safeNextPath) {
+      redirectTo.searchParams.set("next", safeNextPath);
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -164,7 +181,10 @@ export function SignupForm({
               />
               <div className="grid gap-2">
                 <Label htmlFor="role" className="text-sm font-semibold text-black">I want to join as</Label>
-                <Select value={role} onValueChange={(v: "founder" | "marketer") => setRole(v)}>
+                <Select
+                  value={role}
+                  onValueChange={(v: "founder" | "marketer") => setRole(v)}
+                >
                   <SelectTrigger className="!h-12 rounded-xl border-2 border-black/10 bg-white focus:border-primary/50 focus:ring-0 text-black data-[size=default]:!h-12">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -187,7 +207,10 @@ export function SignupForm({
             </div>
             <div className="text-center text-sm text-black/60">
               Already have an account?{" "}
-              <Link href="/login" className="font-semibold underline underline-offset-4">
+              <Link
+                href={loginHref}
+                className="font-semibold underline underline-offset-4"
+              >
                 Login
               </Link>
             </div>

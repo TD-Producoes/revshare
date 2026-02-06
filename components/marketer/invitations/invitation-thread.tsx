@@ -4,26 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { openGlobalChatDrawer } from "@/lib/chat/events";
+import { ArrowLeft, ExternalLink, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
-
-import { ConversationChat } from "@/components/chat/conversation-chat";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
 
 type InvitationDetail = {
   id: string;
@@ -35,10 +21,6 @@ type InvitationDetail = {
   project: { id: string; name: string };
   founder: { id: string; name: string | null; email: string | null };
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
 function statusVariant(status: InvitationDetail["status"]) {
   if (status === "PENDING") return "warning";
@@ -53,16 +35,17 @@ function percentDisplay(value: string | number) {
   return n <= 1 ? Math.round(n * 100) : Math.round(n);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────────────────────────────────────
+function statusSummary(status: InvitationDetail["status"]) {
+  if (status === "PENDING") return "Review terms and respond when ready.";
+  if (status === "ACCEPTED") return "You accepted this invitation.";
+  if (status === "DECLINED") return "You declined this invitation.";
+  return "This invitation is no longer active.";
+}
 
 export function InvitationThread({
   invitationId,
-  currentUserId,
 }: {
   invitationId: string;
-  currentUserId: string;
 }) {
   const queryClient = useQueryClient();
   const [isActing, setIsActing] = useState<null | "accept" | "decline">(null);
@@ -78,26 +61,6 @@ export function InvitationThread({
   });
 
   const invitation = invitationQuery.data?.data;
-
-  const startConversationQuery = useQuery<{ data: { id: string } }>({
-    queryKey: ["chat-start", "invitation", invitationId],
-    enabled: Boolean(invitation?.project.id) && Boolean(invitation?.founder.id),
-    queryFn: async () => {
-      const res = await fetch("/api/chat/conversations/start", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          projectId: invitation!.project.id,
-          counterpartyId: invitation!.founder.id,
-        }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error || "Failed to start conversation");
-      return json;
-    },
-  });
-
-  const conversationId = startConversationQuery.data?.data?.id ?? null;
 
   const handleAction = async (action: "accept" | "decline") => {
     setIsActing(action);
@@ -148,146 +111,136 @@ export function InvitationThread({
     invitation.founder.name ?? invitation.founder.email ?? "Founder";
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/marketer">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/marketer/invitations">
-                  Invitations
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{invitation.project.name}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/marketer/invitations">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <h1 className="text-2xl font-bold">{invitation.project.name}</h1>
-            <Badge
-              variant={statusVariant(invitation.status)}
-              className="uppercase tracking-wide"
-            >
-              {invitation.status}
-            </Badge>
-          </div>
+    <div className="space-y-6 pb-2">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/marketer/invitations">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold">{invitation.project.name}</h1>
+          <Badge
+            variant={statusVariant(invitation.status)}
+            className="uppercase tracking-wide"
+          >
+            {invitation.status}
+          </Badge>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Invitation from {founderName} • Received{" "}
+          {new Date(invitation.createdAt).toLocaleDateString()} •{" "}
+          {statusSummary(invitation.status)}
+        </p>
       </div>
 
-      {/* Main content: two columns on larger screens */}
-      <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-        {/* Left: Invitation details */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Commission
+            </p>
+            <p className="mt-1 text-lg font-semibold">
+              {percentDisplay(invitation.commissionPercentSnapshot)}%
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Refund window
+            </p>
+            <p className="mt-1 text-lg font-semibold">
+              {invitation.refundWindowDaysSnapshot} days
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Received
+            </p>
+            <p className="mt-1 text-lg font-semibold">
+              {new Date(invitation.createdAt).toLocaleDateString()}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {canAct ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={() => void handleAction("decline")}
+            disabled={isActing !== null}
+          >
+            {isActing === "decline" ? "Declining..." : "Decline"}
+          </Button>
+          <Button
+            onClick={() => void handleAction("accept")}
+            disabled={isActing !== null}
+          >
+            {isActing === "accept" ? "Accepting..." : "Accept invitation"}
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Invitation message</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            {invitation.message ? (
+              <p className="whitespace-pre-wrap rounded-md bg-muted/30 p-3 text-sm leading-6">
+                {invitation.message}
+              </p>
+            ) : (
+              <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                No message was included with this invitation.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="space-y-4">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Invitation Details</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Conversation</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">From</span>
-                  <span className="font-medium">{founderName}</span>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Commission</span>
-                  <span className="font-medium">
-                    {percentDisplay(invitation.commissionPercentSnapshot)}%
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Refund window</span>
-                  <span className="font-medium">
-                    {invitation.refundWindowDaysSnapshot} days
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Received</span>
-                  <span className="font-medium">
-                    {new Date(invitation.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-
-              {invitation.message && (
-                <>
-                  <Separator />
-                  <div className="space-y-2">
-                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Invitation message
-                    </span>
-                    <p className="text-sm whitespace-pre-wrap rounded-md bg-muted/30 p-3">
-                      {invitation.message}
-                    </p>
-                  </div>
-                </>
-              )}
-
-              <Separator />
-              <Link
-                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                href={`/projects/${invitation.project.id}`}
-                target="_blank"
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Keep discussion in one place with the founder by opening the global chat drawer.
+              </p>
+              <Button
+                className="w-full justify-start gap-2"
+                onClick={() =>
+                  openGlobalChatDrawer({
+                    projectId: invitation.project.id,
+                    counterpartyId: invitation.founder.id,
+                  })
+                }
               >
-                View project page
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Link>
+                <MessageSquareText className="h-4 w-4" />
+                Open chat
+              </Button>
             </CardContent>
           </Card>
 
-          {/* Action buttons */}
-          {canAct && (
-            <div className="flex gap-2">
-              <Button
-                className="flex-1"
-                variant="outline"
-                onClick={() => void handleAction("decline")}
-                disabled={isActing !== null}
-              >
-                {isActing === "decline" ? "Declining..." : "Decline"}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Project</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="w-full justify-between">
+                <Link href={`/projects/${invitation.project.id}`} target="_blank">
+                  View project page
+                  <ExternalLink className="h-4 w-4" />
+                </Link>
               </Button>
-              <Button
-                className="flex-1"
-                onClick={() => void handleAction("accept")}
-                disabled={isActing !== null}
-              >
-                {isActing === "accept" ? "Accepting..." : "Accept"}
-              </Button>
-            </div>
-          )}
+            </CardContent>
+          </Card>
         </div>
-
-        {/* Right: Chat */}
-        {conversationId ? (
-          <ConversationChat
-            conversationId={conversationId}
-            currentUserId={currentUserId}
-            counterpartyName={founderName}
-          />
-        ) : (
-          <div className="flex h-[500px] items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
-            {startConversationQuery.isLoading
-              ? "Starting conversation..."
-              : startConversationQuery.error
-                ? "Unable to start conversation."
-                : "Conversation unavailable."}
-          </div>
-        )}
       </div>
     </div>
   );

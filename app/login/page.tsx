@@ -1,6 +1,7 @@
 import { LoginForm } from "@/components/auth/login-form";
 import { ChartPie } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
 export default function LoginPage() {
   return (
@@ -13,7 +14,9 @@ export default function LoginPage() {
           <ChartPie className="h-5 w-5" />
           <span>RevShare</span>
         </Link>
-        <LoginForm />
+        <Suspense fallback={null}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );

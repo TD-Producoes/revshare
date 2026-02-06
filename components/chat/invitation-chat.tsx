@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Send, MessageSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useRealtimeUserChannel } from "@/lib/hooks/use-realtime-messages";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -105,6 +106,9 @@ export function InvitationChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Realtime: refresh on any new message event for this user
+  useRealtimeUserChannel(currentUserId);
+
   const messagesQuery = useQuery<{ data: MessageRow[] }>({
     queryKey: ["invitation-messages", invitationId],
     queryFn: async () => {
@@ -113,7 +117,7 @@ export function InvitationChat({
       if (!res.ok) throw new Error(json?.error || "Failed to load messages");
       return json;
     },
-    refetchInterval: 10000, // poll every 10s for new messages
+    refetchInterval: 60000,
   });
 
   const messages = useMemo(

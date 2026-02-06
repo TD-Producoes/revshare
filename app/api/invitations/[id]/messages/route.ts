@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { authErrorResponse, requireAuthUser } from "@/lib/auth";
+import { broadcastNewMessage } from "@/lib/chat/broadcast";
 
 const createSchema = z.object({
   body: z.string().min(1).max(5000),
@@ -111,7 +112,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const message = await prisma.$transaction(async (tx) => {
+    const { message, convId } = await prisma.$transaction(async (tx) => {
       const conv = await tx.conversation.upsert({
         where: {
           projectId_founderId_marketerId: {
@@ -144,8 +145,27 @@ export async function POST(
         data: { lastMessageAt: created.createdAt },
       });
 
-      return created;
+      return { message: created, convId: conv.id };
     });
+
+    // Broadcast in background — never blocks the response
+    const sender = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: { id: true, name: true, role: true },
+    });
+
+    if (sender) {
+      void broadcastNewMessage(
+        {
+          id: message.id,
+          conversationId: convId,
+          body: parsed.data.body,
+          createdAt: message.createdAt.toISOString(),
+          sender: { id: sender.id, name: sender.name, role: sender.role },
+        },
+        [invitation.founderId, invitation.marketerId],
+      );
+    }
 
     return NextResponse.json({ data: message }, { status: 201 });
   } catch (err) {

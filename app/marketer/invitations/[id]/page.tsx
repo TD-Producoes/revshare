@@ -7,14 +7,13 @@ export default async function MarketerInvitationDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  let user;
   try {
-    user = await requireAuthUser();
+    await requireAuthUser();
   } catch {
     redirect("/login");
   }
 
   const { id } = await params;
 
-  return <InvitationThread invitationId={id} currentUserId={user.id} />;
+  return <InvitationThread invitationId={id} />;
 }

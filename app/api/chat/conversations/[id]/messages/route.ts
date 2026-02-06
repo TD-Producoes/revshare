@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { authErrorResponse, requireAuthUser } from "@/lib/auth";
+import { broadcastNewMessage } from "@/lib/chat/broadcast";
 
 const createSchema = z.object({
   body: z.string().min(1).max(5000),
@@ -94,6 +95,25 @@ export async function POST(
 
       return created;
     });
+
+    // Broadcast in background — never blocks the response
+    const sender = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: { id: true, name: true, role: true },
+    });
+
+    if (sender) {
+      void broadcastNewMessage(
+        {
+          id: msg.id,
+          conversationId: id,
+          body: parsed.data.body,
+          createdAt: msg.createdAt.toISOString(),
+          sender: { id: sender.id, name: sender.name, role: sender.role },
+        },
+        [conversation.founderId, conversation.marketerId],
+      );
+    }
 
     return NextResponse.json({ data: msg }, { status: 201 });
   } catch (err) {
