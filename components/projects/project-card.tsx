@@ -58,7 +58,7 @@ export function ProjectCard({
 }: ProjectCardProps) {
   return (
     <Link href={`${basePath}/${project.id}`}>
-      <Card className="group h-full transition-all hover:shadow-lg hover:border-primary/50">
+      <Card className="group h-full transition-all hover:border-primary/50">
         <CardContent className="p-6 py-2 flex flex-col h-full">
           {/* Main Content */}
           <div className="flex-1">

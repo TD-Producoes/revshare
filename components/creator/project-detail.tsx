@@ -64,13 +64,14 @@ import { VisibilityMode } from "@prisma/client";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   ChevronsUpDown,
   ExternalLink,
   MoreHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -85,6 +86,25 @@ import { useRouter } from "next/navigation";
 
 interface ProjectDetailProps {
   projectId: string;
+}
+
+const PROJECT_TABS = [
+  { value: "overview", label: "Overview" },
+  { value: "metrics", label: "Metrics" },
+  { value: "coupons", label: "Coupons" },
+  { value: "marketers", label: "Marketers" },
+  { value: "rewards", label: "Rewards" },
+  { value: "invitations", label: "Invitations" },
+  { value: "distribution", label: "Distribution" },
+  { value: "attribution", label: "Attribution" },
+  { value: "activity", label: "Activity" },
+  { value: "settings", label: "Settings" },
+] as const;
+
+const TAB_GAP_PX = 4;
+
+function areSameTabValues(a: string[], b: string[]) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
 function buildAffiliateRows(
@@ -198,6 +218,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [productsOpen, setProductsOpen] = useState(false);
   const [marketersOpen, setMarketersOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const tabContainerRef = useRef<HTMLDivElement | null>(null);
+  const tabMeasureRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const moreTabMeasureRef = useRef<HTMLButtonElement | null>(null);
+  const [visibleTabValues, setVisibleTabValues] = useState<string[]>(
+    PROJECT_TABS.map((tab) => tab.value),
+  );
   const [shouldOpenReward, setShouldOpenReward] = useState(false);
   const [isRevenueCatDialogOpen, setIsRevenueCatDialogOpen] = useState(false);
   const [revenueCatProjectId, setRevenueCatProjectId] = useState("");
@@ -258,17 +284,73 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     typeof window !== "undefined" && apiProject?.revenueCatProjectId
       ? `${window.location.origin}/api/revenuecat/webhook/${apiProject.revenueCatProjectId}`
       : "";
-  const activeTabLabel = {
-    overview: "Overview",
-    metrics: "Metrics",
-    coupons: "Coupons",
-    marketers: "Marketers",
-    rewards: "Rewards",
-    activity: "Activity",
-    distribution: "Distribution",
-    attribution: "Attribution",
-    settings: "Settings",
-  }[activeTab] ?? "Overview";
+  const activeTabLabel =
+    PROJECT_TABS.find((tab) => tab.value === activeTab)?.label ?? "Overview";
+  const hiddenTabs = useMemo(
+    () => PROJECT_TABS.filter((tab) => !visibleTabValues.includes(tab.value)),
+    [visibleTabValues],
+  );
+
+  const recalculateVisibleTabs = useCallback(() => {
+    const containerWidth = tabContainerRef.current?.clientWidth ?? 0;
+    const moreWidth = moreTabMeasureRef.current?.offsetWidth ?? 0;
+    if (!containerWidth || !moreWidth) {
+      return;
+    }
+
+    const tabWidths = PROJECT_TABS.map((tab) => ({
+      value: tab.value,
+      width: tabMeasureRefs.current[tab.value]?.offsetWidth ?? 0,
+    }));
+    if (tabWidths.some((tab) => tab.width <= 0)) {
+      return;
+    }
+
+    const totalTabsWidth = tabWidths.reduce(
+      (total, tab, index) => total + tab.width + (index > 0 ? TAB_GAP_PX : 0),
+      0,
+    );
+
+    if (totalTabsWidth <= containerWidth) {
+      const allTabValues = PROJECT_TABS.map((tab) => tab.value);
+      setVisibleTabValues((prev) => (areSameTabValues(prev, allTabValues) ? prev : allTabValues));
+      return;
+    }
+
+    const availableWidthForTabs = Math.max(containerWidth - moreWidth - TAB_GAP_PX, 0);
+    const nextVisibleValues: string[] = [];
+    let usedWidth = 0;
+
+    for (const tab of tabWidths) {
+      const nextTabWidth = tab.width + (nextVisibleValues.length > 0 ? TAB_GAP_PX : 0);
+      if (usedWidth + nextTabWidth > availableWidthForTabs && nextVisibleValues.length > 0) {
+        break;
+      }
+      nextVisibleValues.push(tab.value);
+      usedWidth += nextTabWidth;
+    }
+
+    if (!nextVisibleValues.length) {
+      nextVisibleValues.push(PROJECT_TABS[0].value);
+    }
+
+    if (
+      activeTab &&
+      PROJECT_TABS.some((tab) => tab.value === activeTab) &&
+      !nextVisibleValues.includes(activeTab)
+    ) {
+      nextVisibleValues[nextVisibleValues.length - 1] = activeTab;
+      const adjusted = PROJECT_TABS.map((tab) => tab.value).filter((value) =>
+        nextVisibleValues.includes(value),
+      );
+      setVisibleTabValues((prev) => (areSameTabValues(prev, adjusted) ? prev : adjusted));
+      return;
+    }
+
+    setVisibleTabValues((prev) =>
+      areSameTabValues(prev, nextVisibleValues) ? prev : nextVisibleValues,
+    );
+  }, [activeTab]);
   const searchParams = useSearchParams();
   const router = useRouter();
   const handledCreateRef = useRef<string | null>(null);
@@ -276,17 +358,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    const allowedTabs = new Set([
-      "overview",
-      "metrics",
-      "coupons",
-      "marketers",
-      "rewards",
-      "activity",
-      "distribution",
-      "attribution",
-      "settings",
-    ]);
+    const allowedTabs = new Set(PROJECT_TABS.map((tabInfo) => tabInfo.value));
 
     if (tab && allowedTabs.has(tab)) {
       setActiveTab(tab);
@@ -348,6 +420,26 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       }
     }
   }, [isStripeConnectDialogOpen, searchParams, router]);
+
+  useLayoutEffect(() => {
+    recalculateVisibleTabs();
+  }, [recalculateVisibleTabs]);
+
+  useEffect(() => {
+    const element = tabContainerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      recalculateVisibleTabs();
+    });
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [recalculateVisibleTabs]);
 
   useEffect(() => {
     setRevenueCatProjectId(apiProject?.revenueCatProjectId ?? "");
@@ -1330,39 +1422,67 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <div className="border-b">
-          <TabsList variant="line" className="h-auto bg-transparent p-0">
-            <TabsTrigger className="px-3 py-2 text-sm" value="overview">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="metrics">
-              Metrics
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="coupons">
-              Coupons
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="marketers">
-              Marketers
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="rewards">
-              Rewards
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="invitations">
-              Invitations
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="activity">
-              Activity
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="distribution">
-              Distribution
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="attribution">
-              Attribution
-            </TabsTrigger>
-            <TabsTrigger className="px-3 py-2 text-sm" value="settings">
-              Settings
-            </TabsTrigger>
+        <div className="relative border-b" ref={tabContainerRef}>
+          <TabsList
+            variant="line"
+            className="h-auto w-full justify-start overflow-hidden bg-transparent p-0"
+          >
+            {PROJECT_TABS.filter((tab) => visibleTabValues.includes(tab.value)).map((tab) => (
+              <TabsTrigger key={tab.value} className="px-3 py-2 text-sm" value={tab.value}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+            {hiddenTabs.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-[calc(100%-1px)] rounded-md border border-transparent px-3 py-2 text-sm font-medium text-foreground/60 transition-all hover:bg-transparent hover:text-foreground focus-visible:ring-0"
+                  >
+                    More
+                    <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {hiddenTabs.map((tab) => (
+                    <DropdownMenuItem
+                      key={tab.value}
+                      onSelect={() => setActiveTab(tab.value)}
+                      className={cn(activeTab === tab.value && "font-medium")}
+                    >
+                      {tab.label}
+                      {activeTab === tab.value ? <Check className="ml-auto h-3.5 w-3.5" /> : null}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </TabsList>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-0 -z-10 inline-flex items-center gap-1 opacity-0"
+          >
+            {PROJECT_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                ref={(node) => {
+                  tabMeasureRefs.current[tab.value] = node;
+                }}
+                type="button"
+                className="px-3 py-2 text-sm font-medium whitespace-nowrap"
+              >
+                {tab.label}
+              </button>
+            ))}
+            <button
+              ref={moreTabMeasureRef}
+              type="button"
+              className="inline-flex items-center whitespace-nowrap border-l border-transparent px-3 py-2 text-sm font-medium"
+            >
+              More
+              <ChevronDown className="ml-1 h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         <TabsContent value="overview">

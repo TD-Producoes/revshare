@@ -177,10 +177,6 @@ export function Navbar({
                   )}>
                     <Link href="/projects" className="flex items-center gap-1.5">
                       Projects
-                      <span className={cn(
-                        "text-[9px] font-bold uppercase",
-                        isTransparentActive ? "text-white/40" : "text-muted-foreground/50"
-                      )}>(Preview)</span>
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
@@ -194,10 +190,6 @@ export function Navbar({
                   )}>
                     <Link href="/marketers" className="flex items-center gap-1.5">
                       Marketers
-                      <span className={cn(
-                        "text-[9px] font-bold uppercase",
-                        isTransparentActive ? "text-white/40" : "text-muted-foreground/50"
-                      )}>(Preview)</span>
                     </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
