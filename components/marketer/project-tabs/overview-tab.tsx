@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import { StatCard } from "@/components/shared/stat-card";
 import {
   Table,
@@ -78,12 +79,6 @@ export function MarketerProjectOverviewTab({
           {attributionErrorMessage && (
             <p className="text-xs text-destructive">{attributionErrorMessage}</p>
           )}
-          {!hasStoreUrls && (
-            <p className="text-xs text-amber-600">
-              Ask the founder to add the App Store and Play Store URLs so this link
-              can redirect users after tracking.
-            </p>
-          )}
         </CardContent>
       </Card>
 
@@ -119,7 +114,10 @@ export function MarketerProjectOverviewTab({
       <div className="space-y-3">
         <h3 className="text-base font-semibold">Commission Adjustments</h3>
         {projectAdjustments.length === 0 ? (
-          <p className="text-muted-foreground text-xs">No adjustments recorded yet.</p>
+          <ProjectTabEmptyState
+            title="No adjustments yet"
+            description="Commission adjustments for this project will appear here."
+          />
         ) : (
           <Table>
             <TableHeader>

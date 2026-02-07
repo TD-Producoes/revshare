@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, MoreHorizontal } from "lucide-react";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -219,9 +220,10 @@ export function AttributionKeysSetup({
           Loading keys...
         </p>
       ) : keys.length === 0 ? (
-        <p className="text-muted-foreground text-center py-8">
-          No keys created yet.
-        </p>
+        <ProjectTabEmptyState
+          title="No keys created yet"
+          description="Create an attribution key to start tracking deep link clicks."
+        />
       ) : (
         <Table>
           <TableHeader>

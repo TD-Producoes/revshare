@@ -54,6 +54,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 
 type InvitationRow = {
   id: string;
@@ -259,7 +260,10 @@ export function ProjectInvitationsTab({
           {error instanceof Error ? error.message : "Failed to load invitations"}
         </p>
       ) : invitations.length === 0 ? (
-        <p className="text-muted-foreground">No invitations yet.</p>
+        <ProjectTabEmptyState
+          title="No invitations yet"
+          description="Invite marketers to start conversations and application reviews."
+        />
       ) : (
         <Table>
           <TableHeader>

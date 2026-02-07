@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import {
   Table,
   TableBody,
@@ -42,9 +42,10 @@ export function ProjectMarketersTab({
           Loading affiliate marketers...
         </p>
       ) : affiliateRows.length === 0 ? (
-        <p className="text-muted-foreground text-center py-8">
-          No marketers are promoting this project yet.
-        </p>
+        <ProjectTabEmptyState
+          title="No affiliate marketers yet"
+          description="Marketers promoting this project will appear here."
+        />
       ) : (
         <Table>
           <TableHeader>

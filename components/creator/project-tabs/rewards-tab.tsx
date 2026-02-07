@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import { StatCard } from "@/components/shared/stat-card";
 import { formatCurrency } from "@/lib/data/metrics";
 import { useProjectMarketers, useRewards } from "@/lib/hooks/projects";
@@ -453,9 +454,10 @@ export function ProjectRewardsTab({
         {isRewardsLoading ? (
           <p className="text-muted-foreground">Loading rewards...</p>
         ) : rewards.length === 0 ? (
-          <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-            No rewards yet. Create a milestone reward to motivate marketers.
-          </div>
+          <ProjectTabEmptyState
+            title="No rewards yet"
+            description="Create a milestone reward to motivate marketers."
+          />
         ) : (
           <Table>
             <TableHeader>

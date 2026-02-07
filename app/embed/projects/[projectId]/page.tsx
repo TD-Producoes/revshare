@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 type EmbedField = "revenue" | "rewards" | "commission";
 type EmbedTheme = "light" | "dark" | "auto";
-type EmbedLayout = "compact" | "standard";
+type EmbedLayout = "compact" | "standard" | "minimal";
 
 const ALLOWED_FIELDS: EmbedField[] = ["revenue", "rewards", "commission"];
 
@@ -31,7 +31,7 @@ function parseTheme(raw: string | undefined): EmbedTheme {
 }
 
 function parseLayout(raw: string | undefined): EmbedLayout {
-  if (raw === "compact" || raw === "standard") return raw;
+  if (raw === "compact" || raw === "standard" || raw === "minimal") return raw;
   return "standard";
 }
 
@@ -189,23 +189,24 @@ export default async function ProjectEmbedPage({
   const ctaOnly = effectiveFields.length === 0;
 
   const isCompact = layout === "compact";
+  const isMinimal = layout === "minimal";
   const isDarkTheme = theme === "dark";
 
-  // Color schemes
+  // Minimal color schemes - very subtle
   const bgClass = isDarkTheme
-    ? "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
-    : "bg-gradient-to-br from-white via-slate-50 to-white";
+    ? "bg-slate-900/40 backdrop-blur-sm"
+    : "bg-white/60 backdrop-blur-sm";
   const borderClass = isDarkTheme
-    ? "border-slate-700/50"
-    : "border-slate-200/60";
+    ? "border-slate-700/30"
+    : "border-slate-200/40";
   const textClass = isDarkTheme ? "text-slate-100" : "text-slate-900";
-  const subtextClass = isDarkTheme ? "text-slate-400" : "text-slate-600";
-  const accentClass = isDarkTheme ? "text-amber-400" : "text-amber-600";
+  const subtextClass = isDarkTheme ? "text-slate-500" : "text-slate-600";
+  const accentClass = isDarkTheme ? "text-amber-500" : "text-amber-600";
   const chipClass = isDarkTheme
-    ? "border-slate-600/50 bg-slate-800/50 backdrop-blur-sm"
-    : "border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm";
+    ? "border-slate-700/40 bg-slate-800/30"
+    : "border-slate-200/50 bg-slate-50/50";
   const ctaClass =
-    "border-yellow-300/90 bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-200 text-slate-900 hover:from-yellow-200 hover:via-amber-200 hover:to-yellow-100 shadow-lg hover:shadow-xl";
+    "border-yellow-300/90 bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-200 text-slate-900 hover:from-yellow-200 hover:via-amber-200 hover:to-yellow-100";
 
   return (
     <main className="h-full w-full overflow-hidden bg-transparent p-0">
@@ -217,15 +218,27 @@ export default async function ProjectEmbedPage({
           background: transparent;
         }
       `}</style>
-      <div className="h-full flex items-center justify-center p-3">
-        {ctaOnly ? (
-          <div className={`${bgClass} ${borderClass} border rounded-2xl ${isCompact ? "p-4" : "p-6"} shadow-xl`}>
-            <div className="flex flex-col items-center text-center gap-3">
+      <div className="h-full flex items-center justify-center p-2">
+        {isMinimal ? (
+          <a
+            href={`/projects/${project.id}?intent=affiliate_apply&src=widget`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-medium transition-all border-yellow-300/90 bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-200 text-slate-900 hover:from-yellow-200 hover:via-amber-200 hover:to-yellow-100"
+          >
+            Become an Affiliate
+            <svg className="ml-1.5 h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+        ) : ctaOnly ? (
+          <div className={`${bgClass} ${borderClass} border rounded-lg ${isCompact ? "p-3" : "p-4"}`}>
+            <div className="flex flex-col items-center text-center gap-2">
               <div>
-                <div className={`${subtextClass} text-xs font-medium uppercase tracking-wider mb-1`}>
+                <div className={`${subtextClass} text-[10px] font-medium uppercase tracking-wide mb-0.5`}>
                   Join Our
                 </div>
-                <h2 className={`${textClass} ${isCompact ? "text-lg" : "text-2xl"} font-bold`}>
+                <h2 className={`${textClass} ${isCompact ? "text-base" : "text-lg"} font-semibold`}>
                   Affiliate Program
                 </h2>
               </div>
@@ -233,8 +246,8 @@ export default async function ProjectEmbedPage({
                 href={`/projects/${project.id}?intent=affiliate_apply&src=widget`}
                 target="_blank"
                 rel="noreferrer"
-                className={`inline-flex items-center justify-center rounded-full border px-6 py-2.5 text-center font-semibold transition-all ${ctaClass} ${
-                  isCompact ? "text-sm" : "text-base"
+                className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-center font-medium transition-all ${ctaClass} ${
+                  isCompact ? "text-xs" : "text-sm"
                 }`}
               >
                 Become an Affiliate
@@ -242,69 +255,56 @@ export default async function ProjectEmbedPage({
             </div>
           </div>
         ) : (
-          <div className={`${bgClass} ${borderClass} border rounded-2xl ${isCompact ? "p-4" : "p-6"} shadow-xl ${isCompact ? "max-w-md" : "max-w-lg"} w-full`}>
-            <div className={`flex flex-col ${isCompact ? "gap-3" : "gap-4"}`}>
-              {/* Header */}
-              <div className="space-y-1">
-                <div className={`${subtextClass} ${isCompact ? "text-[10px]" : "text-xs"} font-medium uppercase tracking-wider flex items-center gap-2`}>
-                  <svg className={`${isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} ${accentClass}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Affiliate Program
+          <div className={`${bgClass} ${borderClass} border rounded-lg ${isCompact ? "p-2" : "p-4"} ${isCompact ? "max-w-xs" : "max-w-md"} w-full`}>
+            <div className={`flex flex-col ${isCompact ? "gap-1.5" : "gap-3"}`}>
+              {/* Header with inline badges */}
+              <div className={isCompact ? "space-y-1" : "space-y-1.5"}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className={`${subtextClass} ${isCompact ? "text-[8px]" : "text-[9px]"} font-medium uppercase tracking-wide ${isCompact ? "mb-0" : "mb-0.5"}`}>
+                      Affiliate Program
+                    </div>
+                    <h1 className={`${textClass} ${isCompact ? "text-sm" : "text-lg"} font-semibold ${isCompact ? "leading-tight" : ""}`}>
+                      {project.name}
+                    </h1>
+                  </div>
                 </div>
-                <h1 className={`${textClass} ${isCompact ? "text-xl" : "text-2xl"} font-bold tracking-tight`}>
-                  {project.name}
-                </h1>
-              </div>
 
-              {/* Stats Grid */}
-              {(showRevenue || showCommission) && (
-                <div className={`grid ${showRevenue && showCommission ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
-                  {showRevenue && (
-                    <div className={`${chipClass} border rounded-xl ${isCompact ? "p-2.5" : "p-3"}`}>
-                      <div className={`${subtextClass} ${isCompact ? "text-[10px]" : "text-xs"} font-medium uppercase tracking-wide mb-1`}>
-                        Total Revenue
-                      </div>
-                      <div className={`${textClass} ${isCompact ? "text-lg" : "text-2xl"} font-bold`}>
-                        {formatCurrency(totalRevenue, currency)}
-                      </div>
-                      <div className={`${subtextClass} ${isCompact ? "text-[10px]" : "text-xs"} flex items-center gap-1 mt-0.5`}>
-                        <svg className={`${isCompact ? "h-2.5 w-2.5" : "h-3 w-3"}`} fill="currentColor" viewBox="0 0 20 20">
+                {/* Stats Badges - Single row */}
+                {(showRevenue || showCommission) && (
+                  <div className={`flex flex-wrap items-center ${isCompact ? "gap-1" : "gap-1.5"}`}>
+                    {showRevenue && (
+                      <span className={`${chipClass} border rounded-full ${isCompact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"} font-medium inline-flex items-center gap-1`}>
+                        <svg className={`${isCompact ? "h-2 w-2" : "h-2.5 w-2.5"}`} fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
-                        Stripe verified
-                      </div>
-                    </div>
-                  )}
-                  {showCommission && (
-                    <div className={`${chipClass} border rounded-xl ${isCompact ? "p-2.5" : "p-3"}`}>
-                      <div className={`${subtextClass} ${isCompact ? "text-[10px]" : "text-xs"} font-medium uppercase tracking-wide mb-1`}>
-                        Commission
-                      </div>
-                      <div className={`${accentClass} ${isCompact ? "text-lg" : "text-2xl"} font-bold`}>
-                        {formatPercent(commissionPercent)}
-                      </div>
-                      <div className={`${subtextClass} ${isCompact ? "text-[10px]" : "text-xs"}`}>
-                        per sale
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                        <span className={textClass}>{formatCurrency(totalRevenue, currency)}</span>
+                        {!isCompact && <span className={subtextClass}>revenue</span>}
+                      </span>
+                    )}
+                    {showCommission && (
+                      <span className={`${chipClass} border rounded-full ${isCompact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"} font-medium inline-flex items-center gap-1`}>
+                        <span className={accentClass}>{formatPercent(commissionPercent)}</span>
+                        {!isCompact && <span className={subtextClass}>commission</span>}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Rewards */}
               {showRewards && rewardDescriptions.length > 0 && (
-                <div className={`${chipClass} border rounded-xl ${isCompact ? "p-2.5" : "p-3"}`}>
-                  <div className={`${subtextClass} ${isCompact ? "text-[10px]" : "text-xs"} font-medium uppercase tracking-wide mb-2`}>
-                    🎁 Milestone Rewards
+                <div className={`${chipClass} border rounded-md ${isCompact ? "p-1.5" : "p-2.5"}`}>
+                  <div className={`${subtextClass} ${isCompact ? "text-[8px]" : "text-[9px]"} font-medium uppercase tracking-wide ${isCompact ? "mb-0.5" : "mb-1"}`}>
+                    Rewards
                   </div>
-                  <div className={isCompact ? "space-y-1" : "space-y-1.5"}>
+                  <div className={isCompact ? "space-y-0" : "space-y-0.5"}>
                     {rewardDescriptions.map((description, index) => (
                       <div
                         key={`${description}-${index}`}
-                        className={`${textClass} ${isCompact ? "text-xs" : "text-sm"} flex items-start gap-2`}
+                        className={`${textClass} ${isCompact ? "text-[9px]" : "text-[10px]"} flex items-start gap-1`}
                       >
-                        <span className={`${accentClass} ${isCompact ? "text-xs" : "text-sm"} mt-0.5`}>•</span>
+                        <span className={`${accentClass} ${isCompact ? "text-[9px]" : "text-[10px]"} mt-0.5`}>•</span>
                         <span className="leading-snug">{description}</span>
                       </div>
                     ))}
@@ -317,12 +317,12 @@ export default async function ProjectEmbedPage({
                 href={`/projects/${project.id}?intent=affiliate_apply&src=widget`}
                 target="_blank"
                 rel="noreferrer"
-                className={`inline-flex items-center justify-center rounded-full border px-6 py-2.5 text-center font-semibold transition-all ${ctaClass} ${
-                  isCompact ? "text-sm" : "text-base"
+                className={`inline-flex items-center justify-center rounded-full border ${isCompact ? "px-3 py-1.5" : "px-4 py-2"} text-center font-medium transition-all ${ctaClass} ${
+                  isCompact ? "text-[11px]" : "text-sm"
                 }`}
               >
                 Become an Affiliate
-                <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className={`${isCompact ? "ml-1 h-3 w-3" : "ml-1.5 h-3.5 w-3.5"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </a>

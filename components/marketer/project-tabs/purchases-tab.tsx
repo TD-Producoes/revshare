@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import {
   Table,
   TableBody,
@@ -27,9 +28,10 @@ export function MarketerPurchasesTab({
     <div className="space-y-3">
       <h3 className="text-base font-semibold">Purchases for this Project</h3>
       {purchases.length === 0 ? (
-        <p className="text-muted-foreground text-xs">
-          No purchases yet for this project.
-        </p>
+        <ProjectTabEmptyState
+          title="No purchases yet"
+          description="Purchases attributed to this project will appear here."
+        />
       ) : (
         <Table>
           <TableHeader>

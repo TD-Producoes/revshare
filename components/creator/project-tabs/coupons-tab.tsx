@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import { MoreHorizontal } from "lucide-react";
 import type { CouponTemplate } from "@/lib/hooks/coupons";
 import { useState } from "react";
@@ -64,9 +65,10 @@ export function ProjectCouponsTab({
       {isTemplatesLoading ? (
         <p className="text-muted-foreground">Loading templates...</p>
       ) : couponTemplates.length === 0 ? (
-        <p className="text-muted-foreground">
-          No coupon templates yet. Create one to issue marketer promo codes.
-        </p>
+        <ProjectTabEmptyState
+          title="No coupon templates yet"
+          description="Create a template to issue marketer promo codes."
+        />
       ) : (
         <Table>
           <TableHeader>

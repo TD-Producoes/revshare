@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/data/metrics";
 import type { MarketerProjectReward } from "@/lib/hooks/marketer";
@@ -141,11 +142,10 @@ export function MarketerRewardsTab({
           </CardContent>
         </Card>
       ) : activeRewards.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            No rewards available yet for this project.
-          </CardContent>
-        </Card>
+        <ProjectTabEmptyState
+          title="No rewards available yet"
+          description="This project has not published rewards for marketers yet."
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           {activeRewards.map((item) => {
@@ -246,7 +246,10 @@ export function MarketerRewardsTab({
       <div className="space-y-3">
         <h3 className="text-base font-semibold">Earned Rewards</h3>
         {earnedRewards.length === 0 ? (
-          <p className="text-muted-foreground">No rewards earned yet.</p>
+          <ProjectTabEmptyState
+            title="No rewards earned yet"
+            description="Your claimed and unlocked rewards will appear here."
+          />
         ) : (
           <Table>
             <TableHeader>

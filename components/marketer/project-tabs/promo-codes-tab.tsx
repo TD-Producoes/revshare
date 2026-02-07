@@ -6,6 +6,7 @@ import { Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import {
   Dialog,
   DialogContent,
@@ -76,9 +77,10 @@ export function MarketerPromoCodesTab({
         </CardHeader>
         <CardContent>
           {coupons.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              You haven&apos;t generated any promo codes for this project yet.
-            </p>
+            <ProjectTabEmptyState
+              title="No promo codes yet"
+              description="Generate your first promo code for this project."
+            />
           ) : (
             <Table>
               <TableHeader>

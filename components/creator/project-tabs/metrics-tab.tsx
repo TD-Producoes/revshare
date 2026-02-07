@@ -9,6 +9,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import { StatCard } from "@/components/shared/stat-card";
 import { RevenueChart } from "@/components/shared/revenue-chart";
 import { Button } from "@/components/ui/button";
@@ -440,9 +441,10 @@ export function ProjectMetricsTab({
           </Popover>
         </div>
         {filteredRows.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">
-            No marketer activity yet.
-          </p>
+          <ProjectTabEmptyState
+            title="No marketer activity yet"
+            description="Activity by marketer will appear here as traffic and purchases come in."
+          />
         ) : (
           <Table>
             <TableHeader>

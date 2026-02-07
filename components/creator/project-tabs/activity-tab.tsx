@@ -5,6 +5,7 @@ import { useProjectEvents } from "@/lib/hooks/events";
 import { useCreatorAdjustments } from "@/lib/hooks/creator";
 import { useAuthUserId } from "@/lib/hooks/auth";
 import { useUser } from "@/lib/hooks/users";
+import { ProjectTabEmptyState } from "@/components/shared/project-tab-empty-state";
 import {
   Table,
   TableBody,
@@ -121,9 +122,10 @@ export function ProjectActivityTab({
       {isLoading ? (
         <p className="text-muted-foreground">Loading activity...</p>
       ) : events.length === 0 ? (
-        <p className="text-muted-foreground">
-          No activity yet for this project.
-        </p>
+        <ProjectTabEmptyState
+          title="No activity yet"
+          description="Project events will appear here once activity starts."
+        />
       ) : (
         <div className="divide-y">
           {events.map((event) => {
@@ -168,9 +170,11 @@ export function ProjectActivityTab({
         {isAdjustmentsLoading ? (
           <p className="text-muted-foreground mt-3">Loading adjustments...</p>
         ) : projectAdjustments.length === 0 ? (
-          <p className="text-muted-foreground mt-3">
-            No adjustments recorded yet.
-          </p>
+          <ProjectTabEmptyState
+            className="mt-3"
+            title="No adjustments yet"
+            description="Commission adjustments for this project will show up here."
+          />
         ) : (
           <Table>
             <TableHeader>
