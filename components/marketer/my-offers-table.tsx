@@ -358,7 +358,7 @@ export function MyOffersTable({
               <TableHead>Status</TableHead>
               <TableHead>Attribution Link</TableHead>
               <TableHead>Coupon</TableHead>
-              <TableHead className="text-right">Test Checkout</TableHead>
+              {/* <TableHead className="text-right">Test Checkout</TableHead> */}
               <TableHead className="text-right">Applied</TableHead>
             </TableRow>
           </TableHeader>
@@ -455,7 +455,7 @@ export function MyOffersTable({
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
+                  {/* <TableCell className="text-right text-muted-foreground">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -468,7 +468,7 @@ export function MyOffersTable({
                     >
                       Test checkout
                     </Button>
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell className="text-right text-muted-foreground">
                     {new Date(contract.createdAt).toLocaleDateString()}
                   </TableCell>

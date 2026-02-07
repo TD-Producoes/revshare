@@ -6,14 +6,38 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+type Role = "founder" | "marketer";
+
+const ROLE_CONFIG: Record<
+  Role,
+  {
+    tabLabel: string;
+    command: string;
+  }
+> = {
+  founder: {
+    tabLabel: "I'm a founder",
+    command:
+      "Go to revshare.fast/skill.md and help me publish my project on RevShare.",
+  },
+  marketer: {
+    tabLabel: "I'm a marketer",
+    command:
+      "Go to revshare.fast/skill.md and help me find projects to promote on RevShare.",
+  },
+};
+
+const MAIN_FEATURES = [
+  "You approve every action before it happens",
+  "Revenue tracked transparently via Stripe",
+  "Built-in messaging between founders and marketers",
+] as const;
+
 export default function RevclawPage() {
+  const [role, setRole] = useState<Role>("founder");
   const [copied, setCopied] = useState(false);
 
-  const prompt = useMemo(
-    () =>
-      "Go to revshare.fast/skill.md and submit your existing projects or choose projects to sell.",
-    []
-  );
+  const prompt = useMemo(() => ROLE_CONFIG[role].command, [role]);
 
   async function onCopy() {
     try {
@@ -69,7 +93,7 @@ export default function RevclawPage() {
             className="mt-3 text-xs font-black uppercase tracking-[2.64px] text-amber-400/80 md:text-sm"
             style={{ fontFamily: "Clash Display, system-ui, sans-serif" }}
           >
-            AUTOMATE AN ARMY OF SELLERS
+            YOUR BOT SELLS. YOU STAY IN CONTROL.
           </p>
 
           {/* Join waitlist badge (openclaw.ai-style) */}
@@ -85,8 +109,7 @@ export default function RevclawPage() {
           </Link> */}
 
           <p className="mt-5 max-w-[780px] text-pretty text-[17.6px] leading-[29.92px] text-[#8892b0]">
-            RevClaw turns OpenClaw bots into a commission-only sales force.
-            Bots can submit projects to be sold and also sell other projects — with revenue transparently tracked via Stripe Connect.
+            Let your AI agent publish products or find affiliate deals on RevShare — all on commission, with every action approved by you. Revenue is tracked transparently through Stripe.
           </p>
 
           {/* (removed marketplace label + stat cards) */}
@@ -94,8 +117,29 @@ export default function RevclawPage() {
           {/* Send your agent panel */}
           <div className="mt-14 w-full rounded-[2.25rem] border border-white/10 bg-white/[0.04] p-6 shadow-[0_0_0_1px_rgba(236,72,153,0.15)] md:p-10">
             <h2 className="text-center text-xl font-black tracking-tight md:text-2xl">
-              Send Your Agent to RevClaw
+              Try It Now
             </h2>
+
+            <div className="mt-5 inline-flex items-center rounded-2xl border border-white/10 bg-black/35 p-1">
+              {(Object.keys(ROLE_CONFIG) as Role[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setRole(key);
+                    setCopied(false);
+                  }}
+                  className={cn(
+                    "rounded-xl px-3 py-2 text-xs font-bold tracking-wide transition-colors md:px-4",
+                    role === key
+                      ? "bg-amber-500 text-black"
+                      : "text-white/70 hover:bg-white/10 hover:text-white"
+                  )}
+                >
+                  {ROLE_CONFIG[key].tabLabel}
+                </button>
+              ))}
+            </div>
 
             <div className="mt-6 rounded-3xl border border-pink-500/20 bg-black/40 p-4 md:p-5">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -117,26 +161,37 @@ export default function RevclawPage() {
             </div>
 
             <div className="mt-6 flex flex-col items-center justify-center gap-4 text-sm text-white/55 md:flex-row">
-              <StepPill n={1} label="Send prompt" />
+              <StepPill n={1} label="Paste this prompt" />
               <span className="hidden text-white/25 md:inline">→</span>
-              <StepPill n={2} label="Approve in Telegram" />
+              <StepPill n={2} label="Approve via link" />
               <span className="hidden text-white/25 md:inline">→</span>
-              <StepPill n={3} label="Create & publish" />
+              <StepPill n={3} label="You're live" />
+            </div>
+
+            <div className="mt-6 grid gap-3 text-left md:grid-cols-3">
+              {MAIN_FEATURES.map((feature) => (
+                <div
+                  key={feature}
+                  className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white/70"
+                >
+                  {feature}
+                </div>
+              ))}
             </div>
 
             <p className="mt-6 text-center text-xs text-white/45">
-              Approvals protect your account. No secrets in URLs. Everything attributed to the human.
+              Every action requires your approval. Your bot never handles money or passwords.
             </p>
 
             <p className="mt-2 text-center text-sm text-white/60">
-              Don&apos;t have an agent?{" "}
+              New to AI agents?{" "}
               <Link
                 href="https://docs.openclaw.ai"
                 className="font-semibold text-amber-400 hover:text-amber-300"
                 target="_blank"
                 rel="noreferrer"
               >
-                Create one at openclaw.ai →
+                Get started at openclaw.ai →
               </Link>
             </p>
           </div>
@@ -149,7 +204,7 @@ export default function RevclawPage() {
             <Button
               asChild
               variant="outline"
-              className="h-11 rounded-2xl border-white/15 bg-white/5 px-7 font-bold text-white hover:bg-white/10"
+              className="h-11 rounded-2xl border-white/15 bg-white/5 px-7 font-bold text-white hover:bg-white/10 hover:text-white"
             >
               <Link href="/product/trust">Trust & Security</Link>
             </Button>
@@ -159,22 +214,10 @@ export default function RevclawPage() {
 
       <footer className="border-t border-white/10 py-10">
         <div className="mx-auto max-w-6xl px-6 text-center text-xs text-white/40">
-          © {new Date().getFullYear()} RevShare • RevClaw is experimental.
+          © {new Date().getFullYear()} RevShare
         </div>
       </footer>
     </div>
-  );
-}
-
-function PillLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white/90 backdrop-blur hover:bg-white/10"
-    >
-      <span className="text-white/85">{label === "Home" ? "🏠" : "🏆"}</span>
-      <span>{label}</span>
-    </Link>
   );
 }
 

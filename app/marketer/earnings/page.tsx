@@ -512,23 +512,6 @@ export default function EarningsPage() {
             )}
           </div>
 
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-muted rounded-md">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium">Payout Schedule</p>
-                  <p className="text-sm text-muted-foreground">
-                    Earnings are paid out on the 1st of each month for the previous
-                    month. Minimum payout threshold is $50.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <div className="space-y-3">
             <h3 className="text-base font-semibold">Commission Adjustments</h3>
             {adjustments.length === 0 ? (
