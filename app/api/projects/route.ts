@@ -10,6 +10,7 @@ import {
   requireOwner,
 } from "@/lib/auth";
 import { redactProjectData } from "@/lib/services/visibility";
+import { getDefaultPlatformCommissionPercent } from "@/lib/config/platform-commission";
 
 const projectInput = z.object({
   userId: z.string().min(1),
@@ -17,7 +18,6 @@ const projectInput = z.object({
   description: z.string().min(1).optional(),
   category: z.string().min(1).optional(),
   creatorStripeAccountId: z.string().min(1).optional(),
-  platformCommissionPercent: z.number().min(0).max(100).optional(),
   marketerCommissionPercent: z.number().min(0).max(100).optional(),
   country: z.string().length(2).optional(),
   website: z.string().url().optional().or(z.literal("")),
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
       );
     }
   }
-  const platformCommissionRaw = payload.platformCommissionPercent ?? 5;
+  const platformCommissionRaw = getDefaultPlatformCommissionPercent();
   const marketerCommissionRaw = payload.marketerCommissionPercent ?? 20;
   const platformCommissionPercent = normalizePercent(platformCommissionRaw);
   const marketerCommissionPercent = normalizePercent(marketerCommissionRaw);

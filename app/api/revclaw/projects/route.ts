@@ -9,6 +9,7 @@ import {
   requireScope,
 } from "@/lib/revclaw/auth";
 import { emitRevclawEvent } from "@/lib/revclaw/events";
+import { getDefaultPlatformCommissionPercent } from "@/lib/config/platform-commission";
 
 const createProjectSchema = z.object({
   name: z.string().min(1).max(120),
@@ -19,7 +20,6 @@ const createProjectSchema = z.object({
   refundWindowDays: z.number().int().min(0).max(365).optional().nullable(),
   // Commission percents are stored as decimals (0.2 means 20%). Accept either 0..1 or 0..100.
   marketerCommissionPercent: z.number().min(0).max(100).optional().nullable(),
-  platformCommissionPercent: z.number().min(0).max(100).optional().nullable(),
   visibility: z.nativeEnum(VisibilityMode).optional().nullable(),
 });
 
@@ -109,8 +109,7 @@ export async function POST(request: Request) {
         refundWindowDays: input.refundWindowDays ?? undefined,
         marketerCommissionPercent:
           normalizePercent(input.marketerCommissionPercent) ?? undefined,
-        platformCommissionPercent:
-          normalizePercent(input.platformCommissionPercent) ?? undefined,
+        platformCommissionPercent: getDefaultPlatformCommissionPercent(),
         // Draft by default
         visibility: input.visibility ?? VisibilityMode.PRIVATE,
         // keep defaults for the rest

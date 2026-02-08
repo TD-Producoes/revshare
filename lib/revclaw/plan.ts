@@ -10,7 +10,6 @@ export const planProjectSchema = z.object({
   country: z.string().max(80).optional().nullable(),
   refundWindowDays: z.number().int().min(0).max(365).optional().nullable(),
   marketerCommissionPercent: z.number().min(0).max(100).optional().nullable(),
-  platformCommissionPercent: z.number().min(0).max(100).optional().nullable(),
 });
 
 export const planCouponTemplateSchema = z.object({

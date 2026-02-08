@@ -13,6 +13,7 @@ import { markIntentExecuted, verifyIntent } from "@/lib/revclaw/intent-auth";
 import { revclawPlanSchema, type RevclawPlanJson } from "@/lib/revclaw/plan";
 import { generatePromoCode } from "@/lib/codes";
 import { platformStripe } from "@/lib/stripe";
+import { getDefaultPlatformCommissionPercent } from "@/lib/config/platform-commission";
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -535,8 +536,7 @@ export async function POST(
         refundWindowDays: planJson.project.refundWindowDays ?? undefined,
         marketerCommissionPercent:
           normalizePercent(planJson.project.marketerCommissionPercent) ?? undefined,
-        platformCommissionPercent:
-          normalizePercent(planJson.project.platformCommissionPercent) ?? undefined,
+        platformCommissionPercent: getDefaultPlatformCommissionPercent(),
         visibility: VisibilityMode.PRIVATE,
       },
       select: { id: true, name: true, creatorStripeAccountId: true },

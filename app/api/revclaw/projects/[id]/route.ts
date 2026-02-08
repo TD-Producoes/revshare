@@ -19,7 +19,6 @@ const updateProjectSchema = z
     country: z.string().max(80).optional().nullable(),
     refundWindowDays: z.number().int().min(0).max(365).optional().nullable(),
     marketerCommissionPercent: z.number().min(0).max(100).optional().nullable(),
-    platformCommissionPercent: z.number().min(0).max(100).optional().nullable(),
     visibility: z.nativeEnum(VisibilityMode).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -81,10 +80,6 @@ export async function PATCH(
           input.marketerCommissionPercent === undefined
             ? undefined
             : normalizePercent(input.marketerCommissionPercent),
-        platformCommissionPercent:
-          input.platformCommissionPercent === undefined
-            ? undefined
-            : normalizePercent(input.platformCommissionPercent),
         visibility: input.visibility,
       },
       select: {

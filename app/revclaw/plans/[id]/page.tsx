@@ -418,14 +418,6 @@ export default async function RevclawPlanReviewPage(props: {
                             </div>
                           ) : null}
 
-                          {typeof planJson.project.platformCommissionPercent === "number" ? (
-                            <div className="grid gap-1">
-                              <div className="text-xs text-white/60">Platform fee</div>
-                              <div className="text-white/80">
-                                {planJson.project.platformCommissionPercent}%
-                              </div>
-                            </div>
-                          ) : null}
                         </div>
                       </div>
                     </div>
