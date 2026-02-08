@@ -101,9 +101,15 @@ const PROJECT_TABS = [
   { value: "settings", label: "Settings" },
 ] as const;
 
+type ProjectTabValue = (typeof PROJECT_TABS)[number]["value"];
+
 const TAB_GAP_PX = 4;
 
-function areSameTabValues(a: string[], b: string[]) {
+function isProjectTabValue(value: string): value is ProjectTabValue {
+  return PROJECT_TABS.some((tab) => tab.value === value);
+}
+
+function areSameTabValues(a: ProjectTabValue[], b: ProjectTabValue[]) {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
@@ -217,11 +223,22 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   >([]);
   const [productsOpen, setProductsOpen] = useState(false);
   const [marketersOpen, setMarketersOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState<ProjectTabValue>("overview");
   const tabContainerRef = useRef<HTMLDivElement | null>(null);
-  const tabMeasureRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const tabMeasureRefs = useRef<Record<ProjectTabValue, HTMLButtonElement | null>>({
+    overview: null,
+    metrics: null,
+    coupons: null,
+    marketers: null,
+    rewards: null,
+    invitations: null,
+    distribution: null,
+    attribution: null,
+    activity: null,
+    settings: null,
+  });
   const moreTabMeasureRef = useRef<HTMLButtonElement | null>(null);
-  const [visibleTabValues, setVisibleTabValues] = useState<string[]>(
+  const [visibleTabValues, setVisibleTabValues] = useState<ProjectTabValue[]>(
     PROJECT_TABS.map((tab) => tab.value),
   );
   const [shouldOpenReward, setShouldOpenReward] = useState(false);
@@ -318,7 +335,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     }
 
     const availableWidthForTabs = Math.max(containerWidth - moreWidth - TAB_GAP_PX, 0);
-    const nextVisibleValues: string[] = [];
+    const nextVisibleValues: ProjectTabValue[] = [];
     let usedWidth = 0;
 
     for (const tab of tabWidths) {
@@ -358,9 +375,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    const allowedTabs = new Set(PROJECT_TABS.map((tabInfo) => tabInfo.value));
 
-    if (tab && allowedTabs.has(tab)) {
+    if (tab && isProjectTabValue(tab)) {
       setActiveTab(tab);
     }
 
@@ -373,7 +389,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     }
 
     const createParam = searchParams.get("create");
-    if (createParam && tab && allowedTabs.has(tab)) {
+    if (createParam && tab && isProjectTabValue(tab)) {
       const createKey = `${projectId}:${createParam}`;
       if (handledCreateRef.current !== createKey) {
         handledCreateRef.current = createKey;
@@ -1419,7 +1435,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       {/* Project Info Card */}
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={(value) => {
+          if (isProjectTabValue(value)) {
+            setActiveTab(value);
+          }
+        }}
         className="space-y-6"
       >
         <div className="relative border-b" ref={tabContainerRef}>
