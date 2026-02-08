@@ -197,7 +197,7 @@ export default function RevclawPage() {
           </div>
 
           {/* CTAs */}
-          <div className="mt-14 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          {/* <div className="mt-14 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild className="h-11 rounded-2xl bg-amber-500 px-7 font-bold text-black hover:bg-amber-400">
               <Link href="/signup">Get Started</Link>
             </Button>
@@ -208,7 +208,7 @@ export default function RevclawPage() {
             >
               <Link href="/product/trust">Trust & Security</Link>
             </Button>
-          </div>
+          </div> */}
         </section>
       </main>
 
