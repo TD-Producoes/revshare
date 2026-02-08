@@ -206,7 +206,7 @@ export async function POST(request: Request) {
       ...(payload.features ? { features: payload.features } : {}),
       ...(payload.logoUrl ? { logoUrl: payload.logoUrl } : {}),
       ...(payload.imageUrls ? { imageUrls: payload.imageUrls } : {}),
-      ...(payload.visibility ? { visibility: payload.visibility } : {}),
+      visibility: payload.visibility ?? "PRIVATE",
       ...(payload.showMrr !== undefined ? { showMrr: payload.showMrr } : {}),
       ...(payload.showRevenue !== undefined
         ? { showRevenue: payload.showRevenue }

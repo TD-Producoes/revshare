@@ -481,7 +481,7 @@ export function CreateProjectForm({
               : step === "loading"
               ? "Please wait while we analyze your website..."
               : step === "success"
-              ? "Your project has been created. Connect Stripe to start receiving payments."
+              ? "Your project has been created as Private. Connect Stripe, then set visibility to Public in Project Settings so marketers can discover it."
               : "Add a new project and set up revenue sharing terms for affiliates."}
           </DialogDescription>
         </DialogHeader>
@@ -525,7 +525,7 @@ export function CreateProjectForm({
                   <div className="text-center space-y-1">
                     <p className="text-sm font-medium">Project created successfully!</p>
                     <p className="text-xs text-muted-foreground">
-                      Connect your Stripe account to start receiving payments from marketers.
+                      Connect Stripe to start receiving payments, then go to Project Settings and change visibility to Public so marketers can see your project.
                     </p>
                   </div>
                   {error && <p className="text-sm text-destructive mt-2">{error}</p>}
