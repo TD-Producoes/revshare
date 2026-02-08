@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useAttributionLinks } from "@/lib/hooks/projects";
+import { toast } from "sonner";
 
 interface MyOffersTableProps {
   offers?: Offer[];
@@ -158,8 +159,13 @@ export function MyOffersTable({
     }
   };
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const handleCopy = async (text: string, successMessage = "Copied to clipboard.") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(successMessage);
+    } catch {
+      toast.error("Failed to copy. Please try again.");
+    }
   };
 
   if (!hasContracts && offers.length === 0) {
@@ -411,7 +417,9 @@ export function MyOffersTable({
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => handleCopy(linkToShow)}
+                          onClick={() =>
+                            handleCopy(linkToShow, "Attribution link copied.")
+                          }
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -423,21 +431,17 @@ export function MyOffersTable({
                   <TableCell>
                     {coupon ? (
                       <div className="flex items-center gap-2">
-                        <div className="space-y-1">
-                          <code className="bg-muted px-2 py-1 rounded text-xs">
-                            {coupon.code}
-                          </code>
-                          {coupon.template?.name ? (
-                            <p className="text-xs text-muted-foreground">
-                              {coupon.template.name}
-                            </p>
-                          ) : null}
-                        </div>
+                        <code className="inline-flex items-center rounded-md border border-amber-200/80 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 shadow-[0_0_0_1px_rgba(251,191,36,0.18),0_6px_18px_-12px_rgba(202,138,4,0.75)]">
+                          {coupon.code}
+                        </code>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
-                          onClick={() => handleCopy(coupon.code)}
+                          className="h-7 w-7 border border-amber-200/70 bg-amber-50/60 text-amber-900 hover:bg-amber-100 hover:text-amber-950"
+                          onClick={() =>
+                            handleCopy(coupon.code, `Coupon ${coupon.code} copied.`)
+                          }
+                          aria-label={`Copy coupon code ${coupon.code}`}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
